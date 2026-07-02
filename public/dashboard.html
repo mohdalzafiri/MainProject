@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>الرئيسية</title>
+  <style>
+    :root {
+      --bg: #f3f6fb;
+      --card: #ffffff;
+      --primary: #1d4ed8;
+      --primary-dark: #1e40af;
+      --text: #1f2937;
+      --muted: #64748b;
+      --border: rgba(15, 23, 42, 0.08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Tahoma, Arial, sans-serif;
+      color: var(--text);
+      background: linear-gradient(180deg, #e5efff 0%, #f8fafc 100%);
+    }
+    .page {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+    }
+    .title-group h1 {
+      margin: 0 0 6px;
+      font-size: 28px;
+    }
+    .title-group p {
+      margin: 0;
+      color: var(--muted);
+    }
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 18px;
+      border: none;
+      border-radius: 12px;
+      background: var(--primary);
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform .18s ease, background .18s ease;
+      text-decoration: none;
+    }
+    .btn:hover { transform: translateY(-1px); background: var(--primary-dark); }
+    .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 22px;
+      box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
+    }
+    .panel h2 {
+      margin: 0 0 18px;
+      font-size: 20px;
+      color: var(--text);
+    }
+    .buttons-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .action-item {
+      border-radius: 16px;
+      padding: 16px;
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      color: var(--text);
+      text-align: center;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .18s ease, transform .18s ease;
+    }
+    .action-item:hover {
+      background: #eef4ff;
+      transform: translateY(-2px);
+    }
+    .action-item.admin-only {
+      background: linear-gradient(135deg, #fff7ed, #ffedd5);
+      border: 1px solid #fdba74;
+      color: #9a3412;
+      position: relative;
+      box-shadow: 0 8px 20px rgba(249, 115, 22, 0.16);
+    }
+    .action-item.admin-only::before {
+      content: 'ADMIN';
+      position: absolute;
+      top: 6px;
+      left: 8px;
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: .04em;
+      color: #7c2d12;
+      background: rgba(255, 255, 255, 0.75);
+      border: 1px solid rgba(251, 146, 60, 0.5);
+      border-radius: 999px;
+      padding: 2px 6px;
+    }
+    .action-item.admin-only:hover {
+      background: linear-gradient(135deg, #ffedd5, #fed7aa);
+      transform: translateY(-2px);
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+    .summary-row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 20px;
+      margin-top: 24px;
+    }
+    .summary-panel {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+    .summary-row-3 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 20px;
+      margin-top: 24px;
+    }
+    .stat-block {
+      padding: 18px;
+      border-radius: 18px;
+      background: #ffffff;
+      border: 1px solid var(--border);
+      min-height: 110px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 8px;
+    }
+    .stat-block h3 {
+      margin: 0;
+      font-size: 32px;
+    }
+    .stat-block p {
+      margin: 0;
+      color: var(--muted);
+    }
+    .wide-panel {
+      grid-column: span 2;
+    }
+    .stat-card p { margin: 0; color: var(--muted); }
+    .stat-card h3 { margin: 10px 0 0; font-size: 30px; }
+    .table-wrap { overflow-x: auto; }
+    .mini-table {
+      min-width: 560px;
+    }
+    .mini-table th, .mini-table td {
+      padding: 10px 8px;
+      font-size: 14px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 700px;
+    }
+    th, td {
+      padding: 14px 12px;
+      text-align: right;
+      border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+    }
+    th {
+      color: var(--muted);
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: .02em;
+    }
+    td { font-size: 15px; }
+    .badge {
+      display: inline-flex;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: #e0f2fe;
+      color: #0369a1;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .badge.fail {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+    .log-type { color: #334155; }
+    .status-icon {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: #22c55e;
+      margin-left: 8px;
+    }
+    @media (max-width: 900px) {
+      .grid-2 { grid-template-columns: 1fr; }
+      .buttons-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .summary-row-3 { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 600px) {
+      .actions { justify-content: center; }
+      .buttons-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="header">
+      <div class="title-group">
+        <h1>الرئيسية</h1>
+        <p>لوحة التحكم الرئيسية مع أزرار الوصول وإحصائيات الموظفين.</p>
+      </div>
+      <div class="actions">
+        <button class="btn" id="logoutBtn" type="button">تسجيل الخروج</button>
+      </div>
+    </div>
+
+    <div class="panel buttons-grid">
+      <div class="action-item">الموظفين</div>
+      <div class="action-item">اليوميات</div>
+      <div class="action-item">الاحصائيات</div>
+      <div class="action-item">الاجازات</div>
+      <div class="action-item">الدورات</div>
+      <div class="action-item">التنقلات</div>
+      <div class="action-item admin-only" id="evaluationsBtn">تقييم الاداء</div>
+      <div class="action-item admin-only" id="adminFormsBtn">نماذج ادارية</div>
+      <div class="action-item admin-only" id="systemLogBtn">سجل النظام</div>
+      <div class="action-item admin-only" id="settingsBtn">الاعدادات</div>
+      <div class="action-item" id="outsideAdminBtn">خارج الإدارة</div>
+    </div>
+
+    <div class="summary-row">
+      <div class="panel">
+        <h2>ملخص عام</h2>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <p>عدد الموظفين</p>
+            <h3 id="totalEmployees">--</h3>
+          </div>
+          <div class="stat-card">
+            <p>السجلات اليومية</p>
+            <h3 id="totalDailyRecords">--</h3>
+          </div>
+          <div class="stat-card">
+            <p>سجلات النظام</p>
+            <h3 id="totalSystemEvents">--</h3>
+          </div>
+          <div class="stat-card">
+            <p>السجلات الشهرية</p>
+            <h3 id="monthRecords">--</h3>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <h2>ملخص إضافي</h2>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <p>المنتقلون خارج الإدارة</p>
+            <h3 id="totalTransfers">--</h3>
+          </div>
+          <div class="stat-card">
+            <p>الإجازات</p>
+            <h3 id="totalHolidays">--</h3>
+          </div>
+          <div class="stat-card">
+            <p>المستخدمون</p>
+            <h3 id="totalUsers">--</h3>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="summary-row-3">
+      <div class="panel">
+        <h2>إحصائية الأقسام</h2>
+        <div class="summary-panel" id="departmentStats"></div>
+      </div>
+      <div class="panel">
+        <h2>إحصائية النوبات</h2>
+        <div class="summary-panel" id="shiftStats"></div>
+      </div>
+      <div class="panel">
+        <h2>إحصائية الشعب</h2>
+        <div class="summary-panel" id="sectionStats"></div>
+      </div>
+    </div>
+
+    <div class="summary-row">
+      <div class="panel">
+        <h2>ملخص الحضور اليومي</h2>
+        <div class="table-wrap">
+          <table class="mini-table">
+            <thead>
+              <tr>
+                <th>الاسم</th>
+                <th>أيام العمل</th>
+                <th>إجازات</th>
+                <th>غياب</th>
+                <th>ملاحظة</th>
+              </tr>
+            </thead>
+            <tbody id="todaySummaryRows"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="panel">
+        <h2>ملخص هذا الشهر</h2>
+        <div class="table-wrap">
+          <table class="mini-table">
+            <thead>
+              <tr>
+                <th>الاسم</th>
+                <th>القسم</th>
+                <th>الفريق</th>
+                <th>الحضور</th>
+                <th>الغياب</th>
+              </tr>
+            </thead>
+            <tbody id="monthSummaryRows"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top: 24px;">
+      <h2>آخر العمليات</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>العملية</th>
+              <th>الصفحة</th>
+              <th>المستخدم</th>
+              <th>التوقيت</th>
+              <th>الحالة</th>
+              <th>التفاصيل</th>
+            </tr>
+          </thead>
+          <tbody id="activityRows">
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const logoutBtn = document.getElementById('logoutBtn');
+    const outsideAdminBtn = document.getElementById('outsideAdminBtn');
+    const activityRows = document.getElementById('activityRows');
+    const evaluationsBtn = document.getElementById('evaluationsBtn');
+    const adminFormsBtn = document.getElementById('adminFormsBtn');
+    const systemLogBtn = document.getElementById('systemLogBtn');
+    const settingsBtn = document.getElementById('settingsBtn');
+    const todaySummaryRows = document.getElementById('todaySummaryRows');
+    const monthSummaryRows = document.getElementById('monthSummaryRows');
+    const storedUser = localStorage.getItem('loggedInUser');
+    const authToken = localStorage.getItem('authToken');
+
+    if (!storedUser || !authToken) {
+      window.location.href = '/';
+    }
+
+    let currentUser = null;
+    try {
+      currentUser = storedUser ? JSON.parse(storedUser) : null;
+    } catch (error) {
+      currentUser = null;
+    }
+
+    const username = currentUser?.username || '';
+    const isAdminUser = String(username || '').trim().toLowerCase() === 'admin';
+
+    if (!isAdminUser) {
+      [evaluationsBtn, adminFormsBtn, systemLogBtn, settingsBtn].forEach((item) => {
+        if (item) {
+          item.style.display = 'none';
+        }
+      });
+    }
+
+    function getCurrentTime() {
+      return new Date().toLocaleString('ar-EG', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      });
+    }
+
+    function addActivity(action, page, detail = '') {
+      const user = storedUser ? JSON.parse(storedUser).username : 'غير معروف';
+      const activityLog = JSON.parse(localStorage.getItem('activityLog') || '[]');
+      const status = action.includes('فشل') ? 'فشل' : 'نجاح';
+      activityLog.unshift({ action, page, user, detail, status, time: getCurrentTime() });
+      localStorage.setItem('activityLog', JSON.stringify(activityLog.slice(0, 50)));
+    }
+
+    addActivity('فتح الصفحة', 'الرئيسية');
+
+    const departmentStats = [];
+    const shiftStats = [];
+    const sectionStats = [];
+
+    function renderBlocks(containerId, items) {
+      const container = document.getElementById(containerId);
+      container.innerHTML = ''; 
+      items.forEach(item => {
+        const block = document.createElement('div');
+        block.className = 'stat-block';
+        block.innerHTML = `<h3>${item.value}</h3><p>${item.label}</p>`;
+        container.appendChild(block);
+      });
+    }
+
+    function updateDashboardNumbers(data) {
+      document.getElementById('totalEmployees').textContent = data?.totals?.totalEmployees ?? '--';
+      document.getElementById('totalDailyRecords').textContent = data?.totals?.totalDailyRecords ?? '--';
+      document.getElementById('totalSystemEvents').textContent = data?.totals?.totalSystemEvents ?? '--';
+      document.getElementById('monthRecords').textContent = data?.totals?.totalMonthlyRecords ?? '--';
+      document.getElementById('totalTransfers').textContent = data?.totals?.totalTransfers ?? '--';
+      document.getElementById('totalHolidays').textContent = data?.totals?.totalHolidays ?? '--';
+      document.getElementById('totalUsers').textContent = data?.totals?.totalUsers ?? '--';
+    }
+
+    function renderTodaySummary(items) {
+      todaySummaryRows.innerHTML = '';
+      if (!Array.isArray(items) || items.length === 0) {
+        todaySummaryRows.innerHTML = '<tr><td colspan="5">لا توجد بيانات متاحة.</td></tr>';
+        return;
+      }
+
+      items.forEach(item => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${item.Name ?? ''}</td>
+          <td>${item.WorkDays ?? 0}</td>
+          <td>${item.VacationDays ?? 0}</td>
+          <td>${item.AbsentDays ?? 0}</td>
+          <td>${item.Note ?? ''}</td>
+        `;
+        todaySummaryRows.appendChild(row);
+      });
+    }
+
+    function renderMonthSummary(items) {
+      monthSummaryRows.innerHTML = '';
+      if (!Array.isArray(items) || items.length === 0) {
+        monthSummaryRows.innerHTML = '<tr><td colspan="5">لا توجد بيانات متاحة.</td></tr>';
+        return;
+      }
+
+      items.forEach(item => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${item.Name ?? ''}</td>
+          <td>${item.Department ?? ''}</td>
+          <td>${item.Section ?? ''}</td>
+          <td>${item.PresentDays ?? 0}</td>
+          <td>${item.AbsentDays ?? 0}</td>
+        `;
+        monthSummaryRows.appendChild(row);
+      });
+    }
+
+    renderBlocks('departmentStats', departmentStats);
+    renderBlocks('shiftStats', shiftStats);
+    renderBlocks('sectionStats', sectionStats);
+
+    const activities = JSON.parse(localStorage.getItem('activityLog') || '[]');
+    const defaultActivities = [
+      { action: 'تسجيل دخول', page: 'الرئيسية', user: username || 'مدير النظام', time: '2026-06-26 08:12', status: 'نجاح', detail: '' },
+      { action: 'تسجيل خروج', page: 'الرئيسية', user: username || 'مدير النظام', time: '2026-06-26 12:55', status: 'نجاح', detail: '' },
+      { action: 'حفظ بيانات', page: 'الموظفين', user: 'أحمد علي', time: '2026-06-26 14:20', status: 'نجاح', detail: '' },
+      { action: 'تعديل سجل', page: 'اليوميات', user: 'سارة محمد', time: '2026-06-26 15:05', status: 'نجاح', detail: '' },
+      { action: 'حذف سجل', page: 'الاجازات', user: 'خالد حسين', time: '2026-06-26 15:40', status: 'نجاح', detail: '' }
+    ];
+
+    const activityList = activities.length ? activities : defaultActivities;
+
+    activityList.forEach(item => {
+      const row = document.createElement('tr');
+      const badgeClass = item.status === 'فشل' ? 'fail' : '';
+      row.innerHTML = `
+        <td><span class="log-type">${item.action}</span></td>
+        <td>${item.page || ''}</td>
+        <td>${item.user}</td>
+        <td>${item.time}</td>
+        <td><span class="badge ${badgeClass}">${item.status || ''}</span></td>
+        <td>${item.detail || ''}</td>
+      `;
+      activityRows.appendChild(row);
+    });
+
+    logoutBtn.addEventListener('click', () => {
+      localStorage.removeItem('loggedInUser');
+      localStorage.removeItem('authToken');
+      window.location.href = '/';
+    });
+
+    outsideAdminBtn.addEventListener('click', () => {
+      window.location.href = '/transfers.html';
+    });
+
+    async function loadDashboardSummary() {
+      try {
+        const response = await fetch('/api/dashboard/summary', {
+          headers: { Authorization: `Bearer ${authToken}` }
+        });
+        if (!response.ok) {
+          if (response.status === 401 || response.status === 403) {
+            localStorage.removeItem('authToken');
+            window.location.href = '/';
+          }
+          return;
+        }
+        const data = await response.json();
+        updateDashboardNumbers(data);
+        renderBlocks('departmentStats', data.departments || []);
+        renderBlocks('shiftStats', data.shifts || []);
+        renderBlocks('sectionStats', data.sections || []);
+        renderTodaySummary(data.todaySummary || []);
+        renderMonthSummary(data.monthSummary || []);
+      } catch (err) {
+        console.warn('Unable to load dashboard summary', err);
+      }
+    }
+
+    loadDashboardSummary();
+  </script>
+</body>
+</html>
