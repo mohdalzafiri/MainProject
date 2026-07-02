@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>الموظفين</title>
+  <style>
+    :root {
+      --bg: #f6f8fc;
+      --panel: #ffffff;
+      --text: #0f172a;
+      --muted: #64748b;
+      --border: #dbe3f3;
+      --primary: #1d4ed8;
+      --primary-dark: #1e40af;
+      --success: #16a34a;
+      --warning: #d97706;
+      --danger: #dc2626;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Tahoma, Arial, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 15% 20%, rgba(59, 130, 246, 0.14), transparent 45%),
+        radial-gradient(circle at 90% 0%, rgba(14, 165, 233, 0.12), transparent 35%),
+        var(--bg);
+    }
+    .page {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 22px;
+      display: grid;
+      gap: 18px;
+    }
+    .header {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      box-shadow: 0 10px 32px rgba(15, 23, 42, 0.08);
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 24px;
+    }
+    .header p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .header-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      border: none;
+      border-radius: 10px;
+      padding: 10px 14px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 700;
+      color: #fff;
+      transition: transform .16s ease, filter .16s ease;
+    }
+    .btn:hover { transform: translateY(-1px); filter: brightness(0.96); }
+    .btn.primary { background: var(--primary); }
+    .btn.success { background: var(--success); }
+    .btn.warning { background: var(--warning); }
+    .btn.danger { background: var(--danger); }
+    .btn.dark { background: #334155; }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 18px;
+      box-shadow: 0 10px 32px rgba(15, 23, 42, 0.08);
+    }
+
+    .panel h2 {
+      margin: 0 0 14px;
+      font-size: 20px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px 14px;
+    }
+
+    .full-row {
+      grid-column: 1 / -1;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    label {
+      font-size: 13px;
+      color: #334155;
+      font-weight: 700;
+    }
+
+    .required::after {
+      content: ' *';
+      color: #dc2626;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      padding: 9px 10px;
+      font-family: inherit;
+      font-size: 14px;
+      background: #fff;
+      color: #0f172a;
+      outline: none;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.16);
+    }
+
+    textarea {
+      min-height: 76px;
+      resize: vertical;
+    }
+
+    .status-line {
+      margin-top: 10px;
+      border-radius: 10px;
+      padding: 10px;
+      font-size: 14px;
+      display: none;
+    }
+
+    .status-line.show {
+      display: block;
+    }
+
+    .status-line.ok {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .status-line.error {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .table-tools {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+
+    .table-tools p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .table-wrap {
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      max-height: 440px;
+      background: #fff;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1450px;
+    }
+
+    th, td {
+      padding: 10px 9px;
+      border-bottom: 1px solid #e5e7eb;
+      font-size: 13px;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: #f1f5f9;
+      color: #334155;
+    }
+
+    tbody tr {
+      cursor: pointer;
+      transition: background .15s ease;
+    }
+
+    tbody tr:hover {
+      background: #f8fafc;
+    }
+
+    tbody tr.selected {
+      background: #dbeafe;
+    }
+
+    .mono {
+      font-family: Consolas, 'Courier New', monospace;
+    }
+
+    @media (max-width: 980px) {
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <section class="header">
+      <div>
+        <h1>واجهة الموظفين</h1>
+        <p>إدارة بيانات الموظفين: إضافة، تعديل، حذف، طباعة، وعرض كامل السجلات.</p>
+      </div>
+      <div class="header-actions">
+        <button type="button" class="btn dark" id="backBtn">العودة للرئيسية</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>القسم العلوي - تعبئة / إظهار البيانات</h2>
+      <form id="employeeForm" autocomplete="off">
+        <input type="hidden" id="employeeId" />
+
+        <div class="form-grid">
+          <div class="field">
+            <label for="rank">الرتبة</label>
+            <select id="rank">
+              <option value="">-- اختر --</option>
+              <option value="مدني">مدني</option>
+              <option value="عريف">عريف</option>
+              <option value="وكيل عريف">وكيل عريف</option>
+              <option value="رقيب">رقيب</option>
+              <option value="رقيب أول">رقيب أول</option>
+              <option value="ملازم">ملازم</option>
+              <option value="نقيب">نقيب</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="work">مقر العمل</label>
+            <select id="work">
+              <option value="">-- اختر --</option>
+              <option value="مبنى الإدارة">مبنى الإدارة</option>
+              <option value="الميدان">الميدان</option>
+              <option value="المقر الرئيسي">المقر الرئيسي</option>
+              <option value="مركز خارجي">مركز خارجي</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="empDate">تاريخ التعيين</label>
+            <input id="empDate" type="date" />
+          </div>
+
+          <div class="field">
+            <label for="name" class="required">الاسم الرباعي</label>
+            <input id="name" type="text" required />
+          </div>
+          <div class="field">
+            <label for="department" class="required">القسم</label>
+            <input id="department" type="text" required />
+          </div>
+          <div class="field">
+            <label for="startDate">تاريخ المباشرة</label>
+            <input id="startDate" type="date" />
+          </div>
+
+          <div class="field">
+            <label for="civilId" class="required">الرقم المدني</label>
+            <input id="civilId" type="text" inputmode="numeric" required />
+          </div>
+          <div class="field">
+            <label for="section" class="required">النوبة</label>
+            <input id="section" type="text" required />
+          </div>
+          <div class="field">
+            <label for="endDate">تاريخ النقل</label>
+            <input id="endDate" type="date" />
+          </div>
+
+          <div class="field">
+            <label for="title">المسمى الوظيفي</label>
+            <select id="title">
+              <option value="">-- اختر --</option>
+              <option value="مفتش">مفتش</option>
+              <option value="باحث">باحث</option>
+              <option value="مشرف">مشرف</option>
+              <option value="كاتب">كاتب</option>
+              <option value="منسق">منسق</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="status">حالة الملف</label>
+            <select id="status">
+              <option value="">-- اختر --</option>
+              <option value="نشط">نشط</option>
+              <option value="موقوف">موقوف</option>
+              <option value="منقول">منقول</option>
+              <option value="إجازة">إجازة</option>
+            </select>
+          </div>
+          <div class="field"></div>
+
+          <div class="field full-row">
+            <label for="note">ملاحظات</label>
+            <textarea id="note"></textarea>
+          </div>
+        </div>
+
+        <div class="header-actions" style="margin-top: 14px;">
+          <button type="submit" class="btn success" id="addBtn">إضافة بيانات جديدة</button>
+          <button type="button" class="btn warning" id="updateBtn">تعديل بيانات</button>
+          <button type="button" class="btn danger" id="deleteBtn">حذف بيانات</button>
+          <button type="button" class="btn primary" id="printBtn">طباعة بيانات</button>
+        </div>
+
+        <div id="statusLine" class="status-line"></div>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h2>القسم السفلي - صندوق عرض البيانات</h2>
+      <div class="table-tools">
+        <p id="countLabel">عدد السجلات: 0</p>
+        <button type="button" class="btn primary" id="refreshBtn">تحديث العرض</button>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>الرتبة</th>
+              <th>مقر العمل</th>
+              <th>تاريخ التعيين</th>
+              <th>الاسم الرباعي</th>
+              <th>القسم</th>
+              <th>تاريخ المباشرة</th>
+              <th>الرقم المدني</th>
+              <th>النوبة</th>
+              <th>تاريخ النقل</th>
+              <th>المسمى الوظيفي</th>
+              <th>حالة الملف</th>
+              <th>ملاحظات</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const authToken = localStorage.getItem('authToken');
+    const storedUser = localStorage.getItem('loggedInUser');
+
+    if (!authToken || !storedUser) {
+      window.location.href = '/';
+    }
+
+    const currentUser = JSON.parse(storedUser || '{}');
+
+    const form = document.getElementById('employeeForm');
+    const rowsBody = document.getElementById('rows');
+    const countLabel = document.getElementById('countLabel');
+    const statusLine = document.getElementById('statusLine');
+
+    const employeeIdInput = document.getElementById('employeeId');
+    const rankInput = document.getElementById('rank');
+    const workInput = document.getElementById('work');
+    const empDateInput = document.getElementById('empDate');
+    const nameInput = document.getElementById('name');
+    const departmentInput = document.getElementById('department');
+    const startDateInput = document.getElementById('startDate');
+    const civilIdInput = document.getElementById('civilId');
+    const sectionInput = document.getElementById('section');
+    const endDateInput = document.getElementById('endDate');
+    const titleInput = document.getElementById('title');
+    const statusInput = document.getElementById('status');
+    const noteInput = document.getElementById('note');
+
+    const addBtn = document.getElementById('addBtn');
+    const updateBtn = document.getElementById('updateBtn');
+    const deleteBtn = document.getElementById('deleteBtn');
+    const printBtn = document.getElementById('printBtn');
+    const refreshBtn = document.getElementById('refreshBtn');
+    const backBtn = document.getElementById('backBtn');
+
+    let selectedId = null;
+
+    function showStatus(message, isError = false) {
+      statusLine.className = `status-line show ${isError ? 'error' : 'ok'}`;
+      statusLine.textContent = message;
+    }
+
+    function clearStatus() {
+      statusLine.className = 'status-line';
+      statusLine.textContent = '';
+    }
+
+    function validateForm() {
+      const requiredErrors = [];
+      if (!nameInput.value.trim()) requiredErrors.push('الاسم الرباعي');
+      if (!departmentInput.value.trim()) requiredErrors.push('القسم');
+      if (!civilIdInput.value.trim()) requiredErrors.push('الرقم المدني');
+      if (!sectionInput.value.trim()) requiredErrors.push('النوبة');
+
+      if (requiredErrors.length) {
+        showStatus(`الحقول الإلزامية ناقصة: ${requiredErrors.join(' - ')}`, true);
+        return false;
+      }
+
+      return true;
+    }
+
+    function normalizeDate(value) {
+      return value ? value : '';
+    }
+
+    function collectPayload() {
+      return {
+        Rank: rankInput.value.trim(),
+        Work: workInput.value.trim(),
+        Empdate: normalizeDate(empDateInput.value),
+        Name: nameInput.value.trim(),
+        Department: departmentInput.value.trim(),
+        Startdate: normalizeDate(startDateInput.value),
+        CivilID: civilIdInput.value.trim(),
+        Section: sectionInput.value.trim(),
+        Enddate: normalizeDate(endDateInput.value),
+        Title: titleInput.value.trim(),
+        Status: statusInput.value.trim(),
+        Note: noteInput.value.trim(),
+        userName: currentUser.username || 'system'
+      };
+    }
+
+    function clearForm() {
+      selectedId = null;
+      employeeIdInput.value = '';
+      form.reset();
+      Array.from(rowsBody.querySelectorAll('tr')).forEach((row) => row.classList.remove('selected'));
+    }
+
+    function fillForm(item) {
+      selectedId = item.ID;
+      employeeIdInput.value = item.ID;
+      rankInput.value = item.Rank || '';
+      workInput.value = item.Work || '';
+      empDateInput.value = (item.Empdate || '').slice(0, 10);
+      nameInput.value = item.Name || '';
+      departmentInput.value = item.Department || '';
+      startDateInput.value = (item.Startdate || '').slice(0, 10);
+      civilIdInput.value = item.CivilID || '';
+      sectionInput.value = item.Section || '';
+      endDateInput.value = (item.Enddate || '').slice(0, 10);
+      titleInput.value = item.Title || '';
+      statusInput.value = item.Status || '';
+      noteInput.value = item.Note || '';
+    }
+
+    function getHeaders() {
+      return {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${authToken}`
+      };
+    }
+
+    async function requestJson(url, options = {}) {
+      const response = await fetch(url, options);
+      if (response.status === 401 || response.status === 403) {
+        localStorage.removeItem('authToken');
+        window.location.href = '/';
+        return null;
+      }
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.message || 'فشلت العملية');
+      }
+      return data;
+    }
+
+    function renderRows(items) {
+      rowsBody.innerHTML = '';
+
+      if (!Array.isArray(items) || items.length === 0) {
+        rowsBody.innerHTML = '<tr><td colspan="13">لا توجد بيانات موظفين حالياً.</td></tr>';
+        countLabel.textContent = 'عدد السجلات: 0';
+        return;
+      }
+
+      items.forEach((item) => {
+        const tr = document.createElement('tr');
+        tr.dataset.id = item.ID;
+        tr.innerHTML = `
+          <td class="mono">${item.ID ?? ''}</td>
+          <td>${item.Rank ?? ''}</td>
+          <td>${item.Work ?? ''}</td>
+          <td>${item.Empdate ?? ''}</td>
+          <td>${item.Name ?? ''}</td>
+          <td>${item.Department ?? ''}</td>
+          <td>${item.Startdate ?? ''}</td>
+          <td>${item.CivilID ?? ''}</td>
+          <td>${item.Section ?? ''}</td>
+          <td>${item.Enddate ?? ''}</td>
+          <td>${item.Title ?? ''}</td>
+          <td>${item.Status ?? ''}</td>
+          <td>${item.Note ?? ''}</td>
+        `;
+
+        tr.addEventListener('click', () => {
+          Array.from(rowsBody.querySelectorAll('tr')).forEach((row) => row.classList.remove('selected'));
+          tr.classList.add('selected');
+          fillForm(item);
+          clearStatus();
+        });
+
+        rowsBody.appendChild(tr);
+      });
+
+      countLabel.textContent = `عدد السجلات: ${items.length}`;
+    }
+
+    async function loadEmployees() {
+      try {
+        const data = await requestJson('/api/employees', {
+          headers: { Authorization: `Bearer ${authToken}` }
+        });
+
+        if (data) {
+          renderRows(data);
+        }
+      } catch (error) {
+        showStatus(error.message, true);
+      }
+    }
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      clearStatus();
+
+      if (!validateForm()) {
+        return;
+      }
+
+      addBtn.disabled = true;
+
+      try {
+        const payload = collectPayload();
+        await requestJson('/api/employees', {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify(payload)
+        });
+
+        showStatus('تمت إضافة بيانات الموظف بنجاح');
+        clearForm();
+        await loadEmployees();
+      } catch (error) {
+        showStatus(error.message, true);
+      } finally {
+        addBtn.disabled = false;
+      }
+    });
+
+    updateBtn.addEventListener('click', async () => {
+      clearStatus();
+
+      if (!selectedId) {
+        showStatus('اختر موظفاً من صندوق البيانات أولاً لتعديل بياناته.', true);
+        return;
+      }
+
+      if (!validateForm()) {
+        return;
+      }
+
+      updateBtn.disabled = true;
+
+      try {
+        const payload = collectPayload();
+        await requestJson(`/api/employees/${selectedId}`, {
+          method: 'PUT',
+          headers: getHeaders(),
+          body: JSON.stringify(payload)
+        });
+
+        showStatus('تم تعديل بيانات الموظف بنجاح');
+        await loadEmployees();
+      } catch (error) {
+        showStatus(error.message, true);
+      } finally {
+        updateBtn.disabled = false;
+      }
+    });
+
+    deleteBtn.addEventListener('click', async () => {
+      clearStatus();
+
+      if (!selectedId) {
+        showStatus('اختر موظفاً من صندوق البيانات أولاً للحذف.', true);
+        return;
+      }
+
+      const ok = confirm('هل أنت متأكد من حذف بيانات هذا الموظف؟');
+      if (!ok) {
+        return;
+      }
+
+      deleteBtn.disabled = true;
+
+      try {
+        await requestJson(`/api/employees/${selectedId}`, {
+          method: 'DELETE',
+          headers: getHeaders(),
+          body: JSON.stringify({ userName: currentUser.username || 'system' })
+        });
+
+        showStatus('تم حذف بيانات الموظف بنجاح');
+        clearForm();
+        await loadEmployees();
+      } catch (error) {
+        showStatus(error.message, true);
+      } finally {
+        deleteBtn.disabled = false;
+      }
+    });
+
+    printBtn.addEventListener('click', () => {
+      window.print();
+    });
+
+    refreshBtn.addEventListener('click', async () => {
+      clearStatus();
+      await loadEmployees();
+    });
+
+    backBtn.addEventListener('click', () => {
+      window.location.href = '/dashboard.html';
+    });
+
+    loadEmployees();
+  </script>
+</body>
+</html>

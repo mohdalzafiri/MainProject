@@ -239,7 +239,7 @@
     </div>
 
     <div class="panel buttons-grid">
-      <div class="action-item">الموظفين</div>
+      <div class="action-item" id="employeesBtn">الموظفين</div>
       <div class="action-item">اليوميات</div>
       <div class="action-item">الاحصائيات</div>
       <div class="action-item">الاجازات</div>
@@ -368,6 +368,7 @@
 
   <script>
     const logoutBtn = document.getElementById('logoutBtn');
+    const employeesBtn = document.getElementById('employeesBtn');
     const outsideAdminBtn = document.getElementById('outsideAdminBtn');
     const activityRows = document.getElementById('activityRows');
     const evaluationsBtn = document.getElementById('evaluationsBtn');
@@ -525,6 +526,10 @@
 
     outsideAdminBtn.addEventListener('click', () => {
       window.location.href = '/transfers.html';
+    });
+
+    employeesBtn.addEventListener('click', () => {
+      window.location.href = '/employees.html';
     });
 
     async function loadDashboardSummary() {

@@ -23,8 +23,13 @@ function buildUpdateStatement(payload, id) {
 }
 
 router.get('/', (req, res) => {
-  const records = db.prepare('SELECT * FROM Main ORDER BY ID DESC LIMIT 1000').all();
-  res.json(records);
+  try {
+    const records = db.prepare('SELECT * FROM Main ORDER BY ID DESC').all();
+    res.json(records);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'تعذر قراءة بيانات الموظفين من قاعدة البيانات' });
+  }
 });
 
 router.get('/:id', (req, res) => {
@@ -33,8 +38,13 @@ router.get('/:id', (req, res) => {
     return res.status(400).json({ message: 'معرّف الموظف غير صالح' });
   }
 
-  const record = db.prepare('SELECT * FROM Main WHERE ID = ?').get(id);
-  return record ? res.json(record) : res.status(404).json({ message: 'الموظف غير موجود' });
+  try {
+    const record = db.prepare('SELECT * FROM Main WHERE ID = ?').get(id);
+    return record ? res.json(record) : res.status(404).json({ message: 'الموظف غير موجود' });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'تعذر قراءة بيانات الموظف' });
+  }
 });
 
 router.post('/', (req, res) => {
@@ -43,9 +53,14 @@ router.post('/', (req, res) => {
     return res.status(400).json({ message: 'البيانات المرسلة غير كافية' });
   }
 
-  const result = db.prepare(statement.sql).run(statement.values);
-  logSystem({ userName: req.body.userName || 'system', action: 'Add', page: 'Main', details: `Added employee ID=${result.lastInsertRowid}` });
-  res.json({ id: result.lastInsertRowid });
+  try {
+    const result = db.prepare(statement.sql).run(statement.values);
+    logSystem({ userName: req.body.userName || 'system', action: 'Add', page: 'Main', details: `Added employee ID=${result.lastInsertRowid}` });
+    res.json({ id: result.lastInsertRowid });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'تعذر إضافة بيانات الموظف. تحقق من صلاحية الكتابة على قاعدة البيانات.' });
+  }
 });
 
 router.put('/:id', (req, res) => {
@@ -59,13 +74,18 @@ router.put('/:id', (req, res) => {
     return res.status(400).json({ message: 'البيانات المرسلة غير كافية' });
   }
 
-  const result = db.prepare(statement.sql).run(statement.values);
-  if (result.changes === 0) {
-    return res.status(404).json({ message: 'الموظف غير موجود للتعديل' });
-  }
+  try {
+    const result = db.prepare(statement.sql).run(statement.values);
+    if (result.changes === 0) {
+      return res.status(404).json({ message: 'الموظف غير موجود للتعديل' });
+    }
 
-  logSystem({ userName: req.body.userName || 'system', action: 'Update', page: 'Main', details: `Updated employee ID=${id}` });
-  res.json({ changes: result.changes });
+    logSystem({ userName: req.body.userName || 'system', action: 'Update', page: 'Main', details: `Updated employee ID=${id}` });
+    res.json({ changes: result.changes });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'تعذر تعديل بيانات الموظف. تحقق من صلاحية الكتابة على قاعدة البيانات.' });
+  }
 });
 
 router.delete('/:id', (req, res) => {
@@ -74,13 +94,18 @@ router.delete('/:id', (req, res) => {
     return res.status(400).json({ message: 'معرّف الموظف غير صالح' });
   }
 
-  const result = db.prepare('DELETE FROM Main WHERE ID = ?').run(id);
-  if (result.changes === 0) {
-    return res.status(404).json({ message: 'الموظف غير موجود للحذف' });
-  }
+  try {
+    const result = db.prepare('DELETE FROM Main WHERE ID = ?').run(id);
+    if (result.changes === 0) {
+      return res.status(404).json({ message: 'الموظف غير موجود للحذف' });
+    }
 
-  logSystem({ userName: req.body.userName || 'system', action: 'Delete', page: 'Main', details: `Deleted employee ID=${id}` });
-  res.json({ changes: result.changes });
+    logSystem({ userName: req.body.userName || 'system', action: 'Delete', page: 'Main', details: `Deleted employee ID=${id}` });
+    res.json({ changes: result.changes });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'تعذر حذف بيانات الموظف. تحقق من صلاحية الكتابة على قاعدة البيانات.' });
+  }
 });
 
 module.exports = router;
