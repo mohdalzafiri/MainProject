@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>الموظفين</title>
+  <title>الموظفين خارج الادارة</title>
   <style>
     :root {
       --bg: #f6f8fc;
@@ -290,8 +290,8 @@
   <div class="page">
     <section class="header">
       <div>
-        <h1>واجهة الموظفين</h1>
-        <p>إدارة بيانات الموظفين: إضافة، تعديل، حذف، طباعة، وعرض كامل السجلات.</p>
+        <h1>واجهة الموظفين خارج الادارة</h1>
+        <p>إدارة بيانات الموظفين غير النشطين: إضافة، تعديل، حذف، طباعة، وعرض السجلات خارج الادارة.</p>
       </div>
       <div class="header-actions">
         <button type="button" class="btn dark" id="backBtn">العودة للرئيسية</button>
@@ -557,6 +557,7 @@
               <th>مقر العمل</th>
               <th>تاريخ التعيين</th>
               <th>تاريخ المباشرة</th>
+              <th>تاريخ النقل</th>
               <th>حالة الملف</th>
               <th>ملاحظات</th>
             </tr>
@@ -805,13 +806,13 @@
 
     function renderRows(items) {
       rowsBody.innerHTML = '';
-      const activeTotal = allEmployees.filter((item) => String(item.Status || '').trim() === 'نشط').length;
+      const outsideTotal = allEmployees.filter((item) => String(item.Status || '').trim() !== 'نشط').length;
 
       if (!Array.isArray(items) || items.length === 0) {
-        rowsBody.innerHTML = '<tr><td colspan="12">لا توجد بيانات موظفين حالياً.</td></tr>';
+        rowsBody.innerHTML = '<tr><td colspan="13">لا توجد بيانات موظفين خارج الادارة حالياً.</td></tr>';
         const hasFilter = Boolean(nameInput.value.trim());
         countLabel.textContent = hasFilter
-          ? `عدد السجلات: 0 من ${activeTotal}`
+          ? `عدد السجلات: 0 من ${outsideTotal}`
           : 'عدد السجلات: 0';
         return;
       }
@@ -830,6 +831,7 @@
           <td>${item.Work ?? ''}</td>
           <td>${formatKuwaitDate(item.Empdate)}</td>
           <td>${formatKuwaitDate(item.Startdate)}</td>
+          <td>${formatKuwaitDate(item.Enddate)}</td>
           <td>${item.Status ?? ''}</td>
           <td>${item.Note ?? ''}</td>
         `;
@@ -846,7 +848,7 @@
 
       const hasFilter = Boolean(nameInput.value.trim());
       countLabel.textContent = hasFilter
-        ? `عدد السجلات: ${items.length} من ${activeTotal}`
+        ? `عدد السجلات: ${items.length} من ${outsideTotal}`
         : `عدد السجلات: ${items.length}`;
 
       if (selectedId) {
@@ -858,17 +860,17 @@
     }
 
     function applyNameFilter() {
-      const activeEmployees = allEmployees.filter((item) =>
-        String(item.Status || '').trim() === 'نشط'
+      const outsideEmployees = allEmployees.filter((item) =>
+        String(item.Status || '').trim() !== 'نشط'
       );
 
       const keyword = nameInput.value.trim().toLowerCase();
       if (!keyword) {
-        renderRows(activeEmployees);
+        renderRows(outsideEmployees);
         return;
       }
 
-      const filtered = activeEmployees.filter((item) =>
+      const filtered = outsideEmployees.filter((item) =>
         String(item.Name || '').toLowerCase().includes(keyword)
       );
       renderRows(filtered);
@@ -876,7 +878,7 @@
 
     async function loadEmployees() {
       try {
-        const data = await requestJson('/api/employees', {
+        const data = await requestJson('/api/outside-employees', {
           headers: { Authorization: `Bearer ${authToken}` }
         });
 
@@ -939,8 +941,8 @@
           body: JSON.stringify(payload)
         });
 
-        if (result?.movedToOutside) {
-          showStatus('تم تعديل حالة الملف إلى غير نشط، وتم نقل الموظف إلى بيانات خارج الإدارة.');
+        if (result?.movedToActive) {
+          showStatus('تم تعديل حالة الملف إلى نشط، وتم نقل الموظف إلى واجهة الموظفين.');
           clearForm();
         } else {
           showStatus('تم تعديل بيانات الموظف بنجاح');

@@ -4,6 +4,10 @@ const { db, logSystem } = require('../database');
 const router = express.Router();
 const columns = ['Title', 'Name', 'CivilID', 'Department', 'Section', 'Status', 'Rank', 'Empdate', 'Startdate', 'Enddate', 'Work', 'Note'];
 
+function isActiveStatus(status) {
+  return String(status || '').trim() === 'نشط';
+}
+
 function buildInsertStatement(payload) {
   const keys = columns.filter((column) => Object.prototype.hasOwnProperty.call(payload, column));
   if (!keys.length) return null;
@@ -80,8 +84,12 @@ router.put('/:id', (req, res) => {
       return res.status(404).json({ message: 'الموظف غير موجود للتعديل' });
     }
 
+    const updatedRecord = db.prepare('SELECT ID, Status FROM Main WHERE ID = ?').get(id);
+    const movedToOutside = updatedRecord ? !isActiveStatus(updatedRecord.Status) : false;
+    const movedToActive = updatedRecord ? isActiveStatus(updatedRecord.Status) : false;
+
     logSystem({ userName: req.body.userName || 'system', action: 'Update', page: 'Main', details: `Updated employee ID=${id}` });
-    res.json({ changes: result.changes });
+    res.json({ changes: result.changes, movedToOutside, movedToActive, status: updatedRecord?.Status || '' });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'تعذر تعديل بيانات الموظف. تحقق من صلاحية الكتابة على قاعدة البيانات.' });

@@ -6,6 +6,7 @@ const employeesRoutes = require('./employees');
 const attendanceRoutes = require('./attendance');
 const holidaysRoutes = require('./holidays');
 const administrativeRoutes = require('./administrative');
+const outsideEmployeesRoutes = require('./outsideEmployees');
 const dashboardRoutes = require('./dashboard');
 const systemLogRoutes = require('./systemLog');
 const authMiddleware = require('../auth/auth');
@@ -20,6 +21,7 @@ router.use('/employees', employeesRoutes);
 router.use('/attendance', attendanceRoutes);
 router.use('/holidays', holidaysRoutes);
 router.use('/administrative', administrativeRoutes);
+router.use('/outside-employees', outsideEmployeesRoutes);
 router.use('/dashboard', dashboardRoutes);
 router.use('/system-log', systemLogRoutes);
 
