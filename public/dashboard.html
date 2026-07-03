@@ -18,14 +18,17 @@
     body {
       margin: 0;
       min-height: 100vh;
+      display: flex;
+      justify-content: center;
       font-family: Tahoma, Arial, sans-serif;
       color: var(--text);
       background: linear-gradient(180deg, #e5efff 0%, #f8fafc 100%);
+      overflow-x: hidden;
     }
     .page {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 24px;
+      width: min(1600px, calc(100vw - 20px));
+      margin: 0;
+      padding: 16px 0;
     }
     .header {
       display: flex;
@@ -207,6 +210,14 @@
       color: #b91c1c;
     }
     .log-type { color: #334155; }
+    .log-time {
+      display: inline-block;
+      direction: ltr;
+      unicode-bidi: bidi-override;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
     .status-icon {
       display: inline-block;
       width: 10px;
@@ -402,16 +413,74 @@
       });
     }
 
+    function pad2(value) {
+      return String(value).padStart(2, '0');
+    }
+
+    function formatDateTime(dateValue) {
+      const date = dateValue instanceof Date ? dateValue : new Date(dateValue);
+      if (Number.isNaN(date.getTime())) return '';
+
+      const year = date.getFullYear();
+      const month = pad2(date.getMonth() + 1);
+      const day = pad2(date.getDate());
+      const hour = pad2(date.getHours());
+      const minute = pad2(date.getMinutes());
+      const second = pad2(date.getSeconds());
+      return `${hour}:${minute}:${second} ${year}/${month}/${day}`;
+    }
+
+    function normalizeDigits(value) {
+      return String(value || '')
+        .replace(/[٠-٩]/g, (digit) => String(digit.charCodeAt(0) - 1632))
+        .replace(/[۰-۹]/g, (digit) => String(digit.charCodeAt(0) - 1776));
+    }
+
+    function normalizeStoredTime(value) {
+      if (!value) return '';
+
+      const normalized = normalizeDigits(value)
+        .replace(/[\u200e\u200f\u061c\u202a-\u202e]/g, ' ')
+        .replace(/[،]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      const parts = normalized.match(/\d+/g) || [];
+      if (parts.length >= 6) {
+        let year;
+        let month;
+        let day;
+        let offset = 3;
+
+        if (parts[0].length === 4) {
+          year = Number(parts[0]);
+          month = Number(parts[1]);
+          day = Number(parts[2]);
+        } else if (parts[2].length === 4) {
+          day = Number(parts[0]);
+          month = Number(parts[1]);
+          year = Number(parts[2]);
+        } else {
+          return formatDateTime(normalized) || normalized;
+        }
+
+        const hour = Number(parts[offset]);
+        const minute = Number(parts[offset + 1]);
+        const second = Number(parts[offset + 2]);
+
+        if (
+          Number.isFinite(year) && Number.isFinite(month) && Number.isFinite(day) &&
+          Number.isFinite(hour) && Number.isFinite(minute) && Number.isFinite(second)
+        ) {
+          return `${pad2(hour)}:${pad2(minute)}:${pad2(second)} ${year}/${pad2(month)}/${pad2(day)}`;
+        }
+      }
+
+      return formatDateTime(normalized) || normalized;
+    }
+
     function getCurrentTime() {
-      return new Date().toLocaleString('ar-EG', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false
-      });
+      return formatDateTime(new Date());
     }
 
     function addActivity(action, page, detail = '') {
@@ -495,14 +564,22 @@
 
     const activities = JSON.parse(localStorage.getItem('activityLog') || '[]');
     const defaultActivities = [
-      { action: 'تسجيل دخول', page: 'الرئيسية', user: username || 'مدير النظام', time: '2026-06-26 08:12', status: 'نجاح', detail: '' },
-      { action: 'تسجيل خروج', page: 'الرئيسية', user: username || 'مدير النظام', time: '2026-06-26 12:55', status: 'نجاح', detail: '' },
-      { action: 'حفظ بيانات', page: 'الموظفين', user: 'أحمد علي', time: '2026-06-26 14:20', status: 'نجاح', detail: '' },
-      { action: 'تعديل سجل', page: 'اليوميات', user: 'سارة محمد', time: '2026-06-26 15:05', status: 'نجاح', detail: '' },
-      { action: 'حذف سجل', page: 'الاجازات', user: 'خالد حسين', time: '2026-06-26 15:40', status: 'نجاح', detail: '' }
+      { action: 'تسجيل دخول', page: 'الرئيسية', user: username || 'مدير النظام', time: '2026/06/26 08:12:00', status: 'نجاح', detail: '' },
+      { action: 'تسجيل خروج', page: 'الرئيسية', user: username || 'مدير النظام', time: '2026/06/26 12:55:00', status: 'نجاح', detail: '' },
+      { action: 'حفظ بيانات', page: 'الموظفين', user: 'أحمد علي', time: '2026/06/26 14:20:00', status: 'نجاح', detail: '' },
+      { action: 'تعديل سجل', page: 'اليوميات', user: 'سارة محمد', time: '2026/06/26 15:05:00', status: 'نجاح', detail: '' },
+      { action: 'حذف سجل', page: 'الاجازات', user: 'خالد حسين', time: '2026/06/26 15:40:00', status: 'نجاح', detail: '' }
     ];
 
-    const activityList = activities.length ? activities : defaultActivities;
+    const sourceActivities = activities.length ? activities : defaultActivities;
+    const activityList = sourceActivities.map((item) => ({
+      ...item,
+      time: normalizeStoredTime(item.time)
+    }));
+
+    if (activities.length) {
+      localStorage.setItem('activityLog', JSON.stringify(activityList.slice(0, 50)));
+    }
 
     activityList.forEach(item => {
       const row = document.createElement('tr');
@@ -511,7 +588,7 @@
         <td><span class="log-type">${item.action}</span></td>
         <td>${item.page || ''}</td>
         <td>${item.user}</td>
-        <td>${item.time}</td>
+        <td><span class="log-time">${item.time}</span></td>
         <td><span class="badge ${badgeClass}">${item.status || ''}</span></td>
         <td>${item.detail || ''}</td>
       `;

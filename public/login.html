@@ -147,16 +147,19 @@
       }
     }
 
+    function pad2(value) {
+      return String(value).padStart(2, '0');
+    }
+
     function getCurrentTime() {
-      return new Date().toLocaleString('ar-EG', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false
-      });
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = pad2(now.getMonth() + 1);
+      const day = pad2(now.getDate());
+      const hour = pad2(now.getHours());
+      const minute = pad2(now.getMinutes());
+      const second = pad2(now.getSeconds());
+      return `${hour}:${minute}:${second} ${year}/${month}/${day}`;
     }
 
     function addActivity(action, page, detail = '') {
