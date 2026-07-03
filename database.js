@@ -72,6 +72,29 @@ function ensureLoginTable() {
   }
 }
 
+function quoteIdentifier(name) {
+  return `"${String(name).replace(/"/g, '""')}"`;
+}
+
+function normalizeDepartmentNames() {
+  const tables = db
+    .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'")
+    .all()
+    .map((row) => row.name);
+
+  for (const tableName of tables) {
+    const columns = db.prepare(`PRAGMA table_info(${quoteIdentifier(tableName)})`).all();
+    const hasDepartment = columns.some((column) => String(column.name || '').toLowerCase() === 'department');
+    if (!hasDepartment) continue;
+
+    db.prepare(`
+      UPDATE ${quoteIdentifier(tableName)}
+      SET Department = 'الاحصاء'
+      WHERE TRIM(Department) = 'الإحصاء'
+    `).run();
+  }
+}
+
 function logSystem({ userName = '', role = '', action = '', target = '', details = '', machine = '', appVersion = '' } = {}) {
   try {
     const stmt = db.prepare(`INSERT INTO SystemLog (Timestamp, UserName, Role, Action, Target, Details, Machine, AppVersion) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`);
@@ -84,6 +107,7 @@ function logSystem({ userName = '', role = '', action = '', target = '', details
 
 ensureSystemLogTable();
 ensureLoginTable();
+normalizeDepartmentNames();
 
 console.log(`Database path: ${dbPath}`);
 

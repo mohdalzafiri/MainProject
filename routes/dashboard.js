@@ -24,10 +24,18 @@ router.get('/summary', (req, res) => {
 
     const departments = tableOrViewExists('DailyAll_P')
       ? db.prepare(`
-          SELECT Department AS label, COUNT(DISTINCT EmpID) AS value
+          SELECT
+            CASE
+              WHEN TRIM(Department) = 'الإحصاء' THEN 'الاحصاء'
+              ELSE TRIM(Department)
+            END AS label,
+            COUNT(DISTINCT EmpID) AS value
           FROM DailyAll_P
           WHERE Department IS NOT NULL AND TRIM(Department) <> ''
-          GROUP BY Department
+          GROUP BY CASE
+            WHEN TRIM(Department) = 'الإحصاء' THEN 'الاحصاء'
+            ELSE TRIM(Department)
+          END
           ORDER BY value DESC
           LIMIT 8
         `).all()
@@ -35,23 +43,63 @@ router.get('/summary', (req, res) => {
 
     const shifts = tableOrViewExists('DailyAll_P')
       ? db.prepare(`
-          SELECT Period AS label, COUNT(DISTINCT EmpID) AS value
-          FROM DailyAll_P
-          WHERE Period IS NOT NULL AND TRIM(Period) <> ''
-          GROUP BY Period
-          ORDER BY value DESC
-          LIMIT 8
+          WITH shift_labels(label, sort_order) AS (
+            VALUES
+              ('أ - البلاغات', 1),
+              ('ب - البلاغات', 2),
+              ('ج - البلاغات', 3),
+              ('د - البلاغات', 4),
+              ('هـ - البلاغات', 5),
+              ('ثابت صبح', 6),
+              ('أ - العمليات', 7),
+              ('ب - العمليات', 8),
+              ('ج - العمليات', 9),
+              ('د - العمليات', 10),
+              ('هـ - العمليات', 11)
+          ),
+          source AS (
+            SELECT DISTINCT EmpID, TRIM(Section) AS section_label
+            FROM DailyAll_P
+            WHERE Section IS NOT NULL AND TRIM(Section) <> ''
+          )
+          SELECT
+            shift_labels.label AS label,
+            COUNT(source.EmpID) AS value
+          FROM shift_labels
+          LEFT JOIN source ON source.section_label = shift_labels.label
+          GROUP BY shift_labels.label, shift_labels.sort_order
+          ORDER BY shift_labels.sort_order
         `).all()
       : [];
 
     const sections = tableOrViewExists('DailyAll_P')
       ? db.prepare(`
-          SELECT Section AS label, COUNT(DISTINCT EmpID) AS value
-          FROM DailyAll_P
-          WHERE Section IS NOT NULL AND TRIM(Section) <> ''
-          GROUP BY Section
-          ORDER BY value DESC
-          LIMIT 8
+          WITH section_labels(label, sort_order) AS (
+            VALUES
+              ('أ - فريق عمل البلاغات', 1),
+              ('ب - فريق عمل البلاغات', 2),
+              ('ج - فريق عمل البلاغات', 3),
+              ('د - فريق عمل البلاغات', 4),
+              ('فريق عمل البلاغات صباحاً', 5),
+              ('أ - الخدمات', 6),
+              ('ب - الخدمات', 7),
+              ('ج - الخدمات', 8),
+              ('د - الخدمات', 9),
+              ('سكرتارية البلاغات', 10),
+              ('سكرتارية العمليات', 11)
+          ),
+          source AS (
+            SELECT DISTINCT EmpID, TRIM(Section) AS section_label
+            FROM DailyAll_P
+            WHERE Section IS NOT NULL AND TRIM(Section) <> ''
+          )
+          SELECT
+            section_labels.label AS label,
+            COUNT(source.EmpID) AS value
+          FROM section_labels
+          LEFT JOIN source ON source.section_label = section_labels.label
+          GROUP BY section_labels.label, section_labels.sort_order
+          ORDER BY section_labels.sort_order
         `).all()
       : [];
 

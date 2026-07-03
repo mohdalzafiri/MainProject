@@ -361,7 +361,7 @@
               <option value="الخدمات المساندة">الخدمات المساندة</option>
               <option value="الموارد البشرية">الموارد البشرية</option>
               <option value="المعلومات">المعلومات</option>
-              <option value="الاحصاء">الاحصاء</option>
+              <option value="الاحصاء" selected>الاحصاء</option>
             </select>
           </div>
           <div class="field">
@@ -710,6 +710,12 @@
       return formatKuwaitDate(value);
     }
 
+    function normalizeDepartment(value) {
+      const normalized = String(value || '').trim();
+      if (normalized === 'الإحصاء') return 'الاحصاء';
+      return normalized;
+    }
+
     function syncDateDisplays() {
       empDateDisplayInput.value = formatKuwaitDate(empDateInput.value);
       startDateDisplayInput.value = formatKuwaitDate(startDateInput.value);
@@ -723,7 +729,7 @@
         Work: workInput.value.trim(),
         Empdate: normalizeDate(empDateInput.value),
         Name: nameInput.value.trim(),
-        Department: departmentInput.value.trim(),
+        Department: normalizeDepartment(departmentInput.value),
         Startdate: normalizeDate(startDateInput.value),
         CivilID: civilIdInput.value.trim(),
         Section: sectionInput.value.trim(),
@@ -739,6 +745,7 @@
       selectedId = null;
       employeeIdInput.value = '';
       form.reset();
+      departmentInput.value = 'الاحصاء';
       Array.from(rowsBody.querySelectorAll('tr')).forEach((row) => row.classList.remove('selected'));
       applyNameFilter();
     }
@@ -751,7 +758,7 @@
       empDateInput.value = '';
       empDateDisplayInput.value = '';
       nameInput.value = '';
-      departmentInput.value = '';
+      departmentInput.value = 'الاحصاء';
       startDateInput.value = '';
       startDateDisplayInput.value = '';
       civilIdInput.value = '';
@@ -774,7 +781,7 @@
       empDateInput.value = toDateInputValue(item.Empdate);
       empDateDisplayInput.value = formatKuwaitDate(item.Empdate);
       nameInput.value = item.Name || '';
-      departmentInput.value = item.Department || '';
+      departmentInput.value = normalizeDepartment(item.Department);
       startDateInput.value = toDateInputValue(item.Startdate);
       startDateDisplayInput.value = formatKuwaitDate(item.Startdate);
       civilIdInput.value = item.CivilID || '';
