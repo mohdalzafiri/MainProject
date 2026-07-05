@@ -29,10 +29,6 @@
       background: linear-gradient(180deg, #dfeaff 0%, #f8fbff 100%);
     }
 
-    .page {
-      gap: 16px;
-    }
-
     .header {
       display: flex;
       justify-content: space-between;
@@ -56,24 +52,6 @@
       gap: 8px;
       flex-wrap: wrap;
     }
-
-    .btn {
-      border: 0;
-      border-radius: 12px;
-      padding: 10px 16px;
-      font-size: 14px;
-      font-weight: 700;
-      cursor: pointer;
-      color: #fff;
-      background: var(--primary);
-      transition: transform .18s ease, background .18s ease;
-    }
-
-    .btn:hover { transform: translateY(-1px); background: var(--primary-dark); }
-    .btn.ghost { background: #475569; }
-    .btn.ghost:hover { background: #334155; }
-    .btn.danger { background: var(--danger); }
-    .btn.danger:hover { background: var(--danger-dark); }
 
     .panel {
       background: var(--panel);
@@ -303,7 +281,7 @@
         <p>إدارة بيانات دورات الموظفين وعرض كل الموظفين الحاصلين على دورات.</p>
       </div>
       <div class="actions">
-        <button type="button" class="btn ghost" id="backBtn">رجوع للرئيسية</button>
+        <button type="button" class="btn dark" id="backBtn">رجوع للرئيسية</button>
       </div>
     </header>
 
@@ -374,10 +352,10 @@
         </div>
 
         <div class="toolbar">
-          <button type="submit" class="btn" id="addBtn">اضافة بيانات جديدة</button>
-          <button type="button" class="btn" id="updateBtn">تعديل بيانات</button>
+          <button type="submit" class="btn success" id="addBtn">اضافة بيانات جديدة</button>
+          <button type="button" class="btn warning" id="updateBtn">تعديل بيانات</button>
           <button type="button" class="btn danger" id="deleteBtn">حذف بيانات</button>
-          <button type="button" class="btn ghost" id="printBtn">طباعة بيانات</button>
+          <button type="button" class="btn primary" id="printBtn">طباعة بيانات</button>
         </div>
       </form>
 
@@ -389,7 +367,7 @@
       <div class="table-tools">
         <p id="countLabel">عدد السجلات: 0</p>
         <input id="nameFilterInput" class="table-search" placeholder="فلترة بالاسم أثناء الكتابة" />
-        <button type="button" class="btn" id="refreshBtn">تحديث العرض</button>
+        <button type="button" class="btn primary" id="refreshBtn">تحديث العرض</button>
       </div>
       <div class="table-wrap">
         <table>

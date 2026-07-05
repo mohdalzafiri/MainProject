@@ -2,10 +2,36 @@
   --app-page-max-width: 1600px;
   --app-page-side-gap: 20px;
   --app-page-block-padding: 16px 0;
+  --app-page-gap: 16px;
+
+  --ui-panel-radius: 18px;
+  --ui-panel-padding: 18px;
+  --ui-panel-shadow: 0 14px 35px rgba(15, 23, 42, 0.08);
+  --ui-control-radius: 10px;
+  --ui-control-padding: 10px;
+  --ui-btn-radius: 12px;
+  --ui-btn-padding: 10px 16px;
+  --ui-table-min-width: 1100px;
+  --ui-table-font-size: 14px;
+
+  --ui-text: #0f172a;
+  --ui-muted: #64748b;
+  --ui-border: rgba(15, 23, 42, 0.12);
+  --ui-surface: #ffffff;
+  --ui-primary: #1d4ed8;
+  --ui-primary-dark: #1e40af;
+  --ui-success: #16a34a;
+  --ui-success-dark: #15803d;
+  --ui-warning: #d97706;
+  --ui-warning-dark: #b45309;
+  --ui-danger: #dc2626;
+  --ui-danger-dark: #b91c1c;
 }
 
 body.app-shell {
   margin: 0;
+  padding: 0;
+  width: 100%;
   min-height: 100vh;
   display: flex;
   justify-content: center;
@@ -14,6 +40,8 @@ body.app-shell {
 
 body.auth-shell {
   margin: 0;
+  padding: 0;
+  width: 100%;
   min-height: 100vh;
   display: flex;
   justify-content: center;
@@ -21,10 +49,329 @@ body.auth-shell {
   overflow-x: hidden;
 }
 
+body.app-shell > .page,
 .page.app-page {
   width: min(var(--app-page-max-width), calc(100vw - var(--app-page-side-gap)));
   margin: 0;
   padding: var(--app-page-block-padding);
   display: grid;
   align-content: start;
+  gap: var(--app-page-gap);
+}
+
+body.app-shell .header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+body.app-shell .header h1 {
+  margin: 0;
+  font-size: 28px;
+}
+
+body.app-shell .header p {
+  margin: 5px 0 0;
+  color: var(--ui-muted);
+}
+
+body.app-shell .actions,
+body.app-shell .header-actions,
+body.app-shell .toolbar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+body.app-shell .toolbar {
+  margin-top: 12px;
+}
+
+body.app-shell .btn {
+  border: 0;
+  border-radius: var(--ui-btn-radius);
+  padding: var(--ui-btn-padding);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  color: #fff;
+  transition: transform .18s ease, background .18s ease;
+  background: var(--ui-primary);
+}
+
+body.app-shell .btn:hover {
+  transform: translateY(-1px);
+  background: var(--ui-primary-dark);
+}
+
+body.app-shell .btn.primary {
+  background: var(--ui-primary);
+}
+
+body.app-shell .btn.primary:hover {
+  background: var(--ui-primary-dark);
+}
+
+body.app-shell .btn.success {
+  background: var(--ui-success);
+}
+
+body.app-shell .btn.success:hover {
+  background: var(--ui-success-dark);
+}
+
+body.app-shell .btn.warning {
+  background: var(--ui-warning);
+}
+
+body.app-shell .btn.warning:hover {
+  background: var(--ui-warning-dark);
+}
+
+body.app-shell .btn.danger {
+  background: var(--ui-danger);
+}
+
+body.app-shell .btn.danger:hover {
+  background: var(--ui-danger-dark);
+}
+
+body.app-shell .btn.dark,
+body.app-shell .btn.ghost {
+  background: #475569;
+}
+
+body.app-shell .btn.dark:hover,
+body.app-shell .btn.ghost:hover {
+  background: #334155;
+}
+
+body.app-shell .panel {
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-panel-radius);
+  padding: var(--ui-panel-padding);
+  box-shadow: var(--ui-panel-shadow);
+}
+
+body.app-shell .panel h2 {
+  margin: 0 0 12px;
+  font-size: 20px;
+}
+
+body.app-shell .grid,
+body.app-shell .form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+body.app-shell .field {
+  display: grid;
+  gap: 6px;
+}
+
+body.app-shell label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #334155;
+}
+
+body.app-shell .required::after {
+  content: ' *';
+  color: #dc2626;
+}
+
+body.app-shell input,
+body.app-shell select,
+body.app-shell textarea {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: var(--ui-text);
+  border-radius: var(--ui-control-radius);
+  padding: var(--ui-control-padding);
+  font-family: inherit;
+  font-size: 14px;
+  outline: none;
+}
+
+body.app-shell input:focus,
+body.app-shell select:focus,
+body.app-shell textarea:focus {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2);
+}
+
+body.app-shell .date-picker-wrap {
+  position: relative;
+}
+
+body.app-shell .date-display-input {
+  padding-left: 44px;
+  cursor: pointer;
+  direction: ltr;
+  text-align: right;
+}
+
+body.app-shell .date-picker-trigger {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 26px;
+  height: 26px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #1e293b;
+  border-radius: 8px;
+  font-size: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  padding: 0;
+}
+
+body.app-shell .date-picker-trigger::before {
+  content: '📅';
+  font-size: 14px;
+  line-height: 1;
+}
+
+body.app-shell .native-date-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+body.app-shell textarea {
+  min-height: 84px;
+  resize: vertical;
+}
+
+body.app-shell .status-line {
+  display: none;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+body.app-shell .status-line.show {
+  display: block;
+}
+
+body.app-shell .status-line.ok {
+  background: #dcfce7;
+  color: #166534;
+}
+
+body.app-shell .status-line.error {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+body.app-shell .table-tools {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+body.app-shell .table-tools p {
+  margin: 0;
+  font-weight: 700;
+  color: var(--ui-muted);
+}
+
+body.app-shell .table-wrap {
+  overflow: auto;
+  border: 1px solid var(--ui-border);
+  background: #fff;
+  border-radius: 14px;
+}
+
+body.app-shell table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: var(--ui-table-min-width);
+}
+
+body.app-shell th,
+body.app-shell td {
+  padding: 11px 9px;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: var(--ui-table-font-size);
+  text-align: right;
+}
+
+body.app-shell th {
+  background: #f8fafc;
+  color: #475569;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+body.app-shell tbody tr:hover {
+  background: #f8fbff;
+  cursor: pointer;
+}
+
+body.app-shell tbody tr.selected {
+  background: #dbeafe;
+}
+
+body.app-shell .mono {
+  direction: ltr;
+  unicode-bidi: isolate;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+@media (max-width: 1100px) {
+  body.app-shell .grid,
+  body.app-shell .form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  body.app-shell .header {
+    align-items: flex-start;
+  }
+
+  body.app-shell .actions,
+  body.app-shell .header-actions,
+  body.app-shell .toolbar,
+  body.app-shell .table-tools p {
+    width: 100%;
+  }
+
+  body.app-shell .table-tools {
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 680px) {
+  body.app-shell .grid,
+  body.app-shell .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  body.app-shell .header {
+    gap: 10px;
+  }
+
+  body.app-shell .header h1 {
+    font-size: 24px;
+  }
 }
