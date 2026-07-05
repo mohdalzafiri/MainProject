@@ -95,10 +95,10 @@ function normalizeDepartmentNames() {
   }
 }
 
-function logSystem({ userName = '', role = '', action = '', target = '', details = '', machine = '', appVersion = '' } = {}) {
+function logSystem({ userName = '', role = '', action = '', target = '', page = '', details = '', machine = '', appVersion = '' } = {}) {
   try {
     const stmt = db.prepare(`INSERT INTO SystemLog (Timestamp, UserName, Role, Action, Target, Details, Machine, AppVersion) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`);
-    stmt.run(getCurrentTimestamp(), userName, role, action, target, details, machine, appVersion);
+    stmt.run(getCurrentTimestamp(), userName, role, action, target || page, details, machine, appVersion);
   } catch (error) {
     // Do not block business flow if audit logging fails.
     console.warn('SystemLog insert skipped:', error.message);

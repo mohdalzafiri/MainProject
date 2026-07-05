@@ -14,6 +14,7 @@ router.get('/summary', (req, res) => {
       totalEmployees: tableOrViewExists('Main') ? db.prepare('SELECT COUNT(*) AS count FROM Main').get().count : 0,
       totalDailyRecords: tableOrViewExists('DailyAll') ? db.prepare('SELECT COUNT(*) AS count FROM DailyAll').get().count : 0,
       totalHolidays: tableOrViewExists('Holiday') ? db.prepare('SELECT COUNT(*) AS count FROM Holiday').get().count : 0,
+      totalCourses: tableOrViewExists('Course') ? db.prepare('SELECT COUNT(*) AS count FROM Course').get().count : 0,
       totalTransfers: tableOrViewExists('Transfer') ? db.prepare('SELECT COUNT(*) AS count FROM Transfer').get().count : 0,
       totalUsers: tableOrViewExists('Login') ? db.prepare('SELECT COUNT(*) AS count FROM Login').get().count : 0,
       totalSystemEvents: tableOrViewExists('SystemLog') ? db.prepare('SELECT COUNT(*) AS count FROM SystemLog').get().count : 0,
@@ -111,13 +112,23 @@ router.get('/summary', (req, res) => {
       ? db.prepare('SELECT * FROM EmpSummary_ThisMonth ORDER BY PresentDays DESC LIMIT 8').all()
       : [];
 
+    const recentActivities = tableOrViewExists('SystemLog')
+      ? db.prepare(`
+          SELECT Timestamp, UserName, Action, Target, Details
+          FROM SystemLog
+          ORDER BY Timestamp DESC
+          LIMIT 50
+        `).all()
+      : [];
+
     res.json({
       totals,
       departments,
       shifts,
       sections,
       todaySummary,
-      monthSummary
+      monthSummary,
+      recentActivities
     });
   } catch (error) {
     console.error(error);

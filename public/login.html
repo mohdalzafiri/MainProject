@@ -4,14 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>تسجيل الدخول</title>
+  <link rel="stylesheet" href="/layout-defaults.css" />
   <style>
     body {
       font-family: Tahoma, Arial, sans-serif;
-      margin: 0;
-      height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
       color: #fff;
       background:
         linear-gradient(rgba(10, 24, 45, 0.72), rgba(10, 24, 45, 0.72)),
@@ -103,7 +99,7 @@
     }
   </style>
 </head>
-<body>
+<body class="auth-shell">
   <div class="card">
     <img class="logo" src="/images/logo.png" alt="logo" />
     <h2>واجهة الدخول</h2>
@@ -130,72 +126,60 @@
   <script>
     const form = document.getElementById('loginForm');
     const messageBox = document.getElementById('message');
-    const rememberCheckbox = document.getElementById('remember');
     const usernameInput = document.getElementById('username');
     const passwordInput = document.getElementById('password');
+    const rememberCheckbox = document.getElementById('remember');
+
+    function clearSessionLocalState() {
+      localStorage.removeItem('activityLog');
+      localStorage.removeItem('loggedInUser');
+    }
+
+    function clearRememberedCredentials() {
+      localStorage.removeItem('rememberLogin');
+      localStorage.removeItem('loginUsername');
+      localStorage.removeItem('loginPassword');
+    }
 
     function updateRememberedState() {
-      const remember = rememberCheckbox.checked;
-      if (remember) {
+      if (rememberCheckbox.checked) {
         localStorage.setItem('rememberLogin', 'true');
         localStorage.setItem('loginUsername', usernameInput.value);
         localStorage.setItem('loginPassword', passwordInput.value);
       } else {
-        localStorage.removeItem('rememberLogin');
-        localStorage.removeItem('loginUsername');
-        localStorage.removeItem('loginPassword');
+        clearRememberedCredentials();
       }
-    }
-
-    function pad2(value) {
-      return String(value).padStart(2, '0');
-    }
-
-    function getCurrentTime() {
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = pad2(now.getMonth() + 1);
-      const day = pad2(now.getDate());
-      const hour = pad2(now.getHours());
-      const minute = pad2(now.getMinutes());
-      const second = pad2(now.getSeconds());
-      return `${hour}:${minute}:${second} ${year}/${month}/${day}`;
-    }
-
-    function addActivity(action, page, detail = '') {
-      const userData = localStorage.getItem('loggedInUser');
-      const user = userData ? JSON.parse(userData).username : usernameInput.value;
-      const activityLog = JSON.parse(localStorage.getItem('activityLog') || '[]');
-      const status = action.includes('فشل') ? 'فشل' : 'نجاح';
-      activityLog.unshift({
-        action,
-        page,
-        user,
-        detail,
-        status,
-        time: getCurrentTime()
-      });
-      localStorage.setItem('activityLog', JSON.stringify(activityLog.slice(0, 50)));
     }
 
     function loadRememberedCredentials() {
       const remembered = localStorage.getItem('rememberLogin') === 'true';
-      if (remembered) {
-        rememberCheckbox.checked = true;
-        usernameInput.value = localStorage.getItem('loginUsername') || '';
-        passwordInput.value = localStorage.getItem('loginPassword') || '';
+      if (!remembered) {
+        return;
       }
+
+      rememberCheckbox.checked = true;
+      usernameInput.value = localStorage.getItem('loginUsername') || '';
+      passwordInput.value = localStorage.getItem('loginPassword') || '';
     }
 
-    usernameInput.addEventListener('input', () => {
-      if (rememberCheckbox.checked) updateRememberedState();
-    });
-    passwordInput.addEventListener('input', () => {
-      if (rememberCheckbox.checked) updateRememberedState();
-    });
-    rememberCheckbox.addEventListener('change', updateRememberedState);
-
+    clearSessionLocalState();
     loadRememberedCredentials();
+
+    usernameInput.addEventListener('input', () => {
+      if (rememberCheckbox.checked) {
+        updateRememberedState();
+      }
+    });
+
+    passwordInput.addEventListener('input', () => {
+      if (rememberCheckbox.checked) {
+        updateRememberedState();
+      }
+    });
+
+    rememberCheckbox.addEventListener('change', () => {
+      updateRememberedState();
+    });
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -218,22 +202,17 @@
         messageBox.textContent = result.message || 'تمت العملية';
 
         if (response.ok) {
-          localStorage.setItem('authToken', result.token);
-          localStorage.setItem('loggedInUser', JSON.stringify({
-            username: result.user?.username || usernameInput.value,
-            role: result.user?.role || ''
-          }));
-          addActivity('تسجيل دخول', 'الرئيسية');
+          clearSessionLocalState();
           if (rememberCheckbox.checked) {
             updateRememberedState();
+          } else {
+            clearRememberedCredentials();
           }
+          localStorage.setItem('authToken', result.token);
           window.location.href = '/dashboard.html';
           return;
-        } else {
-          addActivity('فشل تسجيل الدخول', 'تسجيل الدخول', result.message || 'فشل بدون سبب');
         }
       } catch (err) {
-        addActivity('فشل تسجيل الدخول', 'تسجيل الدخول', 'خطأ في الاتصال بالخادم');
         messageBox.className = 'message error';
         messageBox.textContent = 'حدث خطأ أثناء الاتصال بالخادم';
       }

@@ -1,0 +1,1367 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>الاجازات</title>
+  <style>
+    :root {
+      --bg: #eef4ff;
+      --panel: #ffffff;
+      --primary: #1d4ed8;
+      --primary-dark: #1e40af;
+      --danger: #dc2626;
+      --danger-dark: #b91c1c;
+      --border: rgba(15, 23, 42, 0.12);
+      --text: #0f172a;
+      --muted: #64748b;
+      --ok: #166534;
+      --ok-bg: #dcfce7;
+      --err: #b91c1c;
+      --err-bg: #fee2e2;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: Tahoma, Arial, sans-serif;
+      color: var(--text);
+      background: linear-gradient(180deg, #dfeaff 0%, #f8fbff 100%);
+    }
+
+    .page {
+      gap: 16px;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .header h1 {
+      margin: 0;
+      font-size: 28px;
+    }
+
+    .header p {
+      margin: 5px 0 0;
+      color: var(--muted);
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      border: 0;
+      border-radius: 12px;
+      padding: 10px 16px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      color: #fff;
+      background: var(--primary);
+      transition: transform .18s ease, background .18s ease;
+    }
+
+    .btn:hover { transform: translateY(-1px); background: var(--primary-dark); }
+    .btn.ghost { background: #475569; }
+    .btn.ghost:hover { background: #334155; }
+    .btn.danger { background: var(--danger); }
+    .btn.danger:hover { background: var(--danger-dark); }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: 0 14px 35px rgba(15, 23, 42, 0.08);
+    }
+
+    .panel h2 {
+      margin: 0 0 12px;
+      font-size: 20px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+    }
+
+    .field.full {
+      grid-column: 1 / -1;
+    }
+
+    label {
+      font-size: 13px;
+      color: #334155;
+      font-weight: 700;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      padding: 10px;
+      font-family: inherit;
+      font-size: 14px;
+      outline: none;
+      background: #fff;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: #60a5fa;
+      box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2);
+    }
+
+    input[readonly] {
+      background: #f8fafc;
+      color: #334155;
+    }
+
+    .date-picker-wrap {
+      position: relative;
+    }
+
+    .date-display-input {
+      padding-left: 44px;
+      cursor: pointer;
+      direction: ltr;
+      text-align: right;
+    }
+
+    .date-picker-trigger {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 26px;
+      height: 26px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      background: #f8fafc;
+      color: #1e293b;
+      font-size: 0;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+      padding: 0;
+    }
+
+    .date-picker-trigger::before {
+      content: '📅';
+      font-size: 14px;
+      line-height: 1;
+    }
+
+    .date-picker-trigger:hover {
+      background: #eef2ff;
+    }
+
+    .native-date-input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    textarea {
+      min-height: 84px;
+      resize: vertical;
+    }
+
+    .toolbar {
+      margin-top: 12px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .status-line {
+      display: none;
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .status-line.show {
+      display: block;
+    }
+
+    .status-line.ok {
+      background: var(--ok-bg);
+      color: var(--ok);
+    }
+
+    .status-line.error {
+      background: var(--err-bg);
+      color: var(--err);
+    }
+
+    .table-tools {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+
+    .table-tools p {
+      margin: 0;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .table-search {
+      width: min(320px, 100%);
+    }
+
+    .table-wrap {
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1100px;
+      background: #fff;
+    }
+
+    th,
+    td {
+      padding: 11px 9px;
+      border-bottom: 1px solid #e2e8f0;
+      text-align: right;
+      font-size: 14px;
+    }
+
+    th {
+      background: #f8fafc;
+      color: #475569;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    tbody tr:hover {
+      background: #f8fbff;
+      cursor: pointer;
+    }
+
+    tbody tr.selected {
+      background: #dbeafe;
+    }
+
+    .mono {
+      direction: ltr;
+      unicode-bidi: isolate;
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    @media (max-width: 1100px) {
+      .grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 680px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+  <link rel="stylesheet" href="/layout-defaults.css" />
+</head>
+<body class="app-shell">
+  <div class="page app-page">
+    <header class="header">
+      <div>
+        <h1>الاجازات</h1>
+        <p>إدارة بيانات إجازات الموظفين وعرض كل الموظفين الحاصلين على إجازات.</p>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn ghost" id="backBtn">رجوع للرئيسية</button>
+      </div>
+    </header>
+
+    <section class="panel">
+      <h2>تعبئة / اظهار البيانات</h2>
+      <form id="holidayForm">
+        <input id="holidayId" type="hidden" />
+
+        <div class="grid">
+          <div class="field">
+            <label for="name">الاسم الرباعي</label>
+            <input id="name" list="employeeNames" autocomplete="off" />
+            <datalist id="employeeNames"></datalist>
+          </div>
+
+          <div class="field">
+            <label for="status">الحالة</label>
+            <input id="status" value="اجازة" readonly />
+          </div>
+
+          <div class="field">
+            <label for="type">نوع الاجازة</label>
+            <select id="type">
+              <option value="">-- اختر --</option>
+              <option value="سنوية">سنوية</option>
+              <option value="مرضية">مرضية</option>
+              <option value="اخرى">اخرى</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="department">القسم</label>
+            <input id="department" readonly />
+          </div>
+
+          <div class="field">
+            <label for="section">النوبة</label>
+            <input id="section" readonly />
+          </div>
+
+          <div class="field">
+            <label for="otherType">اخرى</label>
+            <input id="otherType" placeholder="اكتب النوع عند اختيار اخرى" />
+          </div>
+
+          <div class="field">
+            <label for="startDate">البداية</label>
+            <div class="date-picker-wrap">
+              <input id="startDateDisplay" class="date-display-input" type="text" placeholder="yyyy/mm/dd" readonly />
+              <button type="button" class="date-picker-trigger" data-picker-id="startDate" aria-label="اختيار تاريخ البداية"></button>
+              <input id="startDate" type="date" class="native-date-input" />
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="endDate">النهاية</label>
+            <div class="date-picker-wrap">
+              <input id="endDateDisplay" class="date-display-input" type="text" placeholder="yyyy/mm/dd" readonly />
+              <button type="button" class="date-picker-trigger" data-picker-id="endDate" aria-label="اختيار تاريخ النهاية"></button>
+              <input id="endDate" type="date" class="native-date-input" />
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="days">عدد الايام</label>
+            <input id="days" readonly />
+          </div>
+
+          <div class="field full">
+            <label for="note">ملاحظات</label>
+            <textarea id="note"></textarea>
+          </div>
+        </div>
+
+        <div class="toolbar">
+          <button type="submit" class="btn" id="addBtn">اضافة بيانات جديدة</button>
+          <button type="button" class="btn" id="updateBtn">تعديل بيانات</button>
+          <button type="button" class="btn danger" id="deleteBtn">حذف بيانات</button>
+          <button type="button" class="btn ghost" id="printBtn">طباعة بيانات</button>
+        </div>
+      </form>
+
+      <div id="statusLine" class="status-line"></div>
+    </section>
+
+    <section class="panel">
+      <h2>صندوق عرض البيانات</h2>
+      <div class="table-tools">
+        <p id="countLabel">عدد السجلات: 0</p>
+        <input id="nameFilterInput" class="table-search" placeholder="فلترة بالاسم أثناء الكتابة" />
+        <button type="button" class="btn" id="refreshBtn">تحديث العرض</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>تسلسل</th>
+              <th>الاسم الرباعي</th>
+              <th>الحالة</th>
+              <th>نوع الاجازة</th>
+              <th>القسم</th>
+              <th>النوبة</th>
+              <th>البداية</th>
+              <th>النهاية</th>
+              <th>عدد الايام</th>
+              <th>ملاحظات</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const authToken = localStorage.getItem('authToken');
+    if (!authToken) {
+      window.location.href = '/';
+    }
+
+    localStorage.removeItem('loggedInUser');
+
+    function parseJwtPayload(token) {
+      try {
+        const payload = token.split('.')[1];
+        if (!payload) return null;
+        const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+        const decoded = atob(normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '='));
+        return JSON.parse(decoded);
+      } catch (error) {
+        return null;
+      }
+    }
+
+    const currentUser = parseJwtPayload(authToken);
+    if (!currentUser) {
+      localStorage.removeItem('authToken');
+      window.location.href = '/';
+    }
+
+    const form = document.getElementById('holidayForm');
+    const holidayIdInput = document.getElementById('holidayId');
+    const nameInput = document.getElementById('name');
+    const employeeNames = document.getElementById('employeeNames');
+    const statusInput = document.getElementById('status');
+    const typeInput = document.getElementById('type');
+    const departmentInput = document.getElementById('department');
+    const sectionInput = document.getElementById('section');
+    const otherTypeInput = document.getElementById('otherType');
+    const startDateDisplayInput = document.getElementById('startDateDisplay');
+    const startDateInput = document.getElementById('startDate');
+    const endDateDisplayInput = document.getElementById('endDateDisplay');
+    const endDateInput = document.getElementById('endDate');
+    const daysInput = document.getElementById('days');
+    const noteInput = document.getElementById('note');
+    const dateOpenButtons = document.querySelectorAll('.date-picker-trigger');
+
+    const addBtn = document.getElementById('addBtn');
+    const updateBtn = document.getElementById('updateBtn');
+    const deleteBtn = document.getElementById('deleteBtn');
+    const printBtn = document.getElementById('printBtn');
+    const refreshBtn = document.getElementById('refreshBtn');
+    const backBtn = document.getElementById('backBtn');
+    const nameFilterInput = document.getElementById('nameFilterInput');
+
+    const rowsBody = document.getElementById('rows');
+    const countLabel = document.getElementById('countLabel');
+    const statusLine = document.getElementById('statusLine');
+
+    let selectedId = null;
+    let allHolidays = [];
+    let allEmployees = [];
+    let selectedEmployee = null;
+
+    function showStatus(message, isError = false) {
+      statusLine.className = `status-line show ${isError ? 'error' : 'ok'}`;
+      statusLine.textContent = message;
+    }
+
+    function clearStatus() {
+      statusLine.className = 'status-line';
+      statusLine.textContent = '';
+    }
+
+    function pad2(value) {
+      return String(value).padStart(2, '0');
+    }
+
+    function parseFlexibleDate(value) {
+      if (!value) return null;
+      const raw = String(value).trim();
+      if (!raw) return null;
+
+      const ymd = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (ymd) {
+        return new Date(Number(ymd[1]), Number(ymd[2]) - 1, Number(ymd[3]));
+      }
+
+      const ymdSlash = raw.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/);
+      if (ymdSlash) {
+        return new Date(Number(ymdSlash[1]), Number(ymdSlash[2]) - 1, Number(ymdSlash[3]));
+      }
+
+      const dmy = raw.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+      if (dmy) {
+        return new Date(Number(dmy[3]), Number(dmy[2]) - 1, Number(dmy[1]));
+      }
+
+      return null;
+    }
+
+    function formatDateYmdSlash(value) {
+      const date = parseFlexibleDate(value);
+      if (!date || Number.isNaN(date.getTime())) return '';
+      return `${date.getFullYear()}/${pad2(date.getMonth() + 1)}/${pad2(date.getDate())}`;
+    }
+
+    function toDateInputValue(value) {
+      const date = parseFlexibleDate(value);
+      if (!date || Number.isNaN(date.getTime())) return '';
+      return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+    }
+
+    function syncDateDisplays() {
+      startDateDisplayInput.value = formatDateYmdSlash(startDateInput.value);
+      endDateDisplayInput.value = formatDateYmdSlash(endDateInput.value);
+    }
+
+    function calculateDays() {
+      const start = parseFlexibleDate(startDateInput.value);
+      const end = parseFlexibleDate(endDateInput.value);
+
+      if (!start || !end) {
+        daysInput.value = '';
+        return;
+      }
+
+      const diff = end.getTime() - start.getTime();
+      if (diff < 0) {
+        daysInput.value = '';
+        return;
+      }
+
+      const total = Math.floor(diff / (1000 * 60 * 60 * 24)) + 1;
+      daysInput.value = String(total);
+    }
+
+    function getHeaders() {
+      return {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${authToken}`
+      };
+    }
+
+    function getApiErrorMessage(response, data) {
+      const serverMessage = String(data?.message || '').trim();
+      if (serverMessage) {
+        return serverMessage;
+      }
+
+      if (response.status === 400) return 'البيانات المدخلة غير مكتملة أو غير صحيحة.';
+      if (response.status === 404) return 'السجل المطلوب غير موجود.';
+      if (response.status === 409) return 'تعذر تنفيذ العملية بسبب تعارض أو تكرار في البيانات.';
+      if (response.status >= 500) return 'حدث خطأ في الخادم أو قاعدة البيانات. حاول مرة أخرى.';
+      return 'تعذر إكمال العملية. تحقق من الاتصال ثم حاول مرة أخرى.';
+    }
+
+    async function requestJson(url, options = {}) {
+      const response = await fetch(url, options);
+      if (response.status === 401 || response.status === 403) {
+        localStorage.removeItem('authToken');
+        window.location.href = '/';
+        return null;
+      }
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(getApiErrorMessage(response, data));
+      }
+
+      return data;
+    }
+
+    function setSelectedEmployeeByName(name) {
+      const normalized = String(name || '').trim();
+      selectedEmployee = allEmployees.find((item) => String(item.Name || '').trim() === normalized) || null;
+
+      if (selectedEmployee) {
+        departmentInput.value = selectedEmployee.Department || '';
+        sectionInput.value = selectedEmployee.Section || '';
+      } else {
+        departmentInput.value = '';
+        sectionInput.value = '';
+      }
+    }
+
+    function populateNameOptions() {
+      employeeNames.innerHTML = '';
+      const uniqueNames = Array.from(new Set(
+        allEmployees
+          .map((item) => String(item.Name || '').trim())
+          .filter(Boolean)
+      ));
+
+      uniqueNames.forEach((name) => {
+        const option = document.createElement('option');
+        option.value = name;
+        employeeNames.appendChild(option);
+      });
+    }
+
+    function normalizeTypeToken(value) {
+      return String(value || '')
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, '')
+        .replace(/[أإآ]/g, 'ا');
+    }
+
+    function isRemovedHolidayType(value) {
+      const token = normalizeTypeToken(value);
+      if (!token) return false;
+
+      if (token === 'امومة' || token === 'وضع' || token === 'طارئة' || token === 'حاسبالي' || token === 'سكرتارية') {
+        return true;
+      }
+
+      if (token.includes('تنشيط') || token.includes('حاسبالي') || token.includes('سكرتار')) {
+        return true;
+      }
+
+      return false;
+    }
+
+    function normalizeHolidayTypeLabel(value) {
+      const raw = String(value || '').trim();
+      const token = normalizeTypeToken(raw);
+
+      if (!token) return '';
+      if (token === 'سنوية' || token === 'دورية' || token === 'اجازةسنوية') return 'اجازة سنوية';
+      if (token === 'مرضية' || token === 'اجازةمرضية') return 'اجازة مرضية';
+
+      return raw;
+    }
+
+    function populateTypeOptions(selectedValue = '') {
+      const fixedTypes = ['اجازة سنوية', 'اجازة مرضية'];
+      const dbTypes = Array.from(new Set(
+        allHolidays
+          .map((item) => normalizeHolidayTypeLabel(item.Type))
+          .filter(Boolean)
+          .filter((value) => value !== 'اخرى' && !isRemovedHolidayType(value))
+      ));
+
+      const mergedTypes = Array.from(new Set([...fixedTypes, ...dbTypes]));
+
+      typeInput.innerHTML = '';
+
+      const placeholderOption = document.createElement('option');
+      placeholderOption.value = '';
+      placeholderOption.textContent = '-- اختر --';
+      typeInput.appendChild(placeholderOption);
+
+      mergedTypes.forEach((value) => {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = value;
+        typeInput.appendChild(option);
+      });
+
+      const otherOption = document.createElement('option');
+      otherOption.value = 'اخرى';
+      otherOption.textContent = 'اخرى';
+      typeInput.appendChild(otherOption);
+
+      if (selectedValue && Array.from(typeInput.options).some((option) => option.value === selectedValue)) {
+        typeInput.value = selectedValue;
+      }
+    }
+
+    function getHolidayTypeForForm(type) {
+      let normalized = normalizeHolidayTypeLabel(type);
+      if (!normalized) {
+        return { selectValue: '', otherValue: '' };
+      }
+
+      if (isRemovedHolidayType(normalized)) {
+        return { selectValue: 'اخرى', otherValue: normalized };
+      }
+
+      if (Array.from(typeInput.options).some((option) => option.value === normalized)) {
+        return { selectValue: normalized, otherValue: '' };
+      }
+
+      return { selectValue: 'اخرى', otherValue: normalized };
+    }
+
+    function collectPayload() {
+      const holidayType = String(typeInput.value || '').trim();
+      const otherType = String(otherTypeInput.value || '').trim();
+      const finalType = holidayType === 'اخرى' ? otherType : holidayType;
+
+      return {
+        EmpID: selectedEmployee?.ID || null,
+        Name: String(nameInput.value || '').trim(),
+        Department: String(departmentInput.value || '').trim(),
+        Section: String(sectionInput.value || '').trim(),
+        Status: 'اجازة',
+        Type: finalType,
+        Startdate: formatDateYmdSlash(startDateInput.value),
+        Enddate: formatDateYmdSlash(endDateInput.value),
+        Days: Number(daysInput.value || 0),
+        Note: String(noteInput.value || '').trim(),
+        userName: currentUser.username || 'system'
+      };
+    }
+
+    function validateForm() {
+      const requiredErrors = [];
+      if (!String(nameInput.value || '').trim()) requiredErrors.push('الاسم الرباعي');
+      if (!String(typeInput.value || '').trim()) requiredErrors.push('نوع الاجازة');
+      if (!String(startDateInput.value || '').trim()) requiredErrors.push('البداية');
+      if (!String(endDateInput.value || '').trim()) requiredErrors.push('النهاية');
+
+      if (typeInput.value === 'اخرى' && !String(otherTypeInput.value || '').trim()) {
+        requiredErrors.push('اخرى');
+      }
+
+      if (requiredErrors.length) {
+        showStatus(`الحقول الإلزامية ناقصة: ${requiredErrors.join(' - ')}`, true);
+        return false;
+      }
+
+      const start = parseFlexibleDate(startDateInput.value);
+      const end = parseFlexibleDate(endDateInput.value);
+      if (!start || !end || end.getTime() < start.getTime()) {
+        showStatus('تأكد من صحة تواريخ البداية والنهاية.', true);
+        return false;
+      }
+
+      if (!daysInput.value) {
+        showStatus('تعذر حساب عدد الايام، تحقق من التواريخ.', true);
+        return false;
+      }
+
+      return true;
+    }
+
+    function clearForm() {
+      selectedId = null;
+      holidayIdInput.value = '';
+      form.reset();
+      selectedEmployee = null;
+      statusInput.value = 'اجازة';
+      daysInput.value = '';
+      startDateDisplayInput.value = '';
+      endDateDisplayInput.value = '';
+      departmentInput.value = '';
+      sectionInput.value = '';
+      Array.from(rowsBody.querySelectorAll('tr')).forEach((row) => row.classList.remove('selected'));
+      applyNameFilter();
+    }
+
+    function fillForm(item) {
+      selectedId = item.ID;
+      holidayIdInput.value = item.ID;
+      nameInput.value = item.Name || '';
+      setSelectedEmployeeByName(item.Name || '');
+      statusInput.value = item.Status || 'اجازة';
+
+      const typeState = getHolidayTypeForForm(item.Type);
+      typeInput.value = typeState.selectValue;
+      otherTypeInput.value = typeState.otherValue;
+
+      startDateInput.value = toDateInputValue(item.Startdate);
+      endDateInput.value = toDateInputValue(item.Enddate);
+      syncDateDisplays();
+      calculateDays();
+      if (!daysInput.value && item.Days != null) {
+        daysInput.value = String(item.Days);
+      }
+
+      noteInput.value = item.Note || '';
+    }
+
+    function renderRows(items) {
+      rowsBody.innerHTML = '';
+
+      if (!Array.isArray(items) || items.length === 0) {
+        rowsBody.innerHTML = '<tr><td colspan="10">لا توجد بيانات إجازات حالياً.</td></tr>';
+        countLabel.textContent = 'عدد السجلات: 0';
+        return;
+      }
+
+      items.forEach((item) => {
+        const tr = document.createElement('tr');
+        tr.dataset.id = item.ID;
+        tr.innerHTML = `
+          <td class="mono">${item.ID ?? ''}</td>
+          <td>${item.Name ?? ''}</td>
+          <td>${item.Status ?? ''}</td>
+          <td>${item.Type ?? ''}</td>
+          <td>${item.Department ?? ''}</td>
+          <td>${item.Section ?? ''}</td>
+          <td class="mono">${formatDateYmdSlash(item.Startdate)}</td>
+          <td class="mono">${formatDateYmdSlash(item.Enddate)}</td>
+          <td class="mono">${item.Days ?? ''}</td>
+          <td>${item.Note ?? ''}</td>
+        `;
+
+        tr.addEventListener('click', () => {
+          Array.from(rowsBody.querySelectorAll('tr')).forEach((row) => row.classList.remove('selected'));
+          tr.classList.add('selected');
+          fillForm(item);
+          clearStatus();
+        });
+
+        rowsBody.appendChild(tr);
+      });
+
+      countLabel.textContent = `عدد السجلات: ${items.length}`;
+
+      if (selectedId) {
+        const selectedRow = rowsBody.querySelector(`tr[data-id="${selectedId}"]`);
+        if (selectedRow) {
+          selectedRow.classList.add('selected');
+        }
+      }
+    }
+
+    function applyNameFilter() {
+      const keyword = String(nameFilterInput.value || '')
+        .toLowerCase()
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      if (!keyword) {
+        renderRows(allHolidays);
+        return;
+      }
+
+      const parts = keyword.split(' ').filter(Boolean);
+
+      const filtered = allHolidays.filter((item) =>
+        parts.every((part) =>
+          String(item.Name || '')
+            .toLowerCase()
+            .replace(/\s+/g, ' ')
+            .trim()
+            .includes(part)
+        )
+      );
+      renderRows(filtered);
+    }
+
+    async function loadEmployees() {
+      const data = await requestJson('/api/employees', {
+        headers: { Authorization: `Bearer ${authToken}` }
+      });
+
+      if (!data) return;
+      allEmployees = Array.isArray(data) ? data : [];
+      populateNameOptions();
+      setSelectedEmployeeByName(nameInput.value);
+    }
+
+    async function loadHolidays() {
+      const data = await requestJson('/api/holidays', {
+        headers: { Authorization: `Bearer ${authToken}` }
+      });
+
+      if (!data) return;
+      allHolidays = Array.isArray(data) ? data : [];
+      populateTypeOptions(typeInput.value);
+      applyNameFilter();
+    }
+
+    function buildPrintHtml(item) {
+      const logoUrl = `${window.location.origin}/images/logo.png`;
+      const row = item || {
+        Name: nameInput.value,
+        Status: statusInput.value,
+        Type: typeInput.value === 'اخرى' ? otherTypeInput.value : typeInput.value,
+        Department: departmentInput.value,
+        Section: sectionInput.value,
+        Startdate: startDateInput.value,
+        Enddate: endDateInput.value,
+        Days: daysInput.value,
+        Note: noteInput.value
+      };
+
+      const now = new Date();
+      const stamp = `${pad2(now.getHours())}:${pad2(now.getMinutes())}:${pad2(now.getSeconds())} ${now.getFullYear()}/${pad2(now.getMonth() + 1)}/${pad2(now.getDate())}`;
+      const valueOrDash = (value) => {
+        const text = String(value ?? '').trim();
+        return text ? text : '---';
+      };
+
+      function getEmployeeLeaveStatusText(endDateValue) {
+        const endDate = parseFlexibleDate(endDateValue);
+        if (!endDate || Number.isNaN(endDate.getTime())) {
+          return 'تعذر تحديد حالة الموظف لعدم اكتمال تاريخ نهاية الإجازة.';
+        }
+
+        const today = new Date();
+        const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        const endOnly = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+        const dayMs = 24 * 60 * 60 * 1000;
+
+        if (endOnly.getTime() >= todayOnly.getTime()) {
+          const remainingDays = Math.floor((endOnly.getTime() - todayOnly.getTime()) / dayMs) + 1;
+          return `لا يزال الموظف يتمتع بالإجازة على أن تنتهي خلال مدة: ${remainingDays} يوم.`;
+        }
+
+        const passedDays = Math.floor((todayOnly.getTime() - endOnly.getTime()) / dayMs);
+        return `انتهت إجازة الموظف ومن المفترض أنه قد باشر العمل منذ: ${passedDays} يوم.`;
+      }
+
+      const employeeLeaveStatus = getEmployeeLeaveStatusText(row.Enddate);
+
+      return `
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <title>بيانات الاجازة - ${valueOrDash(row.Name)}</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Tahoma', Arial, sans-serif;
+      background: #fff;
+      color: #0f172a;
+    }
+    .page {
+      width: 210mm;
+      min-height: 297mm;
+      margin: 0 auto;
+      padding: 10mm;
+      background: #fff;
+    }
+    .sheet {
+      border: 1.5px solid #0f172a;
+      min-height: 277mm;
+      padding: 7mm;
+      display: flex;
+      flex-direction: column;
+      gap: 4mm;
+    }
+    .top {
+      display: grid;
+      grid-template-columns: 30mm 1fr 36mm;
+      align-items: start;
+      gap: 4mm;
+    }
+    .photo {
+      height: 38mm;
+      border: 1px solid #334155;
+      display: grid;
+      place-items: center;
+      color: #94a3b8;
+      font-size: 5.5mm;
+      font-weight: 700;
+      background: #f8fafc;
+    }
+    .title-wrap {
+      text-align: center;
+      padding-top: 1mm;
+    }
+    .title {
+      margin: 0;
+      font-size: 11mm;
+      line-height: 1.2;
+      font-family: 'PT Bold', 'PT Sans', Tahoma, Arial, sans-serif;
+      font-weight: 800;
+      color: #0b3a6f;
+    }
+    .org {
+      text-align: center;
+      font-size: 2.9mm;
+      line-height: 1.35;
+      color: #1e293b;
+      font-weight: 700;
+    }
+    .org img {
+      width: 18mm;
+      height: 18mm;
+      object-fit: contain;
+      display: block;
+      margin: 0 auto 1mm;
+    }
+    .meta {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2mm;
+      font-size: 3.1mm;
+      color: #334155;
+    }
+    .meta div {
+      border: 1px solid #cbd5e1;
+      padding: 1.2mm 1.8mm;
+      border-radius: 1.5mm;
+      background: #f8fafc;
+    }
+    .section {
+      border: 1px solid #0f172a;
+      border-radius: 1.5mm;
+      overflow: hidden;
+    }
+    .section-title {
+      background: #0b3a6f;
+      color: #fff;
+      font-size: 3.4mm;
+      font-weight: 700;
+      padding: 1.4mm 2.2mm;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+    td {
+      border: 1px solid #cbd5e1;
+      padding: 1.8mm 2mm;
+      font-size: 3.5mm;
+      vertical-align: middle;
+    }
+    .label {
+      width: 26mm;
+      background: #f8fafc;
+      font-weight: 700;
+      color: #334155;
+      text-align: center;
+    }
+    .value {
+      font-weight: 700;
+      text-align: right;
+      color: #0f172a;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+    }
+    .ltr {
+      direction: ltr;
+      unicode-bidi: isolate;
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+    }
+    .note {
+      margin-top: auto;
+      border-top: 0;
+      padding-top: 1mm;
+      font-size: 3.1mm;
+      color: #334155;
+      line-height: 1.45;
+      display: flex;
+      align-items: center;
+      gap: 4mm;
+    }
+    .note-text {
+      flex: 1 1 auto;
+    }
+    .note-sign {
+      min-width: 55mm;
+      text-align: left;
+      direction: rtl;
+      unicode-bidi: plaintext;
+    }
+    @media print {
+      @page { size: A4; margin: 0; }
+      .page { width: 210mm; min-height: 297mm; padding: 10mm; }
+    }
+  </style>
+</head>
+<body>
+  <section class="page">
+    <article class="sheet">
+      <header class="top">
+        <div class="org">
+          <img src="${logoUrl}" alt="شعار الإدارة" />
+          ادارة البلاغات<br>
+          قسم الخدمات المساندة<br>
+          شعبة التحضير
+        </div>
+        <div class="title-wrap">
+          <h1 class="title">بيانات الاجازة</h1>
+        </div>
+        <div class="photo">صورة</div>
+      </header>
+
+      <div class="meta">
+        <div>رقم المرجع: ${valueOrDash(row.ID || selectedId)}</div>
+        <div class="ltr">وقت الطباعة: ${stamp}</div>
+      </div>
+
+      <section class="section">
+        <div class="section-title">البيانات الأساسية</div>
+        <table>
+          <tr>
+            <td class="label">الاسم الرباعي</td>
+            <td class="value">${valueOrDash(row.Name)}</td>
+            <td class="label">الحالة</td>
+            <td class="value">${valueOrDash(row.Status)}</td>
+          </tr>
+          <tr>
+            <td class="label">نوع الاجازة</td>
+            <td class="value">${valueOrDash(row.Type)}</td>
+            <td class="label">القسم</td>
+            <td class="value">${valueOrDash(row.Department)}</td>
+          </tr>
+          <tr>
+            <td class="label">النوبة</td>
+            <td class="value">${valueOrDash(row.Section)}</td>
+            <td class="label">عدد الايام</td>
+            <td class="value ltr">${valueOrDash(row.Days)}</td>
+          </tr>
+        </table>
+      </section>
+
+      <section class="section">
+        <div class="section-title">البيانات الزمنية</div>
+        <table>
+          <tr>
+            <td class="label">البداية</td>
+            <td class="value ltr">${valueOrDash(formatDateYmdSlash(row.Startdate))}</td>
+            <td class="label">النهاية</td>
+            <td class="value ltr">${valueOrDash(formatDateYmdSlash(row.Enddate))}</td>
+          </tr>
+          <tr>
+            <td class="label">حالة الموظف</td>
+            <td class="value" colspan="3">${employeeLeaveStatus}</td>
+          </tr>
+        </table>
+      </section>
+
+      <section class="section">
+        <div class="section-title">الملاحظات</div>
+        <table>
+          <tr>
+            <td class="value" style="min-height:34mm; line-height:1.6;">${valueOrDash(row.Note)}</td>
+          </tr>
+        </table>
+      </section>
+
+      <div class="note">
+        <span class="note-text">أقر أنا الموقع أدناه بأن البيانات أعلاه صحيحة، وأتعهد بإبلاغ الإدارة عند حدوث أي تغيير.</span>
+        <span class="note-sign">التوقيع: ____________________</span>
+      </div>
+    </article>
+  </section>
+</body>
+</html>`;
+    }
+
+    function printCurrentRecord() {
+      const selected = allHolidays.find((item) => String(item.ID) === String(selectedId));
+      const html = buildPrintHtml(selected);
+
+      const frame = document.createElement('iframe');
+      frame.style.position = 'fixed';
+      frame.style.left = '0';
+      frame.style.bottom = '0';
+      frame.style.width = '210mm';
+      frame.style.height = '297mm';
+      frame.style.border = '0';
+      frame.style.opacity = '0.01';
+      frame.style.pointerEvents = 'none';
+      frame.style.zIndex = '-1';
+      document.body.appendChild(frame);
+
+      const win = frame.contentWindow;
+      const doc = frame.contentDocument || win?.document;
+      if (!win || !doc) {
+        showStatus('تعذر تجهيز نافذة الطباعة.', true);
+        frame.remove();
+        return;
+      }
+
+      const cleanup = () => {
+        if (frame.isConnected) frame.remove();
+      };
+
+      win.onafterprint = cleanup;
+      window.setTimeout(cleanup, 60000);
+
+      doc.open();
+      doc.write(html);
+      doc.close();
+
+      window.setTimeout(() => {
+        win.focus();
+        win.print();
+      }, 130);
+    }
+
+    typeInput.addEventListener('change', () => {
+      if (typeInput.value !== 'اخرى') {
+        otherTypeInput.value = '';
+      }
+    });
+
+    [startDateInput, endDateInput].forEach((dateInput) => {
+      dateInput.addEventListener('change', () => {
+        syncDateDisplays();
+        calculateDays();
+      });
+    });
+
+    dateOpenButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        const pickerId = button.dataset.pickerId;
+        const pickerInput = document.getElementById(pickerId);
+        if (!pickerInput) {
+          return;
+        }
+
+        if (typeof pickerInput.showPicker === 'function') {
+          pickerInput.showPicker();
+          return;
+        }
+
+        pickerInput.click();
+      });
+    });
+
+    function handleEmployeeNameSelection() {
+      if (!String(nameInput.value || '').trim()) {
+        clearForm();
+        return;
+      }
+
+      setSelectedEmployeeByName(nameInput.value);
+    }
+
+    nameInput.addEventListener('input', handleEmployeeNameSelection);
+    nameInput.addEventListener('change', handleEmployeeNameSelection);
+
+    nameFilterInput.addEventListener('input', () => {
+      applyNameFilter();
+    });
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      clearStatus();
+
+      if (!validateForm()) {
+        return;
+      }
+
+      addBtn.disabled = true;
+
+      try {
+        const payload = collectPayload();
+        await requestJson('/api/holidays', {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify(payload)
+        });
+
+        showStatus('تمت إضافة بيانات الاجازة بنجاح');
+        clearForm();
+        await loadHolidays();
+      } catch (error) {
+        showStatus(error.message, true);
+      } finally {
+        addBtn.disabled = false;
+      }
+    });
+
+    updateBtn.addEventListener('click', async () => {
+      clearStatus();
+
+      if (!selectedId) {
+        showStatus('اختر سجلاً من صندوق البيانات أولاً لتعديله.', true);
+        return;
+      }
+
+      if (!validateForm()) {
+        return;
+      }
+
+      updateBtn.disabled = true;
+
+      try {
+        const payload = collectPayload();
+        await requestJson(`/api/holidays/${selectedId}`, {
+          method: 'PUT',
+          headers: getHeaders(),
+          body: JSON.stringify(payload)
+        });
+
+        showStatus('تم تعديل بيانات الاجازة بنجاح');
+        await loadHolidays();
+      } catch (error) {
+        showStatus(error.message, true);
+      } finally {
+        updateBtn.disabled = false;
+      }
+    });
+
+    deleteBtn.addEventListener('click', async () => {
+      clearStatus();
+
+      if (!selectedId) {
+        showStatus('اختر سجلاً من صندوق البيانات أولاً للحذف.', true);
+        return;
+      }
+
+      const ok = confirm('هل أنت متأكد من حذف سجل الاجازة؟');
+      if (!ok) return;
+
+      deleteBtn.disabled = true;
+
+      try {
+        await requestJson(`/api/holidays/${selectedId}`, {
+          method: 'DELETE',
+          headers: getHeaders(),
+          body: JSON.stringify({ userName: currentUser.username || 'system' })
+        });
+
+        showStatus('تم حذف بيانات الاجازة بنجاح');
+        clearForm();
+        await loadHolidays();
+      } catch (error) {
+        showStatus(error.message, true);
+      } finally {
+        deleteBtn.disabled = false;
+      }
+    });
+
+    printBtn.addEventListener('click', () => {
+      clearStatus();
+      if (!selectedId && !String(nameInput.value || '').trim()) {
+        showStatus('اختر سجلاً من صندوق البيانات أولاً قبل الطباعة.', true);
+        return;
+      }
+      printCurrentRecord();
+    });
+
+    refreshBtn.addEventListener('click', async () => {
+      clearStatus();
+      await loadHolidays();
+      showStatus('تم تحديث عرض بيانات الإجازات');
+    });
+
+    backBtn.addEventListener('click', () => {
+      window.location.href = '/dashboard.html';
+    });
+
+    (async () => {
+      try {
+        await loadEmployees();
+        await loadHolidays();
+      } catch (error) {
+        showStatus(error.message, true);
+      }
+    })();
+  </script>
+</body>
+</html>

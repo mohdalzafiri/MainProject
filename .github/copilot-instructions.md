@@ -4,6 +4,9 @@ When creating new frontend pages (especially inside `public/`), apply these defa
 
 ## Layout Defaults
 - Keep the main page container centered exactly on the viewport.
+- For all current and new pages inside `public/`, keep `/layout-defaults.css` as the shared source of layout defaults.
+- Use `body.app-shell` with `.page.app-page` for standard application pages unless a page has a deliberate override.
+- Use `body.auth-shell` for compact centered entry pages such as login when full-page vertical centering is intended.
 - Use a wide centered container pattern by default:
   - `body { display: flex; justify-content: center; overflow-x: hidden; min-height: 100vh; }`
   - `width: min(1600px, calc(100vw - 20px));`

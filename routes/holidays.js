@@ -4,6 +4,36 @@ const { db, logSystem } = require('../database');
 const router = express.Router();
 const columns = ['EmpID', 'Name', 'Department', 'Section', 'Status', 'Type', 'Startdate', 'Enddate', 'Days', 'Note'];
 
+function normalizeText(value) {
+  return String(value || '').trim();
+}
+
+function findDuplicateHoliday(payload, excludeId = null) {
+  const empId = Number(payload.EmpID || 0);
+  const name = normalizeText(payload.Name);
+  const type = normalizeText(payload.Type);
+  const startdate = normalizeText(payload.Startdate);
+  const enddate = normalizeText(payload.Enddate);
+
+  if (!type || !startdate || !enddate || (!empId && !name)) {
+    return null;
+  }
+
+  if (empId) {
+    const sql = excludeId
+      ? 'SELECT ID FROM Holiday WHERE EmpID = ? AND Type = ? AND Startdate = ? AND Enddate = ? AND ID <> ? LIMIT 1'
+      : 'SELECT ID FROM Holiday WHERE EmpID = ? AND Type = ? AND Startdate = ? AND Enddate = ? LIMIT 1';
+    const args = excludeId ? [empId, type, startdate, enddate, excludeId] : [empId, type, startdate, enddate];
+    return db.prepare(sql).get(...args);
+  }
+
+  const sql = excludeId
+    ? 'SELECT ID FROM Holiday WHERE Name = ? AND Type = ? AND Startdate = ? AND Enddate = ? AND ID <> ? LIMIT 1'
+    : 'SELECT ID FROM Holiday WHERE Name = ? AND Type = ? AND Startdate = ? AND Enddate = ? LIMIT 1';
+  const args = excludeId ? [name, type, startdate, enddate, excludeId] : [name, type, startdate, enddate];
+  return db.prepare(sql).get(...args);
+}
+
 function buildInsertStatement(payload) {
   const keys = columns.filter((column) => Object.prototype.hasOwnProperty.call(payload, column));
   if (!keys.length) return null;
@@ -38,6 +68,11 @@ router.get('/:id', (req, res) => {
 });
 
 router.post('/', (req, res) => {
+  const duplicate = findDuplicateHoliday(req.body);
+  if (duplicate) {
+    return res.status(409).json({ message: 'لا يمكن إدخال نفس الإجازة مرتين لنفس الموظف.' });
+  }
+
   const statement = buildInsertStatement(req.body);
   if (!statement) {
     return res.status(400).json({ message: 'البيانات المرسلة غير كافية' });
@@ -52,6 +87,11 @@ router.put('/:id', (req, res) => {
   const id = Number(req.params.id);
   if (!id) {
     return res.status(400).json({ message: 'معرّف غير صالح' });
+  }
+
+  const duplicate = findDuplicateHoliday(req.body, id);
+  if (duplicate) {
+    return res.status(409).json({ message: 'لا يمكن تكرار نفس الإجازة لنفس الموظف.' });
   }
 
   const statement = buildUpdateStatement(req.body, id);

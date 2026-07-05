@@ -19,24 +19,14 @@
     }
     * { box-sizing: border-box; }
     body {
-      margin: 0;
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
       font-family: Tahoma, Arial, sans-serif;
       color: var(--text);
       background:
         radial-gradient(circle at 15% 20%, rgba(59, 130, 246, 0.14), transparent 45%),
         radial-gradient(circle at 90% 0%, rgba(14, 165, 233, 0.12), transparent 35%),
         var(--bg);
-      overflow-x: hidden;
     }
     .page {
-      width: min(1600px, calc(100vw - 20px));
-      margin: 0;
-      padding: 16px 0 0;
-      display: grid;
-      align-content: start;
       gap: 18px;
     }
     .header {
@@ -289,9 +279,10 @@
       }
     }
   </style>
+  <link rel="stylesheet" href="/layout-defaults.css" />
 </head>
-<body>
-  <div class="page">
+<body class="app-shell">
+  <div class="page app-page">
     <section class="header">
       <div>
         <h1>واجهة الموظفين</h1>
@@ -361,7 +352,7 @@
               <option value="الخدمات المساندة">الخدمات المساندة</option>
               <option value="الموارد البشرية">الموارد البشرية</option>
               <option value="المعلومات">المعلومات</option>
-              <option value="الاحصاء" selected>الاحصاء</option>
+              <option value="الاحصاء">الاحصاء</option>
             </select>
           </div>
           <div class="field">
@@ -573,13 +564,30 @@
 
   <script>
     const authToken = localStorage.getItem('authToken');
-    const storedUser = localStorage.getItem('loggedInUser');
 
-    if (!authToken || !storedUser) {
+    if (!authToken) {
       window.location.href = '/';
     }
 
-    const currentUser = JSON.parse(storedUser || '{}');
+    localStorage.removeItem('loggedInUser');
+
+    function parseJwtPayload(token) {
+      try {
+        const payload = token.split('.')[1];
+        if (!payload) return null;
+        const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+        const decoded = atob(normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '='));
+        return JSON.parse(decoded);
+      } catch (error) {
+        return null;
+      }
+    }
+
+    const currentUser = parseJwtPayload(authToken);
+    if (!currentUser) {
+      localStorage.removeItem('authToken');
+      window.location.href = '/';
+    }
 
     const form = document.getElementById('employeeForm');
     const rowsBody = document.getElementById('rows');
@@ -744,7 +752,7 @@
       selectedId = null;
       employeeIdInput.value = '';
       form.reset();
-      departmentInput.value = 'الاحصاء';
+      departmentInput.value = '';
       Array.from(rowsBody.querySelectorAll('tr')).forEach((row) => row.classList.remove('selected'));
       applyNameFilter();
     }
@@ -757,7 +765,7 @@
       empDateInput.value = '';
       empDateDisplayInput.value = '';
       nameInput.value = '';
-      departmentInput.value = 'الاحصاء';
+      departmentInput.value = '';
       startDateInput.value = '';
       startDateDisplayInput.value = '';
       civilIdInput.value = '';
@@ -799,6 +807,19 @@
       };
     }
 
+    function getApiErrorMessage(response, data) {
+      const serverMessage = String(data?.message || '').trim();
+      if (serverMessage) {
+        return serverMessage;
+      }
+
+      if (response.status === 400) return 'البيانات المدخلة غير مكتملة أو غير صحيحة.';
+      if (response.status === 404) return 'السجل المطلوب غير موجود.';
+      if (response.status === 409) return 'تعذر تنفيذ العملية بسبب تعارض أو تكرار في البيانات.';
+      if (response.status >= 500) return 'حدث خطأ في الخادم أو قاعدة البيانات. حاول مرة أخرى.';
+      return 'تعذر إكمال العملية. تحقق من الاتصال ثم حاول مرة أخرى.';
+    }
+
     async function requestJson(url, options = {}) {
       const response = await fetch(url, options);
       if (response.status === 401 || response.status === 403) {
@@ -809,9 +830,368 @@
 
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error(data.message || 'فشلت العملية');
+        throw new Error(getApiErrorMessage(response, data));
       }
       return data;
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function safeValue(value) {
+      const text = String(value ?? '').trim();
+      return text ? escapeHtml(text) : '---';
+    }
+
+    function buildEmployeeCvPrintHtml(item) {
+      const logoUrl = `${window.location.origin}/images/logo.png`;
+      const now = new Date();
+      const pad2 = (value) => String(value).padStart(2, '0');
+      const printedAt = `${pad2(now.getHours())}:${pad2(now.getMinutes())}:${pad2(now.getSeconds())} ${now.getFullYear()}/${pad2(now.getMonth() + 1)}/${pad2(now.getDate())}`;
+      const valueOrDash = (value) => {
+        const text = String(value ?? '').trim();
+        return text ? escapeHtml(text) : '---';
+      };
+      const statusValue = String(item.Status || '').trim();
+      const noteValue = String(item.Note || '').trim();
+      const normalizedStatus = statusValue.replace(/\s+/g, '');
+      const isActive = normalizedStatus === 'نشط';
+      const transferKeywords = ['تقاعد', 'استقالة', 'نقل', 'وفاة', 'فصل', 'انهاء خدمة', 'إنهاء خدمة'];
+      let transferReason = '';
+      if (!isActive && noteValue) {
+        const found = transferKeywords.find((keyword) => noteValue.includes(keyword));
+        transferReason = found || noteValue;
+      }
+      const transferType = isActive ? '' : transferReason;
+
+      return `
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>بيانات الحالة الوظيفية - ${escapeHtml(item.Name || '')}</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Tahoma', Arial, sans-serif;
+      background: #fff;
+      color: #0f172a;
+    }
+    .page {
+      width: 210mm;
+      min-height: 297mm;
+      margin: 0 auto;
+      padding: 10mm;
+      background: #fff;
+    }
+    .sheet {
+      border: 1.5px solid #0f172a;
+      min-height: 277mm;
+      padding: 7mm;
+      display: flex;
+      flex-direction: column;
+      gap: 4mm;
+    }
+    .top {
+      display: grid;
+      grid-template-columns: 30mm 1fr 36mm;
+      align-items: start;
+      gap: 4mm;
+    }
+    .photo {
+      height: 38mm;
+      border: 1px solid #334155;
+      display: grid;
+      place-items: center;
+      color: #94a3b8;
+      font-size: 5.5mm;
+      font-weight: 700;
+      background: #f8fafc;
+    }
+    .title-wrap {
+      text-align: center;
+      padding-top: 1mm;
+    }
+    .title {
+      margin: 0;
+      font-size: 11mm;
+      line-height: 1.2;
+      font-family: 'PT Bold', 'PT Sans', Tahoma, Arial, sans-serif;
+      font-weight: 800;
+      color: #0b3a6f;
+    }
+    .org {
+      text-align: center;
+      font-size: 2.9mm;
+      line-height: 1.35;
+      color: #1e293b;
+      font-weight: 700;
+    }
+    .org img {
+      width: 18mm;
+      height: 18mm;
+      object-fit: contain;
+      display: block;
+      margin: 0 auto 1mm;
+    }
+    .meta {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2mm;
+      font-size: 3.1mm;
+      color: #334155;
+    }
+    .meta div {
+      border: 1px solid #cbd5e1;
+      padding: 1.2mm 1.8mm;
+      border-radius: 1.5mm;
+      background: #f8fafc;
+    }
+    .section {
+      border: 1px solid #0f172a;
+      border-radius: 1.5mm;
+      overflow: hidden;
+    }
+    .section-title {
+      background: #0b3a6f;
+      color: #fff;
+      font-size: 3.4mm;
+      font-weight: 700;
+      padding: 1.4mm 2.2mm;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+    td {
+      border: 1px solid #cbd5e1;
+      padding: 1.8mm 2mm;
+      font-size: 3.5mm;
+      vertical-align: middle;
+    }
+    .label {
+      width: 26mm;
+      background: #f8fafc;
+      font-weight: 700;
+      color: #334155;
+      text-align: center;
+    }
+    .value {
+      font-weight: 700;
+      text-align: right;
+      color: #0f172a;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+    }
+    .ltr {
+      direction: ltr;
+      unicode-bidi: isolate;
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+    }
+    .note {
+      margin-top: auto;
+      border-top: 0;
+      padding-top: 1mm;
+      font-size: 3.1mm;
+      color: #334155;
+      line-height: 1.45;
+      display: flex;
+      align-items: center;
+      gap: 4mm;
+    }
+    .note-text {
+      flex: 1 1 auto;
+    }
+    .note-sign {
+      min-width: 55mm;
+      text-align: left;
+      direction: rtl;
+      unicode-bidi: plaintext;
+    }
+    @media print {
+      @page { size: A4; margin: 0; }
+      .page { width: 210mm; min-height: 297mm; padding: 10mm; }
+    }
+  </style>
+</head>
+<body>
+  <section class="page">
+    <article class="sheet">
+      <header class="top">
+        <div class="org">
+          <img src="${logoUrl}" alt="شعار الإدارة" />
+          ادارة البلاغات<br>
+          قسم الخدمات المساندة<br>
+          شعبة التحضير
+        </div>
+        <div class="title-wrap">
+          <h1 class="title">بيانات الحالة الوظيفية</h1>
+        </div>
+        <div class="photo">صورة</div>
+      </header>
+
+      <div class="meta">
+        <div>رقم المرجع: ${valueOrDash(item.ID)}</div>
+        <div class="ltr">وقت الطباعة: ${printedAt}</div>
+      </div>
+
+      <section class="section">
+        <div class="section-title">البيانات الأساسية</div>
+        <table>
+          <tr>
+            <td class="label">الاسم</td>
+            <td class="value">${valueOrDash(item.Name)}</td>
+            <td class="label">الرقم المدني</td>
+            <td class="value ltr">${valueOrDash(item.CivilID)}</td>
+          </tr>
+          <tr>
+            <td class="label">الرتبة</td>
+            <td class="value">${valueOrDash(item.Title)}</td>
+            <td class="label">المسمى الوظيفي</td>
+            <td class="value">${valueOrDash(item.Rank)}</td>
+          </tr>
+          <tr>
+            <td class="label">القسم</td>
+            <td class="value">${valueOrDash(item.Department)}</td>
+            <td class="label">النوبة</td>
+            <td class="value">${valueOrDash(item.Section)}</td>
+          </tr>
+          <tr>
+            <td class="label">حالة الملف</td>
+            <td class="value">${valueOrDash(item.Status)}</td>
+            <td class="label">مقر العمل</td>
+            <td class="value">${valueOrDash(item.Work)}</td>
+          </tr>
+        </table>
+      </section>
+
+      <section class="section">
+        <div class="section-title">البيانات الزمنية</div>
+        <table>
+          <tr>
+            <td class="label">تاريخ التعيين</td>
+            <td class="value ltr">${valueOrDash(formatKuwaitDate(item.Empdate))}</td>
+            <td class="label">تاريخ المباشرة</td>
+            <td class="value ltr">${valueOrDash(formatKuwaitDate(item.Startdate))}</td>
+          </tr>
+          <tr>
+            <td class="label">تاريخ النقل</td>
+            <td class="value ltr">${valueOrDash(formatKuwaitDate(item.Enddate))}</td>
+            <td class="label">نوع النقل</td>
+            <td class="value">${valueOrDash(transferType)}</td>
+          </tr>
+        </table>
+      </section>
+
+      <section class="section">
+        <div class="section-title">الملاحظات</div>
+        <table>
+          <tr>
+            <td class="value" style="min-height:34mm; line-height:1.6;">${valueOrDash(item.Note)}</td>
+          </tr>
+        </table>
+      </section>
+
+      <div class="note">
+        <span class="note-text">أقر أنا الموقع أدناه بأن البيانات أعلاه صحيحة، وأتعهد بإبلاغ الإدارة عند حدوث أي تغيير.</span>
+        <span class="note-sign">التوقيع: ____________________</span>
+      </div>
+    </article>
+  </section>
+</body>
+</html>`;
+    }
+
+    function printSelectedEmployeeCv() {
+      clearStatus();
+
+      if (!selectedId) {
+        showStatus('اختر موظفاً من صندوق البيانات أولاً قبل الطباعة.', true);
+        return;
+      }
+
+      const employee = allEmployees.find((item) => String(item.ID) === String(selectedId));
+      if (!employee) {
+        showStatus('تعذر العثور على بيانات الموظف المحدد للطباعة. جرّب تحديث العرض.', true);
+        return;
+      }
+
+      const html = buildEmployeeCvPrintHtml(employee);
+      const printFrame = document.createElement('iframe');
+      printFrame.style.position = 'fixed';
+      printFrame.style.left = '0';
+      printFrame.style.bottom = '0';
+      printFrame.style.width = '210mm';
+      printFrame.style.height = '297mm';
+      printFrame.style.border = '0';
+      printFrame.style.opacity = '0.01';
+      printFrame.style.pointerEvents = 'none';
+      printFrame.style.zIndex = '-1';
+
+      document.body.appendChild(printFrame);
+
+      const frameWindow = printFrame.contentWindow;
+      const frameDocument = printFrame.contentDocument || frameWindow?.document;
+      if (!frameWindow || !frameDocument) {
+        showStatus('تعذر تجهيز نافذة الطباعة. حاول مرة أخرى.', true);
+        printFrame.remove();
+        return;
+      }
+
+      const cleanup = () => {
+        if (printFrame.isConnected) {
+          printFrame.remove();
+        }
+      };
+
+      const triggerPrint = () => {
+        frameWindow.requestAnimationFrame(() => {
+          frameWindow.requestAnimationFrame(() => {
+            frameWindow.focus();
+            frameWindow.print();
+          });
+        });
+      };
+
+      frameWindow.onafterprint = cleanup;
+      window.setTimeout(cleanup, 60000);
+
+      frameDocument.open();
+      frameDocument.write(html);
+      frameDocument.close();
+
+      const images = Array.from(frameDocument.images || []);
+      if (images.length === 0) {
+        window.setTimeout(triggerPrint, 120);
+        return;
+      }
+
+      let pending = images.length;
+      const onImageDone = () => {
+        pending -= 1;
+        if (pending === 0) {
+          window.setTimeout(triggerPrint, 120);
+        }
+      };
+
+      images.forEach((img) => {
+        if (img.complete) {
+          onImageDone();
+        } else {
+          img.addEventListener('load', onImageDone, { once: true });
+          img.addEventListener('error', onImageDone, { once: true });
+        }
+      });
     }
 
     function renderRows(items) {
@@ -997,7 +1377,7 @@
     });
 
     printBtn.addEventListener('click', () => {
-      window.print();
+      printSelectedEmployeeCv();
     });
 
     refreshBtn.addEventListener('click', async () => {

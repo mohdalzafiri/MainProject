@@ -16,19 +16,11 @@
     }
     * { box-sizing: border-box; }
     body {
-      margin: 0;
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
       font-family: Tahoma, Arial, sans-serif;
       color: var(--text);
       background: linear-gradient(180deg, #e5efff 0%, #f8fafc 100%);
-      overflow-x: hidden;
     }
     .page {
-      width: min(1600px, calc(100vw - 20px));
-      margin: 0;
-      padding: 16px 0;
     }
     .header {
       display: flex;
@@ -127,7 +119,7 @@
     }
     .stats-grid {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 16px;
     }
     .summary-row {
@@ -230,15 +222,18 @@
       .grid-2 { grid-template-columns: 1fr; }
       .buttons-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .summary-row-3 { grid-template-columns: 1fr; }
+      .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
     @media (max-width: 600px) {
       .actions { justify-content: center; }
       .buttons-grid { grid-template-columns: 1fr; }
+      .stats-grid { grid-template-columns: 1fr; }
     }
   </style>
+  <link rel="stylesheet" href="/layout-defaults.css" />
 </head>
-<body>
-  <div class="page">
+<body class="app-shell">
+  <div class="page app-page">
     <div class="header">
       <div class="title-group">
         <h1>الرئيسية</h1>
@@ -253,9 +248,9 @@
       <div class="action-item" id="employeesBtn">الموظفين</div>
       <div class="action-item">اليوميات</div>
       <div class="action-item">الاحصائيات</div>
-      <div class="action-item">الاجازات</div>
-      <div class="action-item">الدورات</div>
-      <div class="action-item">التنقلات</div>
+      <div class="action-item" id="holidaysBtn">الاجازات</div>
+      <div class="action-item" id="coursesBtn">الدورات</div>
+      <div class="action-item" id="transfersBtn">التنقلات</div>
       <div class="action-item admin-only" id="evaluationsBtn">تقييم الاداء</div>
       <div class="action-item admin-only" id="adminFormsBtn">نماذج ادارية</div>
       <div class="action-item admin-only" id="systemLogBtn">سجل النظام</div>
@@ -295,6 +290,10 @@
           <div class="stat-card">
             <p>الإجازات</p>
             <h3 id="totalHolidays">--</h3>
+          </div>
+          <div class="stat-card">
+            <p>الدورات</p>
+            <h3 id="totalCourses">--</h3>
           </div>
           <div class="stat-card">
             <p>المستخدمون</p>
@@ -381,6 +380,9 @@
     const logoutBtn = document.getElementById('logoutBtn');
     const employeesBtn = document.getElementById('employeesBtn');
     const outsideAdminBtn = document.getElementById('outsideAdminBtn');
+    const holidaysBtn = document.getElementById('holidaysBtn');
+    const coursesBtn = document.getElementById('coursesBtn');
+    const transfersBtn = document.getElementById('transfersBtn');
     const activityRows = document.getElementById('activityRows');
     const evaluationsBtn = document.getElementById('evaluationsBtn');
     const adminFormsBtn = document.getElementById('adminFormsBtn');
@@ -388,18 +390,31 @@
     const settingsBtn = document.getElementById('settingsBtn');
     const todaySummaryRows = document.getElementById('todaySummaryRows');
     const monthSummaryRows = document.getElementById('monthSummaryRows');
-    const storedUser = localStorage.getItem('loggedInUser');
     const authToken = localStorage.getItem('authToken');
 
-    if (!storedUser || !authToken) {
+    if (!authToken) {
       window.location.href = '/';
     }
 
-    let currentUser = null;
-    try {
-      currentUser = storedUser ? JSON.parse(storedUser) : null;
-    } catch (error) {
-      currentUser = null;
+    localStorage.removeItem('activityLog');
+    localStorage.removeItem('loggedInUser');
+
+    function parseJwtPayload(token) {
+      try {
+        const payload = token.split('.')[1];
+        if (!payload) return null;
+        const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+        const decoded = atob(normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '='));
+        return JSON.parse(decoded);
+      } catch (error) {
+        return null;
+      }
+    }
+
+    const currentUser = parseJwtPayload(authToken);
+    if (!currentUser) {
+      localStorage.removeItem('authToken');
+      window.location.href = '/';
     }
 
     const username = currentUser?.username || '';
@@ -483,16 +498,6 @@
       return formatDateTime(new Date());
     }
 
-    function addActivity(action, page, detail = '') {
-      const user = storedUser ? JSON.parse(storedUser).username : 'غير معروف';
-      const activityLog = JSON.parse(localStorage.getItem('activityLog') || '[]');
-      const status = action.includes('فشل') ? 'فشل' : 'نجاح';
-      activityLog.unshift({ action, page, user, detail, status, time: getCurrentTime() });
-      localStorage.setItem('activityLog', JSON.stringify(activityLog.slice(0, 50)));
-    }
-
-    addActivity('فتح الصفحة', 'الرئيسية');
-
     const departmentStats = [];
     const shiftStats = [];
     const sectionStats = [];
@@ -515,6 +520,7 @@
       document.getElementById('monthRecords').textContent = data?.totals?.totalMonthlyRecords ?? '--';
       document.getElementById('totalTransfers').textContent = data?.totals?.totalTransfers ?? '--';
       document.getElementById('totalHolidays').textContent = data?.totals?.totalHolidays ?? '--';
+      document.getElementById('totalCourses').textContent = data?.totals?.totalCourses ?? '--';
       document.getElementById('totalUsers').textContent = data?.totals?.totalUsers ?? '--';
     }
 
@@ -562,41 +568,36 @@
     renderBlocks('shiftStats', shiftStats);
     renderBlocks('sectionStats', sectionStats);
 
-    const activities = JSON.parse(localStorage.getItem('activityLog') || '[]');
-    const defaultActivities = [
-      { action: 'تسجيل دخول', page: 'الرئيسية', user: username || 'مدير النظام', time: '2026/06/26 08:12:00', status: 'نجاح', detail: '' },
-      { action: 'تسجيل خروج', page: 'الرئيسية', user: username || 'مدير النظام', time: '2026/06/26 12:55:00', status: 'نجاح', detail: '' },
-      { action: 'حفظ بيانات', page: 'الموظفين', user: 'أحمد علي', time: '2026/06/26 14:20:00', status: 'نجاح', detail: '' },
-      { action: 'تعديل سجل', page: 'اليوميات', user: 'سارة محمد', time: '2026/06/26 15:05:00', status: 'نجاح', detail: '' },
-      { action: 'حذف سجل', page: 'الاجازات', user: 'خالد حسين', time: '2026/06/26 15:40:00', status: 'نجاح', detail: '' }
-    ];
-
-    const sourceActivities = activities.length ? activities : defaultActivities;
-    const activityList = sourceActivities.map((item) => ({
-      ...item,
-      time: normalizeStoredTime(item.time)
-    }));
-
-    if (activities.length) {
-      localStorage.setItem('activityLog', JSON.stringify(activityList.slice(0, 50)));
+    function getActivityStatus(item) {
+      const action = String(item?.Action || item?.action || '').toLowerCase();
+      return action.includes('failed') || action.includes('error') || action.includes('فشل') ? 'فشل' : 'نجاح';
     }
 
-    activityList.forEach(item => {
-      const row = document.createElement('tr');
-      const badgeClass = item.status === 'فشل' ? 'fail' : '';
-      row.innerHTML = `
-        <td><span class="log-type">${item.action}</span></td>
-        <td>${item.page || ''}</td>
-        <td>${item.user}</td>
-        <td><span class="log-time">${item.time}</span></td>
-        <td><span class="badge ${badgeClass}">${item.status || ''}</span></td>
-        <td>${item.detail || ''}</td>
-      `;
-      activityRows.appendChild(row);
-    });
+    function renderRecentActivities(items) {
+      activityRows.innerHTML = '';
+
+      if (!Array.isArray(items) || items.length === 0) {
+        activityRows.innerHTML = '<tr><td colspan="6">لا توجد عمليات مسجلة حالياً.</td></tr>';
+        return;
+      }
+
+      items.forEach((item) => {
+        const status = getActivityStatus(item);
+        const badgeClass = status === 'فشل' ? 'fail' : '';
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td><span class="log-type">${item.Action || ''}</span></td>
+          <td>${item.Target || ''}</td>
+          <td>${item.UserName || ''}</td>
+          <td><span class="log-time">${normalizeStoredTime(item.Timestamp)}</span></td>
+          <td><span class="badge ${badgeClass}">${status}</span></td>
+          <td>${item.Details || ''}</td>
+        `;
+        activityRows.appendChild(row);
+      });
+    }
 
     logoutBtn.addEventListener('click', () => {
-      localStorage.removeItem('loggedInUser');
       localStorage.removeItem('authToken');
       window.location.href = '/';
     });
@@ -607,6 +608,18 @@
 
     employeesBtn.addEventListener('click', () => {
       window.location.href = '/employees.html';
+    });
+
+    holidaysBtn.addEventListener('click', () => {
+      window.location.href = '/holidays.html';
+    });
+
+    coursesBtn.addEventListener('click', () => {
+      window.location.href = '/courses.html';
+    });
+
+    transfersBtn.addEventListener('click', () => {
+      window.location.href = '/transfers.html';
     });
 
     async function loadDashboardSummary() {
@@ -628,6 +641,7 @@
         renderBlocks('sectionStats', data.sections || []);
         renderTodaySummary(data.todaySummary || []);
         renderMonthSummary(data.monthSummary || []);
+        renderRecentActivities(data.recentActivities || []);
       } catch (err) {
         console.warn('Unable to load dashboard summary', err);
       }
