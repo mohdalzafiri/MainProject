@@ -40,6 +40,7 @@
 
   function buildElementLabel(element) {
     if (!element) return '';
+
     const parts = [
       element.id || '',
       element.name || '',
@@ -96,7 +97,6 @@
     if (!trigger) return;
 
     const label = buildElementLabel(trigger).toLowerCase();
-
     if (/print|طباعة/.test(label)) {
       trackPrint(`Print button clicked: ${buildElementLabel(trigger)}`);
       return;
@@ -123,7 +123,6 @@
 
   document.addEventListener('keydown', function (event) {
     if (event.key !== 'Enter') return;
-    const element = event.target;
-    trackSearchElement(element);
+    trackSearchElement(event.target);
   }, true);
 })();

@@ -41,54 +41,57 @@ function buildCorsOptions() {
       }
       return callback(new Error('Not allowed by CORS'));
     }
+
+    function injectOperationsTracker(htmlText) {
+      const scriptTag = '<script src="/activity-tracker.js"></script>';
+      const source = String(htmlText || '');
+
+      if (source.includes(scriptTag)) {
+        return source;
+      }
+
+      if (source.includes('</body>')) {
+        return source.replace('</body>', `  ${scriptTag}\n</body>`);
+      }
+
+      return `${source}\n${scriptTag}`;
+    }
   };
-}
-
-function injectActivityTracker(htmlText) {
-  const scriptTag = '<script src="/activity-tracker.js"></script>';
-  if (String(htmlText || '').includes(scriptTag)) {
-    return htmlText;
-  }
-
-  if (String(htmlText || '').includes('</body>')) {
-    return htmlText.replace('</body>', `  ${scriptTag}\n</body>`);
-  }
-
-  return `${htmlText}\n${scriptTag}`;
 }
 
 // Middleware
 app.use(cors(buildCorsOptions()));
+
+    app.use((req, res, next) => {
+      if (req.method !== 'GET') {
+        return next();
+      }
+
+      const requestPath = req.path === '/' ? '/login.html' : req.path;
+      if (!String(requestPath).toLowerCase().endsWith('.html')) {
+        return next();
+      }
+
+      const publicRoot = path.join(__dirname, 'public');
+      const relativePath = String(requestPath).replace(/^\/+/, '');
+      const absolutePath = path.join(publicRoot, relativePath);
+
+      if (!absolutePath.startsWith(publicRoot)) {
+        return next();
+      }
+
+      fs.readFile(absolutePath, 'utf8', (error, html) => {
+        if (error) {
+          return next();
+        }
+
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        return res.send(injectOperationsTracker(html));
+      });
+    });
+
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-
-app.use((req, res, next) => {
-  if (req.method !== 'GET') {
-    return next();
-  }
-
-  const rawPath = req.path === '/' ? '/login.html' : req.path;
-  if (!String(rawPath).toLowerCase().endsWith('.html')) {
-    return next();
-  }
-
-  const publicRoot = path.join(__dirname, 'public');
-  const relativePath = String(rawPath).replace(/^\/+/, '');
-  const absolutePath = path.join(publicRoot, relativePath);
-
-  if (!absolutePath.startsWith(publicRoot)) {
-    return next();
-  }
-
-  fs.readFile(absolutePath, 'utf8', (error, html) => {
-    if (error) {
-      return next();
-    }
-
-    res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    return res.send(injectActivityTracker(html));
-  });
-});
 
 app.use(express.static(path.join(__dirname, 'public')));
 

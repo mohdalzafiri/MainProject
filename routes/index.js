@@ -12,45 +12,11 @@ const dashboardRoutes = require('./dashboard');
 const systemLogRoutes = require('./systemLog');
 const settingsRoutes = require('./settings');
 const authMiddleware = require('../auth/auth');
-const { logSystem } = require('../database');
 
 const router = express.Router();
 
 router.use('/auth', authRoutes);
 router.use(authMiddleware);
-
-router.use((req, res, next) => {
-	if (req.method !== 'GET') {
-		return next();
-	}
-
-	const startedAt = Date.now();
-	res.on('finish', () => {
-		if (res.statusCode >= 400) {
-			return;
-		}
-
-		const userName = String(req.user?.username || req.user?.userName || '').trim() || 'system';
-		const role = String(req.user?.role || '').trim();
-		const apiPath = String(req.originalUrl || req.url || '').split('?')[0] || '/';
-		const queryText = new URLSearchParams(req.query || {}).toString();
-		const details = queryText
-			? `GET ${apiPath} ? ${queryText} (${Date.now() - startedAt}ms)`
-			: `GET ${apiPath} (${Date.now() - startedAt}ms)`;
-
-		logSystem({
-			userName,
-			role,
-			action: 'View',
-			page: 'API',
-			target: apiPath,
-			details,
-			machine: req.headers['user-agent'] || ''
-		});
-	});
-
-	return next();
-});
 
 router.use('/daily-logs', dailyLogsRoutes);
 router.use('/evaluations', evaluationsRoutes);
