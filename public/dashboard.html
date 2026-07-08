@@ -188,6 +188,28 @@
       letter-spacing: .02em;
     }
     td { font-size: 15px; }
+    .activity-table {
+      table-layout: fixed;
+    }
+    .activity-table th,
+    .activity-table td {
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      vertical-align: top;
+      white-space: normal;
+    }
+    .activity-table th:nth-child(1),
+    .activity-table td:nth-child(1) { width: 16%; }
+    .activity-table th:nth-child(2),
+    .activity-table td:nth-child(2) { width: 14%; }
+    .activity-table th:nth-child(3),
+    .activity-table td:nth-child(3) { width: 14%; }
+    .activity-table th:nth-child(4),
+    .activity-table td:nth-child(4) { width: 18%; }
+    .activity-table th:nth-child(5),
+    .activity-table td:nth-child(5) { width: 10%; }
+    .activity-table th:nth-child(6),
+    .activity-table td:nth-child(6) { width: 28%; }
     .badge {
       display: inline-flex;
       padding: 6px 10px;
@@ -339,7 +361,7 @@
                 <th>بداية</th>
                 <th>نهاية</th>
                 <th>الوصف</th>
-                <th>الملاحظات</th>
+                <th>ملاحظات</th>
               </tr>
             </thead>
             <tbody id="todaySummaryRows"></tbody>
@@ -369,7 +391,7 @@
     <div class="panel" style="margin-top: 24px;">
       <h2>آخر العمليات</h2>
       <div class="table-wrap">
-        <table>
+        <table class="activity-table">
           <thead>
             <tr>
               <th>العملية</th>

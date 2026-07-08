@@ -58,6 +58,14 @@
       vertical-align: top;
     }
 
+    .employees-table th:nth-child(4),
+    .employees-table td:nth-child(4) {
+      white-space: nowrap;
+      overflow-wrap: normal;
+      word-break: normal;
+      font-variant-numeric: tabular-nums;
+    }
+
     .employees-table th:nth-child(1),
     .employees-table td:nth-child(1) { width: 4%; }
     .employees-table th:nth-child(2),
@@ -65,7 +73,7 @@
     .employees-table th:nth-child(3),
     .employees-table td:nth-child(3) { width: 15%; }
     .employees-table th:nth-child(4),
-    .employees-table td:nth-child(4) { width: 7%; }
+    .employees-table td:nth-child(4) { width: 10%; }
     .employees-table th:nth-child(5),
     .employees-table td:nth-child(5) { width: 12%; }
     .employees-table th:nth-child(6),
@@ -83,7 +91,42 @@
     .employees-table th:nth-child(12),
     .employees-table td:nth-child(12) { width: 6%; }
     .employees-table th:nth-child(13),
-    .employees-table td:nth-child(13) { width: 14%; }
+    .employees-table td:nth-child(13) { width: 11%; }
+
+    @media (max-width: 1200px) {
+      .employees-table th,
+      .employees-table td {
+        font-size: 13px;
+        padding-inline: 8px;
+      }
+
+      .employees-table th:nth-child(1),
+      .employees-table td:nth-child(1) { width: 3%; }
+      .employees-table th:nth-child(2),
+      .employees-table td:nth-child(2) { width: 5%; }
+      .employees-table th:nth-child(3),
+      .employees-table td:nth-child(3) { width: 17%; }
+      .employees-table th:nth-child(4),
+      .employees-table td:nth-child(4) { width: 12%; }
+      .employees-table th:nth-child(5),
+      .employees-table td:nth-child(5) { width: 10%; }
+      .employees-table th:nth-child(6),
+      .employees-table td:nth-child(6) { width: 6%; }
+      .employees-table th:nth-child(7),
+      .employees-table td:nth-child(7) { width: 6%; }
+      .employees-table th:nth-child(8),
+      .employees-table td:nth-child(8) { width: 8%; }
+      .employees-table th:nth-child(9),
+      .employees-table td:nth-child(9) { width: 5%; }
+      .employees-table th:nth-child(10),
+      .employees-table td:nth-child(10) { width: 5%; }
+      .employees-table th:nth-child(11),
+      .employees-table td:nth-child(11) { width: 5%; }
+      .employees-table th:nth-child(12),
+      .employees-table td:nth-child(12) { width: 6%; }
+      .employees-table th:nth-child(13),
+      .employees-table td:nth-child(13) { width: 12%; }
+    }
 
   </style>
   <link rel="stylesheet" href="/layout-defaults.css" />
@@ -897,7 +940,7 @@
       </section>
 
       <section class="section">
-        <div class="section-title">الملاحظات</div>
+        <div class="section-title">ملاحظات</div>
         <table>
           <tr>
             <td class="value" style="min-height:34mm; line-height:1.6;">${valueOrDash(item.Note)}</td>
@@ -925,7 +968,7 @@
 
       const employee = allEmployees.find((item) => String(item.ID) === String(selectedId));
       if (!employee) {
-        showStatus('تعذر العثور على بيانات الموظف المحدد للطباعة. جرّب تحديث العرض.', true);
+        showStatus('تعذر العثور على بيانات الموظف المحدد للطباعة. جرّب تحديث عرض البيانات.', true);
         return;
       }
 

@@ -473,7 +473,7 @@
       Promise.all([loadLookupOptions(), loadEmployeeOptions(), loadEvaluationFilters()])
         .then(loadEvaluationReport)
         .catch((error) => {
-          countLabel.textContent = error.message || 'تعذر تحديث العرض.';
+          countLabel.textContent = error.message || 'تعذر تحديث عرض البيانات.';
         });
     });
 

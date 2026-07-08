@@ -334,8 +334,6 @@
               <th>كلمة السر</th>
               <th>الصلاحية</th>
               <th>الاسم</th>
-              <th>القسم</th>
-              <th>النوبة</th>
               <th>الحالة</th>
               <th>تاريخ الإضافة</th>
               <th>آخر تحديث</th>
@@ -661,7 +659,7 @@
 
       if (!Array.isArray(users) || users.length === 0) {
         countLabel.textContent = 'عدد السجلات: 0';
-        usersRows.innerHTML = '<tr><td colspan="10">لا توجد بيانات مستخدمين حالياً.</td></tr>';
+        usersRows.innerHTML = '<tr><td colspan="8">لا توجد بيانات مستخدمين حالياً.</td></tr>';
         return;
       }
 
@@ -678,8 +676,6 @@
           <td>${item.Password || ''}</td>
           <td>${item.Permission || ''}</td>
           <td>${item.Name || ''}</td>
-          <td>${item.Department || ''}</td>
-          <td>${item.Section || ''}</td>
           <td><span class="state-badge ${stateClass}">${stateLabel}</span></td>
           <td class="cell-time">${formatDateTime(item.CreatedAt || '')}</td>
           <td class="cell-time">${formatDateTime(item.UpdatedAt || '')}</td>
@@ -1036,8 +1032,6 @@
           <td>${item.Password || ''}</td>
           <td>${item.Permission || ''}</td>
           <td>${item.Name || ''}</td>
-          <td>${item.Department || ''}</td>
-          <td>${item.Section || ''}</td>
           <td>${Number(item.IsActive) === 0 ? 'موقوف' : 'نشط'}</td>
           <td>${formatDateTime(item.CreatedAt || '')}</td>
           <td>${formatDateTime(item.UpdatedAt || '')}</td>
@@ -1064,8 +1058,6 @@
             table { width: 100%; border-collapse: collapse; }
             th, td { border: 1px solid #cbd5e1; padding: 10px; text-align: right; font-size: 14px; }
             th { background: #f8fafc; }
-            .cell-time { direction: ltr; unicode-bidi: isolate; text-align: right; font-variant-numeric: tabular-nums; }
-          </style>
         </head>
         <body>
           <h1>بيانات المستخدمين</h1>
@@ -1078,15 +1070,13 @@
                 <th>كلمة السر</th>
                 <th>الصلاحية</th>
                 <th>الاسم</th>
-                <th>القسم</th>
-                <th>النوبة</th>
                 <th>الحالة</th>
                 <th>تاريخ الإضافة</th>
                 <th>آخر تحديث</th>
                 <th>آخر دخول</th>
               </tr>
             </thead>
-            <tbody>${rowsHtml || '<tr><td colspan="11">لا توجد بيانات.</td></tr>'}</tbody>
+            <tbody>${rowsHtml || '<tr><td colspan="9">لا توجد بيانات.</td></tr>'}</tbody>
           </table>
         </body>
         </html>

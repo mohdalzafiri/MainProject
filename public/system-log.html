@@ -84,7 +84,7 @@
     }
 
     .system-log-table th:nth-child(1),
-    .system-log-table td:nth-child(1) { width: 14%; }
+    .system-log-table td:nth-child(1) { width: 16%; }
     .system-log-table th:nth-child(2),
     .system-log-table td:nth-child(2) { width: 14%; }
     .system-log-table th:nth-child(3),
@@ -94,7 +94,7 @@
     .system-log-table th:nth-child(5),
     .system-log-table td:nth-child(5) { width: 10%; }
     .system-log-table th:nth-child(6),
-    .system-log-table td:nth-child(6) { width: 30%; }
+    .system-log-table td:nth-child(6) { width: 28%; }
 
     .table-wrap table {
       min-width: 1250px;
@@ -416,7 +416,7 @@
 
     refreshBtn.addEventListener('click', () => {
       loadSystemLog().catch((error) => {
-        countLabel.textContent = error.message || 'تعذر تحديث العرض.';
+        countLabel.textContent = error.message || 'تعذر تحديث عرض البيانات.';
       });
     });
 

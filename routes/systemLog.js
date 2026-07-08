@@ -58,10 +58,12 @@ function translateAction(action) {
     add: 'إضافة',
     update: 'تعديل',
     delete: 'حذف',
-    view: 'عرض',
+    view: 'عرض البيانات',
+    open: 'دخول',
+    close: 'خروج',
     print: 'طباعة',
     search: 'بحث',
-    'login success': 'تسجيل دخول ناجح',
+    'login success': 'نجح تسجيل الدخول',
     'login failed': 'فشل تسجيل الدخول',
     'login error': 'خطأ تسجيل الدخول'
   };
@@ -74,14 +76,25 @@ function translateTarget(target) {
   const normalized = key.toLowerCase();
 
   const map = {
-    main: 'الموظفين',
+    main: 'الرئيسية',
+    employees: 'الموظفين',
+    'outside-employees': 'الموظفين خارج الادارة',
+    outsideemployees: 'الموظفين خارج الادارة',
     holiday: 'الإجازات',
+    holidays: 'الإجازات',
     course: 'الدورات',
+    courses: 'الدورات',
     transfer: 'التنقلات',
-    login: 'تسجيل الدخول',
+    transfers: 'التنقلات',
+    daily: 'اليوميات',
+    evaluations: 'تقييم الاداء',
+    statistics: 'الإحصائيات',
+    login: 'تسجيل دخول',
     settings: 'الإعدادات',
     dashboard: 'الرئيسية',
+    'system-log': 'سجل النظام',
     systemlog: 'سجل النظام',
+    administrative: 'النماذج الإدارية',
     administrativeforms: 'النماذج الإدارية',
     api: 'واجهة النظام'
   };
@@ -109,6 +122,16 @@ function translateDetails(details) {
     return directMap[text];
   }
 
+  const singleWordMap = {
+    open: 'دخول',
+    close: 'خروج',
+    main: 'الرئيسية'
+  };
+
+  if (singleWordMap[text.toLowerCase()]) {
+    return singleWordMap[text.toLowerCase()];
+  }
+
   const entityMap = [
     { pattern: /department-section/gi, value: 'القسم/النوبة' },
     { pattern: /admin password/gi, value: 'كلمة سر المدير' },
@@ -124,6 +147,11 @@ function translateDetails(details) {
   entityMap.forEach((item) => {
     translated = translated.replace(item.pattern, item.value);
   });
+
+  translated = translated
+    .replace(/\bopen\b/gi, 'دخول')
+    .replace(/\bclose\b/gi, 'خروج')
+    .replace(/\bmain\b/gi, 'الرئيسية');
 
   translated = translated
     .replace(/^Added\s+/i, 'تمت إضافة ')

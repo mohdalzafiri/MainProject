@@ -339,7 +339,7 @@
               <th>بداية</th>
               <th>نهاية</th>
               <th>الوصف</th>
-              <th>الملاحظات</th>
+              <th>ملاحظات</th>
             </tr>
           </thead>
           <tbody id="rows">
@@ -603,7 +603,7 @@
       loadDepartmentSections()
         .then(loadStatisticsRows)
         .catch((error) => {
-          countLabel.textContent = error.message || 'تعذر تحديث العرض.';
+          countLabel.textContent = error.message || 'تعذر تحديث عرض البيانات.';
         });
     });
 
