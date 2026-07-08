@@ -147,19 +147,13 @@
           </div>
 
           <div class="field">
-            <label for="name" class="required">الاسم الرباعي</label>
+            <label for="name" class="required">اسم الموظف</label>
             <input id="name" type="text" required />
           </div>
           <div class="field">
             <label for="department" class="required">القسم</label>
             <select id="department" required>
               <option value="">-- اختر --</option>
-              <option value="البلاغات">البلاغات</option>
-              <option value="العمليات">العمليات</option>
-              <option value="الخدمات المساندة">الخدمات المساندة</option>
-              <option value="الموارد البشرية">الموارد البشرية</option>
-              <option value="المعلومات">المعلومات</option>
-              <option value="الاحصاء">الاحصاء</option>
             </select>
           </div>
           <div class="field">
@@ -179,43 +173,6 @@
             <label for="section" class="required">النوبة</label>
             <select id="section" required>
               <option value="">-- اختر --</option>
-              <option value="صباحاً">صباحاً</option>
-              <optgroup label="نوبات البلاغات">
-                <option value="أ - البلاغات">أ - البلاغات</option>
-                <option value="ب - البلاغات">ب - البلاغات</option>
-                <option value="ج - البلاغات">ج - البلاغات</option>
-                <option value="د - البلاغات">د - البلاغات</option>
-                <option value="هـ - البلاغات">هـ - البلاغات</option>
-                <option value="ثابت صبح">ثابت صبح</option>
-              </optgroup>
-              <optgroup label="نوبات العمليات">
-                <option value="أ - العمليات">أ - العمليات</option>
-                <option value="ب - العمليات">ب - العمليات</option>
-                <option value="ج - العمليات">ج - العمليات</option>
-                <option value="د - العمليات">د - العمليات</option>
-                <option value="هـ - العمليات">هـ - العمليات</option>
-              </optgroup>
-              <optgroup label="فريق عمل البلاغات">
-                <option value="أ - فريق عمل البلاغات">أ - فريق عمل البلاغات</option>
-                <option value="ب - فريق عمل البلاغات">ب - فريق عمل البلاغات</option>
-                <option value="ج - فريق عمل البلاغات">ج - فريق عمل البلاغات</option>
-                <option value="د - فريق عمل البلاغات">د - فريق عمل البلاغات</option>
-                <option value="فريق عمل البلاغات صباحاً">فريق عمل البلاغات صباحاً</option>
-              </optgroup>
-              <optgroup label="الخدمات">
-                <option value="أ - الخدمات">أ - الخدمات</option>
-                <option value="ب - الخدمات">ب - الخدمات</option>
-                <option value="ج - الخدمات">ج - الخدمات</option>
-                <option value="د - الخدمات">د - الخدمات</option>
-              </optgroup>
-              <optgroup label="أخرى">
-                <option value="سكرتارية البلاغات">سكرتارية البلاغات</option>
-                <option value="سكرتارية العمليات">سكرتارية العمليات</option>
-                <option value="امن المبنى">امن المبنى</option>
-                <option value="الضباط">الضباط</option>
-                <option value="العسكريين">العسكريين</option>
-                <option value="المهنيين">المهنيين</option>
-              </optgroup>
             </select>
           </div>
           <div class="field">
@@ -351,7 +308,7 @@
             <tr>
               <th>تسلسل</th>
               <th>الرتبة</th>
-              <th>الاسم الرباعي</th>
+              <th>اسم الموظف</th>
               <th>الرقم المدني</th>
               <th>المسمى الوظيفي</th>
               <th>القسم</th>
@@ -429,6 +386,7 @@
 
     let selectedId = null;
     let allEmployees = [];
+    let departmentSectionRows = [];
 
     function showStatus(message, isError = false) {
       statusLine.className = `status-line show ${isError ? 'error' : 'ok'}`;
@@ -442,7 +400,7 @@
 
     function validateForm() {
       const requiredErrors = [];
-      if (!nameInput.value.trim()) requiredErrors.push('الاسم الرباعي');
+      if (!nameInput.value.trim()) requiredErrors.push('اسم الموظف');
       if (!departmentInput.value.trim()) requiredErrors.push('القسم');
       if (!civilIdInput.value.trim()) requiredErrors.push('الرقم المدني');
       if (!sectionInput.value.trim()) requiredErrors.push('النوبة');
@@ -537,6 +495,42 @@
       endDateDisplayInput.value = formatKuwaitDate(endDateInput.value);
     }
 
+    function renderDepartmentOptions(preferredValue = '') {
+      const uniqueDepartments = [...new Set(
+        departmentSectionRows
+          .map((item) => normalizeDepartment(item.Department))
+          .filter(Boolean)
+      )];
+
+      departmentInput.innerHTML = '<option value="">-- اختر --</option>';
+      uniqueDepartments.forEach((department) => {
+        const option = document.createElement('option');
+        option.value = department;
+        option.textContent = department;
+        departmentInput.appendChild(option);
+      });
+
+      departmentInput.value = uniqueDepartments.includes(preferredValue) ? preferredValue : '';
+    }
+
+    function renderSectionOptions(selectedDepartment = '', preferredSection = '') {
+      const normalizedDepartmentValue = normalizeDepartment(selectedDepartment);
+      const sectionValues = departmentSectionRows
+        .filter((item) => normalizeDepartment(item.Department) === normalizedDepartmentValue)
+        .map((item) => String(item.Section || '').trim())
+        .filter(Boolean);
+
+      sectionInput.innerHTML = '<option value="">-- اختر --</option>';
+      sectionValues.forEach((section) => {
+        const option = document.createElement('option');
+        option.value = section;
+        option.textContent = section;
+        sectionInput.appendChild(option);
+      });
+
+      sectionInput.value = sectionValues.includes(preferredSection) ? preferredSection : '';
+    }
+
     function collectPayload() {
       return {
         // Database stores these two fields inversely in legacy records.
@@ -560,7 +554,8 @@
       selectedId = null;
       employeeIdInput.value = '';
       form.reset();
-      departmentInput.value = '';
+      renderDepartmentOptions();
+      renderSectionOptions();
       Array.from(rowsBody.querySelectorAll('tr')).forEach((row) => row.classList.remove('selected'));
       applyNameFilter();
     }
@@ -573,11 +568,11 @@
       empDateInput.value = '';
       empDateDisplayInput.value = '';
       nameInput.value = '';
-      departmentInput.value = '';
+      renderDepartmentOptions();
       startDateInput.value = '';
       startDateDisplayInput.value = '';
       civilIdInput.value = '';
-      sectionInput.value = '';
+      renderSectionOptions();
       endDateInput.value = '';
       endDateDisplayInput.value = '';
       titleInput.value = '';
@@ -596,11 +591,11 @@
       empDateInput.value = toDateInputValue(item.Empdate);
       empDateDisplayInput.value = formatKuwaitDate(item.Empdate);
       nameInput.value = item.Name || '';
-      departmentInput.value = normalizeDepartment(item.Department);
+      renderDepartmentOptions(normalizeDepartment(item.Department));
       startDateInput.value = toDateInputValue(item.Startdate);
       startDateDisplayInput.value = formatKuwaitDate(item.Startdate);
       civilIdInput.value = item.CivilID || '';
-      sectionInput.value = item.Section || '';
+      renderSectionOptions(normalizeDepartment(item.Department), item.Section || '');
       endDateInput.value = toDateInputValue(item.Enddate);
       endDateDisplayInput.value = formatKuwaitDate(item.Enddate);
       titleInput.value = item.Rank || '';
@@ -1089,6 +1084,20 @@
       }
     }
 
+    async function loadDepartmentSections() {
+      try {
+        const data = await requestJson('/api/employees/department-sections', {
+          headers: { Authorization: `Bearer ${authToken}` }
+        });
+
+        departmentSectionRows = Array.isArray(data) ? data : [];
+        renderDepartmentOptions(normalizeDepartment(departmentInput.value));
+        renderSectionOptions(normalizeDepartment(departmentInput.value), sectionInput.value);
+      } catch (error) {
+        showStatus(error.message, true);
+      }
+    }
+
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
       clearStatus();
@@ -1198,6 +1207,10 @@
       civilIdInput.value = civilIdInput.value.replace(/\D/g, '').slice(0, 12);
     });
 
+    departmentInput.addEventListener('change', () => {
+      renderSectionOptions(normalizeDepartment(departmentInput.value));
+    });
+
     [empDateInput, startDateInput, endDateInput].forEach((dateInput) => {
       dateInput.addEventListener('change', syncDateDisplays);
     });
@@ -1231,6 +1244,7 @@
       window.location.href = '/dashboard.html';
     });
 
+    loadDepartmentSections();
     loadEmployees();
     syncDateDisplays();
   </script>

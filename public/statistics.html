@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>الاحصائيات</title>
+  <link rel="stylesheet" href="/layout-defaults.css" />
+  <style>
+    body.app-shell {
+      background: linear-gradient(180deg, #dfeaff 0%, #f8fbff 100%);
+    }
+
+    body.app-shell .top-panel .form-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    body.app-shell .top-panel .form-grid > .form-row {
+      grid-column: 1 / -1;
+    }
+
+    body.app-shell .top-panel .form-row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .top-panel .form-grid .field {
+      min-width: 0;
+    }
+
+    .top-panel .full-row {
+      grid-column: 1 / -1;
+    }
+
+    .top-panel .fields-row-1,
+    .top-panel .fields-row-2 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .top-panel .fields-row-3 {
+      grid-template-columns: 1fr;
+    }
+
+    .form-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-start;
+      align-items: center;
+    }
+
+    .form-actions .btn {
+      min-width: 160px;
+    }
+
+    .table-tools {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+
+    .table-tools p {
+      margin: 0;
+      color: var(--ui-muted);
+      font-weight: 700;
+    }
+
+    .bottom-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .status-filter-bar {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      direction: rtl;
+      gap: 58px;
+      flex-wrap: nowrap;
+      padding: 8px;
+      border: 1px solid var(--ui-border);
+      border-radius: 10px;
+      background: #f8fafc;
+      margin-bottom: 10px;
+      overflow-x: auto;
+    }
+
+    .status-filter-item {
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 0;
+      flex-direction: row;
+      white-space: nowrap;
+      font-size: 14px;
+      color: #0f172a;
+      user-select: none;
+      cursor: pointer;
+      width: auto;
+      flex: 0 0 auto;
+      direction: rtl;
+      unicode-bidi: isolate;
+      min-height: 34px;
+      padding-inline: 0;
+      text-align: right;
+    }
+
+    .status-filter-item input {
+      width: 14px;
+      height: 14px;
+      margin: 0;
+      cursor: pointer;
+      flex: 0 0 auto;
+    }
+
+    .status-filter-item span {
+      display: inline-block;
+      line-height: 1.2;
+      margin: 0;
+      padding: 0;
+    }
+
+    .status-return-item {
+      transform: translateX(22px);
+      gap: 0;
+    }
+
+    .status-return-item input {
+      margin: 0;
+      margin-inline-end: 0;
+    }
+
+    .status-return-item span {
+      margin-inline-start: -14px;
+    }
+
+    .status-filter-refresh {
+      width: 34px;
+      height: 34px;
+      margin-inline-start: auto;
+      border: 1px solid #cbd5e1;
+      background: #fff;
+      color: #0f172a;
+      border-radius: 8px;
+      font-size: 19px;
+      line-height: 1;
+      cursor: pointer;
+      flex: 0 0 auto;
+    }
+
+    .status-filter-refresh:hover {
+      background: #eef2ff;
+    }
+
+    .statistics-table {
+      table-layout: fixed;
+    }
+
+    .statistics-table th,
+    .statistics-table td {
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      vertical-align: top;
+    }
+
+    .statistics-table th:nth-child(1),
+    .statistics-table td:nth-child(1) { width: 4%; }
+    .statistics-table th:nth-child(2),
+    .statistics-table td:nth-child(2) { width: 9%; }
+    .statistics-table th:nth-child(3),
+    .statistics-table td:nth-child(3) { width: 12%; }
+    .statistics-table th:nth-child(4),
+    .statistics-table td:nth-child(4) { width: 8%; }
+    .statistics-table th:nth-child(5),
+    .statistics-table td:nth-child(5) { width: 8%; }
+    .statistics-table th:nth-child(6),
+    .statistics-table td:nth-child(6) { width: 7%; }
+    .statistics-table th:nth-child(7),
+    .statistics-table td:nth-child(7) { width: 7%; }
+    .statistics-table th:nth-child(8),
+    .statistics-table td:nth-child(8) { width: 7%; }
+    .statistics-table th:nth-child(9),
+    .statistics-table td:nth-child(9) { width: 7%; }
+    .statistics-table th:nth-child(10),
+    .statistics-table td:nth-child(10) { width: 7%; }
+    .statistics-table th:nth-child(11),
+    .statistics-table td:nth-child(11) { width: 7%; }
+    .statistics-table th:nth-child(12),
+    .statistics-table td:nth-child(12) { width: 8%; }
+    .statistics-table th:nth-child(13),
+    .statistics-table td:nth-child(13) { width: 10%; }
+
+    .table-wrap table {
+      min-width: 1200px;
+    }
+
+    .mono {
+      direction: ltr;
+      unicode-bidi: isolate;
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    @media (max-width: 1100px) {
+      .top-panel .form-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .header h1 {
+        font-size: 24px;
+      }
+
+      .table-wrap table {
+        min-width: 1200px;
+      }
+
+      .form-actions .btn {
+        min-width: 0;
+        width: auto;
+      }
+
+    }
+  </style>
+</head>
+<body class="app-shell">
+  <div class="page app-page">
+    <section class="header">
+      <div>
+        <h1>واجهة الاحصائيات</h1>
+        <p>عرض إحصائيات الموظفين حسب الحضور والانصراف والغياب ضمن المدة المحددة.</p>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn dark" id="backBtn">العودة للرئيسية</button>
+      </div>
+    </section>
+
+    <section class="panel top-panel">
+      <h2>تعبئة / اظهار البيانات</h2>
+      <form id="statisticsForm">
+          <div class="form-grid">
+            <div class="form-row fields-row-1">
+              <div class="field">
+                <label for="department">القسم</label>
+                <select id="department">
+                  <option value="">-- اختر --</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label for="section">النوبة</label>
+                <select id="section">
+                  <option value="">-- اختر --</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-row fields-row-2">
+              <div class="field">
+                <label for="fromDate">من التاريخ</label>
+                <div class="date-picker-wrap">
+                  <input id="fromDateDisplay" class="date-display-input" type="text" placeholder="yyyy/mm/dd" readonly />
+                  <button type="button" class="date-picker-trigger" data-picker-id="fromDate" aria-label="اختيار من التاريخ"></button>
+                  <input id="fromDate" type="date" class="native-date-input" />
+                </div>
+              </div>
+
+              <div class="field">
+                <label for="toDate">الى التاريخ</label>
+                <div class="date-picker-wrap">
+                  <input id="toDateDisplay" class="date-display-input" type="text" placeholder="yyyy/mm/dd" readonly />
+                  <button type="button" class="date-picker-trigger" data-picker-id="toDate" aria-label="اختيار الى التاريخ"></button>
+                  <input id="toDate" type="date" class="native-date-input" />
+                </div>
+              </div>
+            </div>
+
+            <div class="form-row fields-row-3">
+              <div class="field">
+                <label for="employeeName">اسم الموظف</label>
+                <input id="employeeName" type="text" placeholder="ابحث باسم الموظف" />
+              </div>
+            </div>
+
+            <div class="form-row fields-row-3">
+              <div class="form-actions">
+                <button type="button" class="btn success" id="searchBtn">بحث</button>
+                <button type="button" class="btn primary" id="printBtn">طباعة بيانات</button>
+              </div>
+            </div>
+          </div>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h2>صندوق عرض البيانات</h2>
+      <div class="table-tools">
+        <p id="countLabel">عدد السجلات: 0</p>
+        <div class="bottom-actions">
+          <button type="button" class="btn primary" id="refreshBtn">تحديث العرض</button>
+        </div>
+      </div>
+
+      <div class="status-filter-bar" aria-label="خيارات فلترة الحالات">
+        <label class="status-filter-item"><input type="checkbox" id="statusPresent" /><span>حضور</span></label>
+        <label class="status-filter-item"><input type="checkbox" id="statusLate" /><span>تأخير</span></label>
+        <label class="status-filter-item"><input type="checkbox" id="statusPermission" /><span>استئذان</span></label>
+        <label class="status-filter-item"><input type="checkbox" id="statusAbsent" /><span>غياب</span></label>
+        <label class="status-filter-item status-return-item"><input type="checkbox" id="statusReturn" /><span>حضور بعد غياب</span></label>
+        <label class="status-filter-item"><input type="checkbox" id="statusLicense" /><span>رخصة</span></label>
+        <label class="status-filter-item"><input type="checkbox" id="statusLeave" /><span>إجازة</span></label>
+        <label class="status-filter-item"><input type="checkbox" id="statusCourse" /><span>دورة</span></label>
+        <button type="button" class="status-filter-refresh" id="resetStatusFilters" title="إعادة التعيين" aria-label="إعادة التعيين">↻</button>
+      </div>
+
+      <div class="table-wrap">
+        <table class="statistics-table">
+          <thead>
+            <tr>
+              <th>م</th>
+              <th>التاريخ</th>
+              <th>الاسم</th>
+              <th>القسم</th>
+              <th>النوبة</th>
+              <th>الحالة</th>
+              <th>الفترة</th>
+              <th>الحضور</th>
+              <th>الانصراف</th>
+              <th>بداية</th>
+              <th>نهاية</th>
+              <th>الوصف</th>
+              <th>الملاحظات</th>
+            </tr>
+          </thead>
+          <tbody id="rows">
+            <tr>
+              <td colspan="13">لا توجد بيانات متاحة للمعايير الحالية.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const authToken = localStorage.getItem('authToken');
+    if (!authToken) {
+      window.location.href = '/';
+    }
+
+    function pad2(value) {
+      return String(value).padStart(2, '0');
+    }
+
+    function toSlashDate(value) {
+      if (!value) return '';
+      const parts = String(value).split('-');
+      if (parts.length !== 3) return '';
+      return `${parts[0]}/${parts[1]}/${parts[2]}`;
+    }
+
+    const fromDate = document.getElementById('fromDate');
+    const toDate = document.getElementById('toDate');
+    const fromDateDisplay = document.getElementById('fromDateDisplay');
+    const toDateDisplay = document.getElementById('toDateDisplay');
+    const departmentInput = document.getElementById('department');
+    const sectionInput = document.getElementById('section');
+    const employeeNameInput = document.getElementById('employeeName');
+    const rowsBody = document.getElementById('rows');
+    const countLabel = document.getElementById('countLabel');
+    const searchBtn = document.getElementById('searchBtn');
+    const refreshBtn = document.getElementById('refreshBtn');
+    const dateButtons = document.querySelectorAll('.date-picker-trigger');
+    let departmentSectionRows = [];
+    let currentRows = [];
+
+    const statusCheckboxes = {
+      حضور: document.getElementById('statusPresent'),
+      تأخير: document.getElementById('statusLate'),
+      استئذان: document.getElementById('statusPermission'),
+      غياب: document.getElementById('statusAbsent'),
+      'حضور بعد غياب': document.getElementById('statusReturn'),
+      رخصة: document.getElementById('statusLicense'),
+      إجازة: document.getElementById('statusLeave'),
+      دورة: document.getElementById('statusCourse')
+    };
+
+    function syncDateDisplays() {
+      fromDateDisplay.value = toSlashDate(fromDate.value);
+      toDateDisplay.value = toSlashDate(toDate.value);
+    }
+
+    function normalizeDepartment(value) {
+      const normalized = String(value || '').trim();
+      if (normalized === 'الإحصاء') return 'الاحصاء';
+      return normalized;
+    }
+
+    function populateSelect(select, values, preferredValue = '') {
+      select.innerHTML = '<option value="">-- اختر --</option>';
+      Array.from(new Set(values.map((item) => String(item || '').trim()).filter(Boolean))).forEach((value) => {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = value;
+        select.appendChild(option);
+      });
+
+      if (preferredValue && Array.from(select.options).some((option) => option.value === preferredValue)) {
+        select.value = preferredValue;
+      }
+    }
+
+    function populateStatisticsSections(preferredValue = '') {
+      const selectedDepartment = normalizeDepartment(departmentInput.value);
+      const sections = departmentSectionRows
+        .filter((item) => normalizeDepartment(item.Department) === selectedDepartment)
+        .map((item) => String(item.Section || '').trim())
+        .filter(Boolean);
+
+      populateSelect(sectionInput, sections, preferredValue);
+    }
+
+    function normalizeText(value) {
+      return String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function getSelectedStatusTerms() {
+      const mapping = [
+        { key: 'حضور', terms: ['حضور'] },
+        { key: 'تأخير', terms: ['تأخير'] },
+        { key: 'استئذان', terms: ['استئذان', 'استئذان', 'إذن', 'اذن', 'أذن'] },
+        { key: 'غياب', terms: ['غياب'] },
+        { key: 'حضور بعد غياب', terms: ['حضور بعد غياب'] },
+        { key: 'رخصة', terms: ['رخصة'] },
+        { key: 'إجازة', terms: ['إجازة', 'اجازة'] },
+        { key: 'دورة', terms: ['دورة'] }
+      ];
+
+      return mapping.filter((item) => statusCheckboxes[item.key]?.checked);
+    }
+
+    function getFilteredRows() {
+      const selectedStatuses = getSelectedStatusTerms();
+      if (!selectedStatuses.length) {
+        return [...currentRows];
+      }
+
+      return currentRows.filter((item) => {
+        const haystack = normalizeText([item.Status, item.Type, item.Note].filter(Boolean).join(' '));
+        return selectedStatuses.some((entry) => entry.terms.some((term) => haystack.includes(normalizeText(term))));
+      });
+    }
+
+    function renderRows(items) {
+      rowsBody.innerHTML = '';
+
+      if (!Array.isArray(items) || items.length === 0) {
+        rowsBody.innerHTML = '<tr><td colspan="13">لا توجد بيانات متاحة للمعايير الحالية.</td></tr>';
+        countLabel.textContent = 'عدد السجلات: 0';
+        return;
+      }
+
+      items.forEach((item, index) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td class="mono">${index + 1}</td>
+          <td class="mono">${escapeHtml(item.Today || '')}</td>
+          <td>${escapeHtml(item.Name || '')}</td>
+          <td>${escapeHtml(item.Department || '')}</td>
+          <td>${escapeHtml(item.Section || '')}</td>
+          <td>${escapeHtml(item.Status || '')}</td>
+          <td>${escapeHtml(item.Period || '')}</td>
+          <td class="mono">${escapeHtml(item.InTime || '')}</td>
+          <td class="mono">${escapeHtml(item.OutTime || '')}</td>
+          <td class="mono">${escapeHtml(item.Startdate || '')}</td>
+          <td class="mono">${escapeHtml(item.Enddate || '')}</td>
+          <td>${escapeHtml(item.Type || item.SubSection || '')}</td>
+          <td>${escapeHtml(item.Note || '')}</td>
+        `;
+        rowsBody.appendChild(row);
+      });
+
+      countLabel.textContent = `عدد السجلات: ${items.length}`;
+    }
+
+    async function loadStatisticsRows() {
+      const params = new URLSearchParams();
+      if (departmentInput.value) params.set('department', departmentInput.value);
+      if (sectionInput.value) params.set('section', sectionInput.value);
+      if (employeeNameInput.value.trim()) params.set('name', employeeNameInput.value.trim());
+      if (fromDate.value) params.set('fromDate', fromDate.value);
+      if (toDate.value) params.set('toDate', toDate.value);
+
+      const query = params.toString();
+      const url = query ? `/api/daily-logs/search?${query}` : '/api/daily-logs';
+      const data = await requestJson(url, {
+        headers: { Authorization: `Bearer ${authToken}` }
+      });
+      if (!data) return;
+
+      currentRows = Array.isArray(data) ? data : [];
+      renderRows(getFilteredRows());
+    }
+
+    function refreshRenderedRows() {
+      renderRows(getFilteredRows());
+    }
+
+    async function requestJson(url, options = {}) {
+      const response = await fetch(url, options);
+      if (response.status === 401 || response.status === 403) {
+        localStorage.removeItem('authToken');
+        window.location.href = '/';
+        return null;
+      }
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(String(data?.message || '').trim() || 'تعذر تحميل البيانات المطلوبة.');
+      }
+      return data;
+    }
+
+    async function loadDepartmentSections() {
+      const data = await requestJson('/api/employees/department-sections', {
+        headers: { Authorization: `Bearer ${authToken}` }
+      });
+      if (!data) return;
+
+      departmentSectionRows = Array.isArray(data) ? data : [];
+      const departments = departmentSectionRows.map((item) => normalizeDepartment(item.Department));
+      populateSelect(departmentInput, departments, departmentInput.value);
+      populateStatisticsSections(sectionInput.value);
+    }
+
+    dateButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        const pickerId = button.dataset.pickerId;
+        const input = document.getElementById(pickerId);
+        if (!input) return;
+        if (typeof input.showPicker === 'function') {
+          input.showPicker();
+          return;
+        }
+        input.click();
+      });
+    });
+
+    fromDate.addEventListener('change', syncDateDisplays);
+    toDate.addEventListener('change', syncDateDisplays);
+
+    const now = new Date();
+    const today = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`;
+    fromDate.value = today;
+    toDate.value = today;
+    syncDateDisplays();
+
+    document.getElementById('backBtn').addEventListener('click', () => {
+      window.location.href = '/dashboard.html';
+    });
+
+    document.getElementById('printBtn').addEventListener('click', () => {
+      window.print();
+    });
+
+    departmentInput.addEventListener('change', () => {
+      populateStatisticsSections();
+    });
+
+    searchBtn.addEventListener('click', () => {
+      loadStatisticsRows().catch((error) => {
+        countLabel.textContent = error.message || 'تعذر تحميل البيانات.';
+      });
+    });
+
+    function clearStatusFilters() {
+      document.querySelectorAll('.status-filter-bar input[type="checkbox"]').forEach((checkbox) => {
+        checkbox.checked = false;
+      });
+    }
+
+    refreshBtn.addEventListener('click', () => {
+      clearStatusFilters();
+      loadDepartmentSections()
+        .then(loadStatisticsRows)
+        .catch((error) => {
+          countLabel.textContent = error.message || 'تعذر تحديث العرض.';
+        });
+    });
+
+    document.getElementById('resetStatusFilters')?.addEventListener('click', () => {
+      clearStatusFilters();
+      refreshRenderedRows();
+    });
+
+    Object.values(statusCheckboxes).forEach((checkbox) => {
+      checkbox?.addEventListener('change', refreshRenderedRows);
+    });
+
+    employeeNameInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        searchBtn.click();
+      }
+    });
+
+    loadDepartmentSections()
+      .then(loadStatisticsRows)
+      .catch((error) => {
+        countLabel.textContent = error.message || 'تعذر تحميل بيانات الاحصائيات.';
+      });
+  </script>
+</body>
+</html>

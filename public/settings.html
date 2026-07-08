@@ -1,0 +1,1189 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>الإعدادات</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: Tahoma, Arial, sans-serif;
+      color: var(--ui-text);
+      background: linear-gradient(180deg, #dfeaff 0%, #f8fbff 100%);
+    }
+
+    .page.app-page.page-shell {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .page.app-page.page-shell > * {
+      min-width: 0;
+    }
+
+    .full-row {
+      grid-column: 1 / -1;
+    }
+
+    .status-line {
+      display: none;
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .status-line.show {
+      display: block;
+    }
+
+    .status-line.ok {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .status-line.error {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .lookup-row {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .single-row {
+      margin-top: 12px;
+    }
+
+    .table-wrap {
+      overflow: auto;
+      border: 1px solid var(--ui-border);
+      border-radius: 14px;
+      max-height: 64vh;
+    }
+
+    .table-tools {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: nowrap;
+      margin-bottom: 10px;
+    }
+
+    .table-tools p {
+      margin: 0;
+      color: var(--ui-muted);
+      font-weight: 700;
+    }
+
+    .table-tools .actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .table-search {
+      flex: 1;
+      min-width: 0;
+      max-width: none;
+      width: auto;
+    }
+
+    .state-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 72px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .state-badge.active {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .state-badge.inactive {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .state-badge.protected {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1100px;
+      background: #fff;
+    }
+
+    thead th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: #f8fafc;
+      color: #475569;
+    }
+
+    th,
+    tbody td {
+      border-bottom: 1px solid #e2e8f0;
+      padding: 11px 9px;
+      font-size: 14px;
+      white-space: nowrap;
+      text-align: right;
+    }
+
+    tbody tr:hover {
+      background: #f8fbff;
+      cursor: pointer;
+    }
+
+    tbody tr.selected {
+      background: #dbeafe;
+    }
+
+    .cell-time {
+      direction: ltr;
+      unicode-bidi: isolate;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    #lookupTable {
+      table-layout: fixed;
+      min-width: 0;
+      width: 100%;
+    }
+
+    #lookupTable th,
+    #lookupTable td {
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      vertical-align: middle;
+      white-space: normal;
+    }
+
+    #lookupTable th:nth-child(1),
+    #lookupTable td:nth-child(1) { width: 8%; }
+    #lookupTable th:nth-child(2),
+    #lookupTable td:nth-child(2) { width: 15%; }
+    #lookupTable th:nth-child(3),
+    #lookupTable td:nth-child(3) { width: 18%; }
+    #lookupTable th:nth-child(4),
+    #lookupTable td:nth-child(4) { width: 18%; }
+    #lookupTable th:nth-child(5),
+    #lookupTable td:nth-child(5) { width: 12%; }
+    #lookupTable th:nth-child(6),
+    #lookupTable td:nth-child(6) { width: 14%; }
+    #lookupTable th:nth-child(7),
+    #lookupTable td:nth-child(7) { width: 14%; }
+
+    @media print {
+      .actions,
+      .toolbar,
+      .status-line {
+        display: none !important;
+      }
+
+      .table-wrap {
+        border: 0;
+        max-height: none;
+      }
+
+      table {
+        min-width: 0;
+      }
+    }
+
+    @media (max-width: 900px) {
+      .row {
+        grid-template-columns: 1fr;
+      }
+
+      .table-tools {
+        align-items: stretch;
+      }
+
+      .table-tools p,
+      .table-tools .btn,
+      .table-search {
+        width: 100%;
+      }
+
+      .table-search {
+        min-width: 0;
+        flex-basis: 100%;
+      }
+    }
+  </style>
+  <link rel="stylesheet" href="/layout-defaults.css" />
+</head>
+<body class="app-shell">
+  <div class="page app-page page-shell">
+    <section class="header">
+      <div>
+        <h1>واجهة الاعدادات</h1>
+        <p>إدارة بيانات المستخدمين وكلمات السر والصلاحيات.</p>
+      </div>
+      <div class="actions">
+        <button class="btn dark" type="button" id="backBtn">العودة للرئيسية</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>تعبئة / إظهار بيانات المستخدمين</h2>
+      <form id="settingsForm" autocomplete="off">
+        <div class="single-row">
+          <div class="field">
+            <label for="fullName">اسم الموظف</label>
+            <select id="fullName">
+              <option value="">--اختر --</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label for="department">القسم</label>
+            <input id="department" type="text" readonly />
+          </div>
+          <div class="field">
+            <label for="section">النوبة</label>
+            <input id="section" type="text" readonly />
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label for="username">اسم المستخدم</label>
+            <input id="username" type="text" autocomplete="off" />
+          </div>
+          <div class="field">
+            <label for="password">كلمة السر</label>
+            <input id="password" type="text" autocomplete="off" />
+          </div>
+        </div>
+
+        <div class="single-row">
+          <div class="field">
+            <label for="permission">الصلاحية</label>
+            <select id="permission">
+              <option value="">--اختر --</option>
+              <option value="Admin">مدير</option>
+              <option value="User">مستخدم</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="single-row">
+          <div class="field">
+            <label for="userIsActive">الحالة</label>
+            <select id="userIsActive">
+              <option value="">-- اختر --</option>
+              <option value="1">نشط</option>
+              <option value="0">موقوف</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="toolbar">
+          <button class="btn success" type="button" id="addBtn">إضافة بيانات</button>
+          <button class="btn warning" type="button" id="editBtn">تعديل بيانات</button>
+          <button class="btn danger" type="button" id="deleteBtn">حذف بيانات</button>
+          <button class="btn primary" type="button" id="printBtn">طباعة بيانات</button>
+        </div>
+
+        <div class="status-line" id="statusMsg"></div>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h2>صندوق عرض البيانات</h2>
+      <div class="table-tools">
+        <p id="countLabel">عدد السجلات: 0</p>
+        <button class="btn primary" type="button" id="refreshBtn">تحديث العرض</button>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>اسم المستخدم</th>
+              <th>كلمة السر</th>
+              <th>الصلاحية</th>
+              <th>الاسم</th>
+              <th>القسم</th>
+              <th>النوبة</th>
+              <th>الحالة</th>
+              <th>تاريخ الإضافة</th>
+              <th>آخر تحديث</th>
+              <th>آخر دخول</th>
+            </tr>
+          </thead>
+          <tbody id="usersRows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>تعبئة / إظهار بيانات الأقسام والنوبات والشعب</h2>
+      <form id="lookupForm" autocomplete="off">
+        <div class="row lookup-row">
+          <div class="field">
+            <label for="lookupDepartment">القسم</label>
+            <input id="lookupDepartment" type="text" />
+          </div>
+          <div class="field">
+            <label for="lookupSection">النوبة</label>
+            <input id="lookupSection" type="text" />
+          </div>
+          <div class="field">
+            <label for="lookupSubSection">الشعبة</label>
+            <input id="lookupSubSection" type="text" />
+          </div>
+        </div>
+
+        <div class="single-row">
+          <div class="field">
+            <label for="lookupIsActive">الحالة</label>
+            <select id="lookupIsActive">
+              <option value="">-- اختر --</option>
+              <option value="1">نشط</option>
+              <option value="0">موقوف</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="toolbar">
+          <button class="btn success" type="button" id="lookupAddBtn">إضافة بيانات</button>
+          <button class="btn warning" type="button" id="lookupEditBtn">تعديل بيانات</button>
+          <button class="btn danger" type="button" id="lookupDeleteBtn">حذف بيانات</button>
+          <button class="btn primary" type="button" id="lookupPrintBtn">طباعة بيانات</button>
+        </div>
+
+        <div class="status-line" id="lookupStatusMsg"></div>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h2>صندوق عرض البيانات</h2>
+      <div class="table-tools">
+        <p id="lookupCountLabel">عدد السجلات: 0</p>
+        <input id="lookupSearchInput" class="table-search" placeholder="فلترة بالقسم أو النوبة أو الشعبة" />
+        <button class="btn primary" type="button" id="lookupRefreshBtn">تحديث العرض</button>
+      </div>
+
+      <div class="table-wrap">
+        <table id="lookupTable">
+          <thead>
+            <tr>
+              <th>التسلسل</th>
+              <th>القسم</th>
+              <th>النوبة</th>
+              <th>الشعبة</th>
+              <th>الحالة</th>
+              <th>تاريخ الإضافة</th>
+              <th>آخر تحديث</th>
+            </tr>
+          </thead>
+          <tbody id="lookupRows"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const authToken = localStorage.getItem('authToken');
+    if (!authToken) {
+      window.location.href = '/';
+    }
+
+    const fullNameSelect = document.getElementById('fullName');
+    const departmentInput = document.getElementById('department');
+    const sectionInput = document.getElementById('section');
+    const usernameInput = document.getElementById('username');
+    const passwordInput = document.getElementById('password');
+    const permissionSelect = document.getElementById('permission');
+    const usersRows = document.getElementById('usersRows');
+    const statusMsg = document.getElementById('statusMsg');
+    const userIsActiveInput = document.getElementById('userIsActive');
+    const lookupDepartmentInput = document.getElementById('lookupDepartment');
+    const lookupSectionInput = document.getElementById('lookupSection');
+    const lookupSubSectionInput = document.getElementById('lookupSubSection');
+    const lookupIsActiveInput = document.getElementById('lookupIsActive');
+    const lookupRows = document.getElementById('lookupRows');
+    const lookupStatusMsg = document.getElementById('lookupStatusMsg');
+    const lookupSearchInput = document.getElementById('lookupSearchInput');
+
+    const backBtn = document.getElementById('backBtn');
+    const refreshBtn = document.getElementById('refreshBtn');
+    const addBtn = document.getElementById('addBtn');
+    const editBtn = document.getElementById('editBtn');
+    const deleteBtn = document.getElementById('deleteBtn');
+    const printBtn = document.getElementById('printBtn');
+    const countLabel = document.getElementById('countLabel');
+    const lookupAddBtn = document.getElementById('lookupAddBtn');
+    const lookupEditBtn = document.getElementById('lookupEditBtn');
+    const lookupDeleteBtn = document.getElementById('lookupDeleteBtn');
+    const lookupPrintBtn = document.getElementById('lookupPrintBtn');
+    const lookupRefreshBtn = document.getElementById('lookupRefreshBtn');
+    const lookupCountLabel = document.getElementById('lookupCountLabel');
+
+    let employees = [];
+    let users = [];
+    let selectedUserId = null;
+    let departmentSections = [];
+    let visibleDepartmentSections = [];
+    let selectedLookupId = null;
+
+    function pad2(value) {
+      return String(value).padStart(2, '0');
+    }
+
+    function formatDateTime(dateValue) {
+      if (!dateValue) return '';
+      const date = new Date(dateValue);
+      if (Number.isNaN(date.getTime())) return String(dateValue || '');
+      const year = date.getFullYear();
+      const month = pad2(date.getMonth() + 1);
+      const day = pad2(date.getDate());
+      const hour = pad2(date.getHours());
+      const minute = pad2(date.getMinutes());
+      const second = pad2(date.getSeconds());
+      return `${hour}:${minute}:${second} ${year}/${month}/${day}`;
+    }
+
+    function setStatus(message, type = '') {
+      statusMsg.textContent = message || '';
+      statusMsg.className = 'status-line';
+
+      if (!message) {
+        return;
+      }
+
+      statusMsg.classList.add('show');
+      if (type === 'success') {
+        statusMsg.classList.add('ok');
+      }
+      if (type === 'error') {
+        statusMsg.classList.add('error');
+      }
+    }
+
+    function setLookupStatus(message, type = '') {
+      lookupStatusMsg.textContent = message || '';
+      lookupStatusMsg.className = 'status-line';
+
+      if (!message) {
+        return;
+      }
+
+      lookupStatusMsg.classList.add('show');
+      if (type === 'success') {
+        lookupStatusMsg.classList.add('ok');
+      }
+      if (type === 'error') {
+        lookupStatusMsg.classList.add('error');
+      }
+    }
+
+    function getPayloadFromForm() {
+      return {
+        Name: String(fullNameSelect.value || '').trim(),
+        Department: String(departmentInput.value || '').trim(),
+        Section: String(sectionInput.value || '').trim(),
+        Username: String(usernameInput.value || '').trim(),
+        Password: String(passwordInput.value || '').trim(),
+        Permission: String(permissionSelect.value || '').trim(),
+        IsActive: Number(userIsActiveInput.value || 1)
+      };
+    }
+
+    function resetForm() {
+      fullNameSelect.value = '';
+      departmentInput.value = '';
+      sectionInput.value = '';
+      usernameInput.value = '';
+      passwordInput.value = '';
+      permissionSelect.value = '';
+      userIsActiveInput.value = '';
+      selectedUserId = null;
+      const protectedOption = userIsActiveInput.querySelector('option[value="protected"]');
+      if (protectedOption) {
+        protectedOption.remove();
+      }
+      fullNameSelect.disabled = false;
+      usernameInput.readOnly = false;
+      permissionSelect.disabled = false;
+      userIsActiveInput.disabled = false;
+      deleteBtn.disabled = false;
+      userIsActiveInput.style.color = '';
+      highlightSelectedRow();
+    }
+
+    function isProtectedAdminUser(user) {
+      return String(user?.Username || '').trim().toLowerCase() === 'admin';
+    }
+
+    function resetLookupForm() {
+      lookupDepartmentInput.value = '';
+      lookupSectionInput.value = '';
+      lookupSubSectionInput.value = '';
+      lookupIsActiveInput.value = '';
+      selectedLookupId = null;
+      highlightSelectedLookupRow();
+    }
+
+    function updateDepartmentSectionFromName() {
+      const selectedName = String(fullNameSelect.value || '').trim();
+      const employee = employees.find((item) => String(item.Name || '').trim() === selectedName);
+      departmentInput.value = employee ? String(employee.Department || '').trim() : '';
+      sectionInput.value = employee ? String(employee.Section || '').trim() : '';
+    }
+
+    function renderEmployeesOptions() {
+      const previous = fullNameSelect.value;
+      fullNameSelect.innerHTML = '<option value="">--اختر --</option>';
+
+      employees.forEach((item) => {
+        const option = document.createElement('option');
+        option.value = String(item.Name || '').trim();
+        option.textContent = String(item.Name || '').trim();
+        fullNameSelect.appendChild(option);
+      });
+
+      if (previous && employees.some((item) => String(item.Name || '').trim() === previous)) {
+        fullNameSelect.value = previous;
+      }
+
+      updateDepartmentSectionFromName();
+    }
+
+    function getLookupPayload() {
+      return {
+        Department: String(lookupDepartmentInput.value || '').trim(),
+        Section: String(lookupSectionInput.value || '').trim(),
+        SubSection: String(lookupSubSectionInput.value || '').trim(),
+        IsActive: Number(lookupIsActiveInput.value || 1)
+      };
+    }
+
+    function highlightSelectedRow() {
+      const rows = usersRows.querySelectorAll('tr');
+      rows.forEach((row) => {
+        const rowId = Number(row.dataset.id || 0);
+        row.classList.toggle('selected', selectedUserId && rowId === selectedUserId);
+      });
+    }
+
+    function highlightSelectedLookupRow() {
+      const rows = lookupRows.querySelectorAll('tr');
+      rows.forEach((row) => {
+        const rowId = Number(row.dataset.id || 0);
+        row.classList.toggle('selected', selectedLookupId && rowId === selectedLookupId);
+      });
+    }
+
+    function selectUser(userId) {
+      const target = users.find((item) => Number(item.ID) === Number(userId));
+      if (!target) return;
+
+      selectedUserId = Number(target.ID);
+      fullNameSelect.value = String(target.Name || '').trim();
+      updateDepartmentSectionFromName();
+      if (!departmentInput.value) {
+        departmentInput.value = String(target.Department || '').trim();
+      }
+      if (!sectionInput.value) {
+        sectionInput.value = String(target.Section || '').trim();
+      }
+      usernameInput.value = String(target.Username || '').trim();
+      passwordInput.value = String(target.Password || '');
+      permissionSelect.value = String(target.Permission || '').trim();
+      const defaultStatusValue = Number(target.IsActive) === 0 ? '0' : '1';
+      userIsActiveInput.value = defaultStatusValue;
+
+      const protectedAdmin = isProtectedAdminUser(target);
+      const existingProtectedOption = userIsActiveInput.querySelector('option[value="protected"]');
+      if (existingProtectedOption) {
+        existingProtectedOption.remove();
+      }
+
+      if (protectedAdmin) {
+        const option = document.createElement('option');
+        option.value = 'protected';
+        option.textContent = 'محمي';
+        userIsActiveInput.appendChild(option);
+        userIsActiveInput.value = 'protected';
+        userIsActiveInput.style.color = '#991b1b';
+      } else {
+        userIsActiveInput.style.color = '';
+      }
+
+      fullNameSelect.disabled = protectedAdmin;
+      usernameInput.readOnly = protectedAdmin;
+      permissionSelect.disabled = protectedAdmin;
+      userIsActiveInput.disabled = protectedAdmin;
+      deleteBtn.disabled = protectedAdmin;
+
+      highlightSelectedRow();
+      if (protectedAdmin) {
+        setStatus('حساب admin محمي: المسموح تعديله فقط كلمة السر.', 'error');
+      } else {
+        setStatus(`تم اختيار المستخدم رقم ${selectedUserId}.`);
+      }
+    }
+
+    function renderUsersTable() {
+      usersRows.innerHTML = '';
+
+      if (!Array.isArray(users) || users.length === 0) {
+        countLabel.textContent = 'عدد السجلات: 0';
+        usersRows.innerHTML = '<tr><td colspan="10">لا توجد بيانات مستخدمين حالياً.</td></tr>';
+        return;
+      }
+
+      countLabel.textContent = `عدد السجلات: ${users.length}`;
+
+      users.forEach((item) => {
+        const row = document.createElement('tr');
+        row.dataset.id = String(item.ID || '');
+        const isProtectedAdmin = isProtectedAdminUser(item);
+        const stateClass = isProtectedAdmin ? 'protected' : (Number(item.IsActive) === 0 ? 'inactive' : 'active');
+        const stateLabel = isProtectedAdmin ? 'محمي' : (Number(item.IsActive) === 0 ? 'موقوف' : 'نشط');
+        row.innerHTML = `
+          <td>${item.Username || ''}</td>
+          <td>${item.Password || ''}</td>
+          <td>${item.Permission || ''}</td>
+          <td>${item.Name || ''}</td>
+          <td>${item.Department || ''}</td>
+          <td>${item.Section || ''}</td>
+          <td><span class="state-badge ${stateClass}">${stateLabel}</span></td>
+          <td class="cell-time">${formatDateTime(item.CreatedAt || '')}</td>
+          <td class="cell-time">${formatDateTime(item.UpdatedAt || '')}</td>
+          <td class="cell-time">${formatDateTime(item.LastLogin || '')}</td>
+        `;
+
+        row.addEventListener('click', () => {
+          selectUser(item.ID);
+        });
+
+        usersRows.appendChild(row);
+      });
+
+      highlightSelectedRow();
+    }
+
+    function selectLookupRow(item) {
+      selectedLookupId = Number(item.ID);
+      lookupDepartmentInput.value = String(item.Department || '').trim();
+      lookupSectionInput.value = String(item.Section || '').trim();
+      lookupSubSectionInput.value = String(item.SubSection || '').trim();
+      lookupIsActiveInput.value = Number(item.IsActive) === 0 ? '0' : '1';
+      highlightSelectedLookupRow();
+      setLookupStatus(`تم اختيار السجل رقم ${selectedLookupId}.`);
+    }
+
+    function getLookupFilteredRows() {
+      const keyword = String(lookupSearchInput.value || '').trim().toLowerCase();
+      if (!keyword) return [...departmentSections];
+
+      return departmentSections.filter((item) =>
+        [item.Department, item.Section, item.SubSection]
+          .map((value) => String(value || '').toLowerCase())
+          .some((value) => value.includes(keyword))
+      );
+    }
+
+    function renderDepartmentSectionRows() {
+      visibleDepartmentSections = getLookupFilteredRows();
+      lookupRows.innerHTML = '';
+
+      if (!Array.isArray(visibleDepartmentSections) || visibleDepartmentSections.length === 0) {
+        lookupCountLabel.textContent = 'عدد السجلات: 0';
+        lookupRows.innerHTML = '<tr><td colspan="7">لا توجد بيانات أقسام ونوبات وشعب حالياً.</td></tr>';
+        return;
+      }
+
+      lookupCountLabel.textContent = `عدد السجلات: ${visibleDepartmentSections.length}`;
+
+      visibleDepartmentSections.forEach((item, index) => {
+        const row = document.createElement('tr');
+        row.dataset.id = String(item.ID || '');
+        row.innerHTML = `
+          <td>${index + 1}</td>
+          <td>${item.Department || ''}</td>
+          <td>${item.Section || ''}</td>
+          <td>${item.SubSection || ''}</td>
+          <td><span class="state-badge ${Number(item.IsActive) === 0 ? 'inactive' : 'active'}">${Number(item.IsActive) === 0 ? 'موقوف' : 'نشط'}</span></td>
+          <td class="cell-time">${formatDateTime(item.CreatedAt || '')}</td>
+          <td class="cell-time">${formatDateTime(item.UpdatedAt || '')}</td>
+        `;
+
+        row.addEventListener('click', () => {
+          selectLookupRow(item);
+        });
+
+        lookupRows.appendChild(row);
+      });
+
+      highlightSelectedLookupRow();
+    }
+
+    async function authorizedFetch(url, options = {}) {
+      const response = await fetch(url, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authToken}`,
+          ...(options.headers || {})
+        }
+      });
+
+      if (response.status === 401 || response.status === 403) {
+        localStorage.removeItem('authToken');
+        window.location.href = '/';
+        return null;
+      }
+
+      return response;
+    }
+
+    async function loadEmployees() {
+      const response = await authorizedFetch('/api/settings/employees-active');
+      if (!response) return;
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.message || 'تعذر تحميل الموظفين النشطين.');
+      }
+
+      employees = await response.json();
+      renderEmployeesOptions();
+    }
+
+    async function loadUsers() {
+      const response = await authorizedFetch('/api/settings/users');
+      if (!response) return;
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.message || 'تعذر تحميل بيانات المستخدمين.');
+      }
+
+      users = await response.json();
+      renderUsersTable();
+    }
+
+    async function loadDepartmentSections() {
+      const response = await authorizedFetch('/api/settings/department-sections');
+      if (!response) return;
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.message || 'تعذر تحميل بيانات الأقسام والنوبات.');
+      }
+
+      departmentSections = await response.json();
+      renderDepartmentSectionRows();
+    }
+
+    async function addUser() {
+      const payload = getPayloadFromForm();
+      if (!payload.Name) {
+        setStatus('اختر اسم الموظف من القائمة.', 'error');
+        return;
+      }
+      if (!payload.Username) {
+        setStatus('يرجى إدخال اسم المستخدم.', 'error');
+        return;
+      }
+      if (!payload.Password) {
+        setStatus('يرجى إدخال كلمة السر.', 'error');
+        return;
+      }
+      if (!payload.Permission) {
+        setStatus('يرجى اختيار الصلاحية.', 'error');
+        return;
+      }
+      if (userIsActiveInput.value === '') {
+        setStatus('يرجى اختيار الحالة.', 'error');
+        return;
+      }
+
+      const response = await authorizedFetch('/api/settings/users', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      if (!response) return;
+
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setStatus(body.message || 'تعذر إضافة المستخدم.', 'error');
+        return;
+      }
+
+      setStatus('تمت إضافة المستخدم بنجاح.', 'success');
+      await loadUsers();
+      resetForm();
+    }
+
+    async function updateUser() {
+      if (!selectedUserId) {
+        setStatus('اختر مستخدمًا من الجدول أولًا قبل التعديل.', 'error');
+        return;
+      }
+
+      const payload = getPayloadFromForm();
+      if (!payload.Name) {
+        setStatus('اختر اسم الموظف من القائمة.', 'error');
+        return;
+      }
+      if (!payload.Username) {
+        setStatus('يرجى إدخال اسم المستخدم.', 'error');
+        return;
+      }
+      if (!payload.Password) {
+        setStatus('يرجى إدخال كلمة السر.', 'error');
+        return;
+      }
+      if (!payload.Permission) {
+        setStatus('يرجى اختيار الصلاحية.', 'error');
+        return;
+      }
+      if (userIsActiveInput.value === '') {
+        setStatus('يرجى اختيار الحالة.', 'error');
+        return;
+      }
+
+      const response = await authorizedFetch(`/api/settings/users/${selectedUserId}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload)
+      });
+      if (!response) return;
+
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setStatus(body.message || 'تعذر تعديل المستخدم.', 'error');
+        return;
+      }
+
+      setStatus('تم تعديل بيانات المستخدم بنجاح.', 'success');
+      await loadUsers();
+      resetForm();
+    }
+
+    async function deleteUser() {
+      if (!selectedUserId) {
+        setStatus('اختر مستخدمًا من الجدول أولًا قبل الحذف.', 'error');
+        return;
+      }
+
+      const target = users.find((item) => Number(item.ID) === Number(selectedUserId));
+      if (isProtectedAdminUser(target)) {
+        setStatus('لا يمكن حذف حساب admin الرئيسي.', 'error');
+        return;
+      }
+
+      const confirmed = window.confirm('هل أنت متأكد من حذف المستخدم المحدد؟');
+      if (!confirmed) return;
+
+      const response = await authorizedFetch(`/api/settings/users/${selectedUserId}`, {
+        method: 'DELETE'
+      });
+      if (!response) return;
+
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setStatus(body.message || 'تعذر حذف المستخدم.', 'error');
+        return;
+      }
+
+      setStatus('تم حذف المستخدم بنجاح.', 'success');
+      await loadUsers();
+      resetForm();
+    }
+
+    async function addDepartmentSection() {
+      const payload = getLookupPayload();
+      if (!payload.Department) {
+        setLookupStatus('يرجى إدخال اسم القسم.', 'error');
+        return;
+      }
+      if (!payload.Section) {
+        setLookupStatus('يرجى إدخال اسم النوبة.', 'error');
+        return;
+      }
+      if (lookupIsActiveInput.value === '') {
+        setLookupStatus('يرجى اختيار الحالة.', 'error');
+        return;
+      }
+
+      const response = await authorizedFetch('/api/settings/department-sections', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      if (!response) return;
+
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setLookupStatus(body.message || 'تعذر إضافة القسم والنوبة.', 'error');
+        return;
+      }
+
+      setLookupStatus('تمت إضافة القسم والنوبة بنجاح.', 'success');
+      await loadDepartmentSections();
+      resetLookupForm();
+    }
+
+    async function updateDepartmentSection() {
+      if (!selectedLookupId) {
+        setLookupStatus('اختر سجلًا من جدول الأقسام والنوبات أولًا.', 'error');
+        return;
+      }
+
+      const payload = getLookupPayload();
+      if (!payload.Department) {
+        setLookupStatus('يرجى إدخال اسم القسم.', 'error');
+        return;
+      }
+      if (!payload.Section) {
+        setLookupStatus('يرجى إدخال اسم النوبة.', 'error');
+        return;
+      }
+      if (lookupIsActiveInput.value === '') {
+        setLookupStatus('يرجى اختيار الحالة.', 'error');
+        return;
+      }
+
+      const response = await authorizedFetch(`/api/settings/department-sections/${selectedLookupId}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload)
+      });
+      if (!response) return;
+
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setLookupStatus(body.message || 'تعذر تعديل القسم والنوبة.', 'error');
+        return;
+      }
+
+      setLookupStatus('تم تعديل القسم والنوبة بنجاح.', 'success');
+      await loadDepartmentSections();
+      resetLookupForm();
+    }
+
+    async function deleteDepartmentSection() {
+      if (!selectedLookupId) {
+        setLookupStatus('اختر سجلًا من جدول الأقسام والنوبات أولًا.', 'error');
+        return;
+      }
+
+      const confirmed = window.confirm('هل أنت متأكد من حذف القسم والنوبة المحددين؟');
+      if (!confirmed) return;
+
+      const response = await authorizedFetch(`/api/settings/department-sections/${selectedLookupId}`, {
+        method: 'DELETE'
+      });
+      if (!response) return;
+
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setLookupStatus(body.message || 'تعذر حذف القسم والنوبة.', 'error');
+        return;
+      }
+
+      setLookupStatus('تم حذف القسم والنوبة بنجاح.', 'success');
+      await loadDepartmentSections();
+      resetLookupForm();
+    }
+
+    async function initializePage() {
+      try {
+        await Promise.all([loadEmployees(), loadUsers(), loadDepartmentSections()]);
+      } catch (error) {
+        setStatus(error.message || 'تعذر تحميل بيانات الصفحة.', 'error');
+      }
+    }
+
+    function printUsersTable() {
+      const rowsHtml = users.map((item, index) => `
+        <tr>
+          <td>${index + 1}</td>
+          <td>${item.Username || ''}</td>
+          <td>${item.Password || ''}</td>
+          <td>${item.Permission || ''}</td>
+          <td>${item.Name || ''}</td>
+          <td>${item.Department || ''}</td>
+          <td>${item.Section || ''}</td>
+          <td>${Number(item.IsActive) === 0 ? 'موقوف' : 'نشط'}</td>
+          <td>${formatDateTime(item.CreatedAt || '')}</td>
+          <td>${formatDateTime(item.UpdatedAt || '')}</td>
+          <td>${formatDateTime(item.LastLogin || '')}</td>
+        </tr>
+      `).join('');
+
+      const printWindow = window.open('', '_blank', 'width=1280,height=900');
+      if (!printWindow) {
+        setStatus('تعذر فتح نافذة الطباعة.', 'error');
+        return;
+      }
+
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html lang="ar" dir="rtl">
+        <head>
+          <meta charset="UTF-8" />
+          <title>طباعة بيانات المستخدمين</title>
+          <style>
+            body { font-family: Tahoma, Arial, sans-serif; margin: 24px; color: #0f172a; }
+            h1 { margin: 0 0 16px; font-size: 26px; }
+            .meta { margin-bottom: 12px; color: #475569; font-weight: 700; }
+            table { width: 100%; border-collapse: collapse; }
+            th, td { border: 1px solid #cbd5e1; padding: 10px; text-align: right; font-size: 14px; }
+            th { background: #f8fafc; }
+            .cell-time { direction: ltr; unicode-bidi: isolate; text-align: right; font-variant-numeric: tabular-nums; }
+          </style>
+        </head>
+        <body>
+          <h1>بيانات المستخدمين</h1>
+          <div class="meta">عدد السجلات: ${users.length}</div>
+          <table>
+            <thead>
+              <tr>
+                <th>التسلسل</th>
+                <th>اسم المستخدم</th>
+                <th>كلمة السر</th>
+                <th>الصلاحية</th>
+                <th>الاسم</th>
+                <th>القسم</th>
+                <th>النوبة</th>
+                <th>الحالة</th>
+                <th>تاريخ الإضافة</th>
+                <th>آخر تحديث</th>
+                <th>آخر دخول</th>
+              </tr>
+            </thead>
+            <tbody>${rowsHtml || '<tr><td colspan="11">لا توجد بيانات.</td></tr>'}</tbody>
+          </table>
+        </body>
+        </html>
+      `);
+      printWindow.document.close();
+      printWindow.focus();
+      printWindow.print();
+    }
+
+    function printLookupTable() {
+      const rowsHtml = departmentSections.map((item, index) => `
+        <tr>
+          <td>${index + 1}</td>
+          <td>${item.Department || ''}</td>
+          <td>${item.Section || ''}</td>
+          <td>${item.SubSection || ''}</td>
+          <td>${Number(item.IsActive) === 0 ? 'موقوف' : 'نشط'}</td>
+          <td>${formatDateTime(item.CreatedAt || '')}</td>
+          <td>${formatDateTime(item.UpdatedAt || '')}</td>
+        </tr>
+      `).join('');
+
+      const printWindow = window.open('', '_blank', 'width=1200,height=800');
+      if (!printWindow) {
+        setLookupStatus('تعذر فتح نافذة الطباعة.', 'error');
+        return;
+      }
+
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html lang="ar" dir="rtl">
+        <head>
+          <meta charset="UTF-8" />
+          <title>طباعة بيانات الأقسام والنوبات والشعب</title>
+          <style>
+            body { font-family: Tahoma, Arial, sans-serif; margin: 24px; color: #0f172a; }
+            h1 { margin: 0 0 16px; font-size: 26px; }
+            table { width: 100%; border-collapse: collapse; }
+            th, td { border: 1px solid #cbd5e1; padding: 10px; text-align: right; font-size: 14px; }
+            th { background: #f8fafc; }
+            .cell-time { direction: ltr; unicode-bidi: isolate; text-align: right; font-variant-numeric: tabular-nums; }
+          </style>
+        </head>
+        <body>
+          <h1>بيانات الأقسام والنوبات والشعب</h1>
+          <table>
+            <thead>
+              <tr>
+                <th>التسلسل</th>
+                <th>القسم</th>
+                <th>النوبة</th>
+                <th>الشعبة</th>
+                <th>الحالة</th>
+                <th>تاريخ الإضافة</th>
+                <th>آخر تحديث</th>
+              </tr>
+            </thead>
+            <tbody>${rowsHtml || '<tr><td colspan="7">لا توجد بيانات.</td></tr>'}</tbody>
+          </table>
+        </body>
+        </html>
+      `);
+      printWindow.document.close();
+      printWindow.focus();
+      printWindow.print();
+    }
+
+    fullNameSelect.addEventListener('change', () => {
+      updateDepartmentSectionFromName();
+    });
+
+    backBtn.addEventListener('click', () => {
+      window.location.href = '/dashboard.html';
+    });
+
+    refreshBtn.addEventListener('click', () => {
+      initializePage();
+      setStatus('تم تحديث البيانات.');
+    });
+
+    addBtn.addEventListener('click', addUser);
+    editBtn.addEventListener('click', updateUser);
+    deleteBtn.addEventListener('click', deleteUser);
+    lookupAddBtn.addEventListener('click', addDepartmentSection);
+    lookupEditBtn.addEventListener('click', updateDepartmentSection);
+    lookupDeleteBtn.addEventListener('click', deleteDepartmentSection);
+    lookupPrintBtn.addEventListener('click', printLookupTable);
+    lookupRefreshBtn.addEventListener('click', async () => {
+      await loadDepartmentSections();
+      setLookupStatus('تم تحديث بيانات الأقسام والنوبات.');
+    });
+    lookupSearchInput.addEventListener('input', () => {
+      renderDepartmentSectionRows();
+    });
+    printBtn.addEventListener('click', printUsersTable);
+
+    initializePage();
+  </script>
+</body>
+</html>

@@ -1,0 +1,592 @@
+﻿<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>النماذج الادارية</title>
+  <link rel="stylesheet" href="/layout-defaults.css" />
+  <style>
+    body.app-shell {
+      background: linear-gradient(180deg, #dfeaff 0%, #f8fbff 100%);
+    }
+
+    body.app-shell .top-panel .form-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    body.app-shell .top-panel .form-grid > .form-row {
+      grid-column: 1 / -1;
+    }
+
+    body.app-shell .top-panel .form-row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .top-panel .form-grid .field {
+      min-width: 0;
+    }
+
+    #notes {
+      min-height: 84px;
+    }
+
+    .form-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-start;
+      align-items: center;
+    }
+
+    .form-actions .btn {
+      min-width: 160px;
+    }
+
+    .table-tools {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+
+    .table-tools p {
+      margin: 0;
+      color: var(--ui-muted);
+      font-weight: 700;
+    }
+
+    .table-search {
+      flex: 1;
+      min-width: 0;
+      max-width: 420px;
+    }
+
+    .bottom-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .evaluation-table {
+      table-layout: fixed;
+    }
+
+    .evaluation-table th,
+    .evaluation-table td {
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      vertical-align: top;
+      white-space: normal;
+    }
+
+    .evaluation-table th:nth-child(1),
+    .evaluation-table td:nth-child(1) { width: 10%; }
+    .evaluation-table th:nth-child(2),
+    .evaluation-table td:nth-child(2) { width: 8%; }
+    .evaluation-table th:nth-child(3),
+    .evaluation-table td:nth-child(3) { width: 13%; }
+    .evaluation-table th:nth-child(4),
+    .evaluation-table td:nth-child(4) { width: 10%; }
+    .evaluation-table th:nth-child(5),
+    .evaluation-table td:nth-child(5) { width: 10%; }
+    .evaluation-table th:nth-child(6),
+    .evaluation-table td:nth-child(6) { width: 13%; }
+    .evaluation-table th:nth-child(7),
+    .evaluation-table td:nth-child(7) { width: 16%; }
+    .evaluation-table th:nth-child(8),
+    .evaluation-table td:nth-child(8) { width: 10%; }
+    .evaluation-table th:nth-child(9),
+    .evaluation-table td:nth-child(9) { width: 10%; }
+
+    .table-wrap table {
+      min-width: 1200px;
+    }
+
+    .mono {
+      direction: ltr;
+      unicode-bidi: isolate;
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    @media (max-width: 1100px) {
+      .top-panel .form-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .header h1 {
+        font-size: 24px;
+      }
+
+      .table-wrap table {
+        min-width: 980px;
+      }
+
+      .form-actions .btn {
+        min-width: 0;
+        width: auto;
+      }
+    }
+  </style>
+</head>
+<body class="app-shell">
+  <div class="page app-page">
+    <section class="header">
+      <div>
+        <h1>واجهة النماذج الادارية</h1>
+        <p>تسجيل وأرشفة وطباعة النماذج الإدارية للموظفين.</p>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn dark" id="backBtn">العودة للرئيسية</button>
+      </div>
+    </section>
+
+    <section class="panel top-panel">
+      <h2>تعبئة / اظهار البيانات</h2>
+      <form id="administrativeForm">
+        <div class="form-grid">
+          <div class="form-row">
+            <div class="field">
+              <label for="formDate">التاريخ</label>
+              <div class="date-picker-wrap">
+                <input id="formDateDisplay" class="date-display-input" type="text" placeholder="yyyy/mm/dd" readonly />
+                <button type="button" class="date-picker-trigger" data-picker-id="formDate" aria-label="اختيار التاريخ"></button>
+                <input id="formDate" type="date" class="native-date-input" />
+              </div>
+            </div>
+            <div class="field">
+              <label for="dayName">اليوم</label>
+              <input id="dayName" type="text" readonly />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="field">
+              <label for="employeeId">اسم الموظف</label>
+              <select id="employeeId">
+                <option value="">-- اختر --</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="formName">اسم النموذج</label>
+              <select id="formName">
+                <option value="">-- اختر --</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="field">
+              <label for="department">القسم</label>
+              <input id="department" type="text" readonly />
+            </div>
+            <div class="field">
+              <label for="section">النوبة</label>
+              <input id="section" type="text" readonly />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="field">
+              <label for="createdBy">أنشئ بواسطة</label>
+              <input id="createdBy" type="text" readonly />
+            </div>
+            <div class="field">
+              <label for="createdAt">تاريخ الإنشاء</label>
+              <input id="createdAt" type="text" class="mono" readonly />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="field">
+              <label for="notes">الملاحظات</label>
+              <textarea id="notes"></textarea>
+            </div>
+            <div class="field"></div>
+          </div>
+
+          <div class="form-row">
+            <div class="field">
+              <label>&nbsp;</label>
+              <div class="form-actions">
+                <button type="button" class="btn success" id="searchBtn">إضافة بيانات جديدة</button>
+                <button type="button" class="btn primary" id="printBtn">طباعة بيانات</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h2>صندوق عرض البيانات</h2>
+      <div class="table-tools">
+        <p id="countLabel">عدد السجلات: 0</p>
+        <input id="tableSearch" class="table-search" type="search" placeholder="بحث في السجلات" />
+        <div class="bottom-actions">
+          <button type="button" class="btn primary" id="refreshBtn">تحديث العرض</button>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table class="evaluation-table">
+          <thead>
+            <tr>
+              <th>التاريخ</th>
+              <th>اليوم</th>
+              <th>اسم الموظف</th>
+              <th>القسم</th>
+              <th>النوبة</th>
+              <th>اسم النموذج</th>
+              <th>الملاحظات</th>
+              <th>أنشئ بواسطة</th>
+              <th>تاريخ الإنشاء</th>
+            </tr>
+          </thead>
+          <tbody id="rows">
+            <tr>
+              <td colspan="9">لا توجد بيانات متاحة حالياً.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const authToken = localStorage.getItem('authToken');
+    if (!authToken) {
+      window.location.href = '/';
+    }
+
+    const backBtn = document.getElementById('backBtn');
+    const formDateInput = document.getElementById('formDate');
+    const formDateDisplay = document.getElementById('formDateDisplay');
+    const dayNameInput = document.getElementById('dayName');
+    const formNameSelect = document.getElementById('formName');
+    const employeeIdSelect = document.getElementById('employeeId');
+    const departmentInput = document.getElementById('department');
+    const sectionInput = document.getElementById('section');
+    const createdByInput = document.getElementById('createdBy');
+    const createdAtInput = document.getElementById('createdAt');
+    const notesInput = document.getElementById('notes');
+    const searchBtn = document.getElementById('searchBtn');
+    const printBtn = document.getElementById('printBtn');
+    const refreshBtn = document.getElementById('refreshBtn');
+    const tableSearch = document.getElementById('tableSearch');
+    const countLabel = document.getElementById('countLabel');
+    const rows = document.getElementById('rows');
+
+    let allRows = [];
+    let employeesMap = new Map();
+
+    function parseJwtPayload(token) {
+      try {
+        const payload = token.split('.')[1];
+        if (!payload) return null;
+        const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+        const decoded = atob(normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '='));
+        return JSON.parse(decoded);
+      } catch (_) {
+        return null;
+      }
+    }
+
+    const currentUser = parseJwtPayload(authToken);
+    if (!currentUser) {
+      localStorage.removeItem('authToken');
+      window.location.href = '/';
+    }
+
+    const username = String(currentUser?.username || '').trim().toLowerCase();
+    if (username !== 'admin') {
+      localStorage.removeItem('authToken');
+      window.location.href = '/';
+    }
+
+    function pad2(value) {
+      return String(value).padStart(2, '0');
+    }
+
+    function formatYmd(value) {
+      if (!value) return '';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return '';
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return `${y}/${m}/${d}`;
+    }
+
+    function formatDateTime(value) {
+      if (!value) return '';
+
+      const text = String(value).trim();
+      const m = text.match(/^(\d{4})[-/](\d{2})[-/](\d{2})[ T](\d{2}):(\d{2}):(\d{2})$/);
+      if (m) {
+        return `${m[4]}:${m[5]}:${m[6]} ${m[1]}/${m[2]}/${m[3]}`;
+      }
+
+      const date = new Date(text);
+      if (Number.isNaN(date.getTime())) return '';
+
+      const y = date.getFullYear();
+      const mo = pad2(date.getMonth() + 1);
+      const d = pad2(date.getDate());
+      const h = pad2(date.getHours());
+      const mi = pad2(date.getMinutes());
+      const s = pad2(date.getSeconds());
+      return `${h}:${mi}:${s} ${y}/${mo}/${d}`;
+    }
+
+    function getArabicDay(value) {
+      if (!value) return '';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return '';
+      const names = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+      return names[date.getDay()] || '';
+    }
+
+    function syncDateFields() {
+      const ymd = formatYmd(formDateInput.value);
+      formDateDisplay.value = ymd;
+      dayNameInput.value = getArabicDay(formDateInput.value);
+    }
+
+    function setTodayDefault() {
+      const now = new Date();
+      formDateInput.value = now.toISOString().slice(0, 10);
+      syncDateFields();
+      createdAtInput.value = formatDateTime(now);
+    }
+
+    async function requestJson(url, options = {}) {
+      const response = await fetch(url, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authToken}`,
+          ...(options.headers || {})
+        }
+      });
+
+      if (response.status === 401 || response.status === 403) {
+        localStorage.removeItem('authToken');
+        window.location.href = '/';
+        return null;
+      }
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.message || 'تعذر تنفيذ الطلب.');
+      }
+      return data;
+    }
+
+    function renderTable(items) {
+      if (!items.length) {
+        rows.innerHTML = '<tr><td colspan="9">لا توجد بيانات متاحة حالياً.</td></tr>';
+        countLabel.textContent = 'عدد السجلات: 0';
+        return;
+      }
+
+      rows.innerHTML = items.map((item) => `
+        <tr>
+          <td class="mono">${item.FormDate || ''}</td>
+          <td>${item.DayName || ''}</td>
+          <td>${item.EmployeeName || ''}</td>
+          <td>${item.Department || ''}</td>
+          <td>${item.Section || ''}</td>
+          <td>${item.FormName || ''}</td>
+          <td>${item.Notes || ''}</td>
+          <td>${item.CreatedBy || ''}</td>
+          <td class="mono">${formatDateTime(item.CreatedAt)}</td>
+        </tr>
+      `).join('');
+
+      countLabel.textContent = `عدد السجلات: ${items.length}`;
+    }
+
+    function renderBySearch() {
+      const q = String(tableSearch.value || '').trim().toLowerCase();
+      if (!q) {
+        renderTable(allRows);
+        return;
+      }
+
+      const filtered = allRows.filter((item) => {
+        const text = [
+          item.FormDate,
+          item.DayName,
+          item.EmployeeName,
+          item.Department,
+          item.Section,
+          item.FormName,
+          item.Notes,
+          item.CreatedBy,
+          formatDateTime(item.CreatedAt)
+        ].map((v) => String(v || '').toLowerCase()).join(' ');
+        return text.includes(q);
+      });
+
+      renderTable(filtered);
+    }
+
+    async function loadFormNameOptions() {
+      const data = await requestJson('/api/administrative/forms/options');
+      if (!data) return;
+
+      formNameSelect.innerHTML = '<option value="">-- اختر --</option>';
+      (data.formNames || []).forEach((name) => {
+        const option = document.createElement('option');
+        option.value = name;
+        option.textContent = name;
+        formNameSelect.appendChild(option);
+      });
+    }
+
+    async function loadEmployeeOptions() {
+      const employees = await requestJson('/api/employees', {
+        headers: { Authorization: `Bearer ${authToken}` }
+      });
+      if (!employees) return;
+
+      const activeEmployees = (Array.isArray(employees) ? employees : [])
+        .filter((item) => String(item?.Status || '').trim() === 'نشط')
+        .filter((item) => String(item?.Name || '').trim() !== '');
+
+      employeeIdSelect.innerHTML = '<option value="">-- اختر --</option>';
+      employeesMap = new Map();
+      activeEmployees.forEach((emp) => {
+        const employeeName = String(emp.Name || '').trim();
+        employeesMap.set(employeeName, emp);
+        const option = document.createElement('option');
+        option.value = employeeName;
+        option.textContent = employeeName;
+        employeeIdSelect.appendChild(option);
+      });
+
+      departmentInput.value = '';
+      sectionInput.value = '';
+    }
+
+    async function loadArchive() {
+      const data = await requestJson('/api/administrative/forms');
+      if (!data) return;
+      allRows = Array.isArray(data) ? data : [];
+      renderBySearch();
+    }
+
+    async function saveRecord() {
+      const selectedEmployee = employeesMap.get(String(employeeIdSelect.value || '').trim());
+      const payload = {
+        FormDate: formDateInput.value,
+        FormName: String(formNameSelect.value || '').trim(),
+        EmpID: selectedEmployee ? String(selectedEmployee.ID || '') : '',
+        Notes: String(notesInput.value || '').trim()
+      };
+
+      if (!payload.FormDate) {
+        throw new Error('يرجى اختيار التاريخ.');
+      }
+      if (!payload.FormName) {
+        throw new Error('يرجى اختيار اسم النموذج.');
+      }
+      if (!payload.EmpID) {
+        throw new Error('يرجى اختيار اسم الموظف.');
+      }
+
+      await requestJson('/api/administrative/forms', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+
+      notesInput.value = '';
+      createdAtInput.value = formatDateTime(new Date());
+      await loadArchive();
+      countLabel.textContent = `عدد السجلات: ${allRows.length}`;
+    }
+
+    backBtn.addEventListener('click', () => {
+      window.location.href = '/dashboard.html';
+    });
+
+    document.querySelectorAll('.date-picker-trigger').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const pickerId = btn.getAttribute('data-picker-id');
+        const input = document.getElementById(pickerId);
+        if (input && typeof input.showPicker === 'function') {
+          input.showPicker();
+        } else if (input) {
+          input.focus();
+        }
+      });
+    });
+
+    formDateDisplay.addEventListener('click', () => {
+      if (typeof formDateInput.showPicker === 'function') {
+        formDateInput.showPicker();
+      }
+    });
+
+    formDateInput.addEventListener('change', () => {
+      syncDateFields();
+      countLabel.textContent = `عدد السجلات: ${allRows.length}`;
+    });
+
+    employeeIdSelect.addEventListener('change', () => {
+      const selected = employeesMap.get(String(employeeIdSelect.value || '').trim());
+      departmentInput.value = selected ? String(selected.Department || '') : '';
+      sectionInput.value = selected ? String(selected.Section || '') : '';
+    });
+
+    searchBtn.addEventListener('click', async () => {
+      try {
+        await saveRecord();
+      } catch (error) {
+        countLabel.textContent = error.message || 'تعذر تسجيل البيانات.';
+      }
+    });
+
+    printBtn.addEventListener('click', () => {
+      window.print();
+    });
+
+    refreshBtn.addEventListener('click', async () => {
+      try {
+        await loadEmployeeOptions();
+        await loadArchive();
+      } catch (_) {
+        countLabel.textContent = 'عدد السجلات: 0';
+      }
+    });
+
+    tableSearch.addEventListener('input', () => {
+      renderBySearch();
+    });
+
+    (async () => {
+      try {
+        createdByInput.value = currentUser?.username || '';
+        setTodayDefault();
+        await loadFormNameOptions();
+        await loadEmployeeOptions();
+        await loadArchive();
+      } catch (_) {
+        countLabel.textContent = 'عدد السجلات: 0';
+      }
+    })();
+  </script>
+</body>
+</html>

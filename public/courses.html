@@ -199,7 +199,7 @@
       justify-content: space-between;
       align-items: center;
       gap: 10px;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
       margin-bottom: 10px;
     }
 
@@ -210,7 +210,8 @@
     }
 
     .table-search {
-      width: min(320px, 100%);
+      flex: 1;
+      min-width: 0;
     }
 
     .table-wrap {
@@ -292,7 +293,7 @@
 
         <div class="grid">
           <div class="field">
-            <label for="name">الاسم الرباعي</label>
+            <label for="name">اسم الموظف</label>
             <input id="name" list="employeeNames" autocomplete="off" />
             <datalist id="employeeNames"></datalist>
           </div>
@@ -374,7 +375,7 @@
           <thead>
             <tr>
               <th>تسلسل</th>
-              <th>الاسم الرباعي</th>
+              <th>اسم الموظف</th>
               <th>الحالة</th>
               <th>اسم الدورة</th>
               <th>القسم</th>
@@ -608,7 +609,7 @@
 
     function validateForm() {
       const requiredErrors = [];
-      if (!String(nameInput.value || '').trim()) requiredErrors.push('الاسم الرباعي');
+      if (!String(nameInput.value || '').trim()) requiredErrors.push('اسم الموظف');
       if (!String(courseNameInput.value || '').trim()) requiredErrors.push('اسم الدورة');
       if (!String(courseProviderInput.value || '').trim()) requiredErrors.push('جهة الدورة');
       if (!String(startDateInput.value || '').trim()) requiredErrors.push('البداية');
@@ -654,6 +655,10 @@
       courseIdInput.value = item.ID;
       nameInput.value = item.Name || '';
       setSelectedEmployeeByName(item.Name || '');
+      if (!selectedEmployee) {
+        departmentInput.value = item.Department || '';
+        sectionInput.value = item.Section || '';
+      }
       statusInput.value = item.Status || 'دورة';
       courseNameInput.value = item.CourseName || '';
       courseProviderInput.value = item.CourseProvider || '';
@@ -746,7 +751,9 @@
       });
 
       if (!data) return;
-      allEmployees = Array.isArray(data) ? data : [];
+      allEmployees = (Array.isArray(data) ? data : []).filter(
+        (item) => String(item?.Status || '').trim() === 'نشط'
+      );
       populateNameOptions();
       setSelectedEmployeeByName(nameInput.value);
     }
@@ -961,7 +968,7 @@
         <div class="section-title">البيانات الأساسية</div>
         <table>
           <tr>
-            <td class="label">الاسم الرباعي</td>
+            <td class="label">اسم الموظف</td>
             <td class="value">${valueOrDash(row.Name)}</td>
             <td class="label">الحالة</td>
             <td class="value">${valueOrDash(row.Status)}</td>

@@ -55,8 +55,14 @@ body.app-shell > .page,
   margin: 0;
   padding: var(--app-page-block-padding);
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   align-content: start;
   gap: var(--app-page-gap);
+}
+
+body.app-shell > .page > *,
+.page.app-page > * {
+  min-width: 0;
 }
 
 body.app-shell .header {
@@ -187,7 +193,9 @@ body.app-shell .required::after {
 body.app-shell input,
 body.app-shell select,
 body.app-shell textarea {
+  box-sizing: border-box;
   width: 100%;
+  max-width: 100%;
   border: 1px solid #cbd5e1;
   background: #fff;
   color: var(--ui-text);
@@ -210,6 +218,9 @@ body.app-shell .date-picker-wrap {
 }
 
 body.app-shell .date-display-input {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
   padding-left: 44px;
   cursor: pointer;
   direction: ltr;

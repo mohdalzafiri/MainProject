@@ -22,7 +22,7 @@ router.post('/login', (req, res) => {
   }
 
   try {
-    const user = db.prepare('SELECT ID, Username, Password, Permission, Department, Section, Name FROM Login WHERE Username = ? COLLATE NOCASE LIMIT 1').get(username);
+    const user = db.prepare('SELECT ID, Username, Password, Permission, Department, Section, Name, IsActive FROM Login WHERE Username = ? COLLATE NOCASE LIMIT 1').get(username);
 
     if (!user) {
       logSystem({ userName: username, action: 'Login Failed', page: 'Login', details: 'User not found', machine: userAgent });
@@ -32,6 +32,11 @@ router.post('/login', (req, res) => {
     if (user.Password !== password) {
       logSystem({ userName: username, action: 'Login Failed', page: 'Login', details: 'Invalid password', machine: userAgent });
       return sendError(res, 401, 'كلمة المرور غير صحيحة');
+    }
+
+    if (Number(user.IsActive) === 0) {
+      logSystem({ userName: user.Username, action: 'Login Failed', page: 'Login', details: 'Inactive user', machine: userAgent });
+      return sendError(res, 403, 'تم إيقاف هذا المستخدم من قبل الإدارة');
     }
 
     db.prepare('UPDATE Login SET LastLogin = ? WHERE ID = ?').run(new Date().toISOString(), user.ID);

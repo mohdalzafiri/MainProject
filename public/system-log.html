@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>سجل النظام</title>
+  <link rel="stylesheet" href="/layout-defaults.css" />
+  <style>
+    body.app-shell {
+      background: linear-gradient(180deg, #dfeaff 0%, #f8fbff 100%);
+    }
+
+    body.app-shell .top-panel .form-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    body.app-shell .top-panel .form-grid > .form-row {
+      grid-column: 1 / -1;
+    }
+
+    body.app-shell .top-panel .form-row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .top-panel .form-grid .field {
+      min-width: 0;
+    }
+
+    .form-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-start;
+      align-items: center;
+    }
+
+    .form-actions .btn {
+      min-width: 160px;
+    }
+
+    .table-tools {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+
+    .table-tools p {
+      margin: 0;
+      color: var(--ui-muted);
+      font-weight: 700;
+    }
+
+    .table-search {
+      flex: 1;
+      min-width: 0;
+      max-width: 460px;
+    }
+
+    .bottom-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .system-log-table {
+      table-layout: fixed;
+    }
+
+    .system-log-table th,
+    .system-log-table td {
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      vertical-align: top;
+      white-space: normal;
+    }
+
+    .system-log-table th:nth-child(1),
+    .system-log-table td:nth-child(1) { width: 14%; }
+    .system-log-table th:nth-child(2),
+    .system-log-table td:nth-child(2) { width: 14%; }
+    .system-log-table th:nth-child(3),
+    .system-log-table td:nth-child(3) { width: 14%; }
+    .system-log-table th:nth-child(4),
+    .system-log-table td:nth-child(4) { width: 18%; }
+    .system-log-table th:nth-child(5),
+    .system-log-table td:nth-child(5) { width: 10%; }
+    .system-log-table th:nth-child(6),
+    .system-log-table td:nth-child(6) { width: 30%; }
+
+    .table-wrap table {
+      min-width: 1250px;
+    }
+
+    .mono {
+      direction: ltr;
+      unicode-bidi: isolate;
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .badge {
+      display: inline-flex;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: #e0f2fe;
+      color: #0369a1;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .badge.fail {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+
+    @media (max-width: 1100px) {
+      .top-panel .form-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .header h1 {
+        font-size: 24px;
+      }
+
+      .table-wrap table {
+        min-width: 1020px;
+      }
+
+      .form-actions .btn {
+        min-width: 0;
+        width: auto;
+      }
+    }
+  </style>
+</head>
+<body class="app-shell">
+  <div class="page app-page">
+    <section class="header">
+      <div>
+        <h1>واجهة سجل النظام</h1>
+        <p>تسجيل وأرشفة وطباعة سجل العمليات ومستخدمي النظام الإداري.</p>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn dark" id="backBtn">العودة للرئيسية</button>
+      </div>
+    </section>
+
+    <section class="panel top-panel">
+      <h2>تعبئة / اظهار البيانات</h2>
+      <form id="systemLogForm">
+        <div class="form-grid">
+          <div class="form-row">
+            <div class="field">
+              <label for="fromDate">من التاريخ</label>
+              <div class="date-picker-wrap">
+                <input id="fromDateDisplay" class="date-display-input" type="text" placeholder="yyyy/mm/dd" readonly />
+                <button type="button" class="date-picker-trigger" data-picker-id="fromDate" aria-label="اختيار من التاريخ"></button>
+                <input id="fromDate" type="date" class="native-date-input" />
+              </div>
+            </div>
+            <div class="field">
+              <label for="toDate">الى التاريخ</label>
+              <div class="date-picker-wrap">
+                <input id="toDateDisplay" class="date-display-input" type="text" placeholder="yyyy/mm/dd" readonly />
+                <button type="button" class="date-picker-trigger" data-picker-id="toDate" aria-label="اختيار الى التاريخ"></button>
+                <input id="toDate" type="date" class="native-date-input" />
+              </div>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-actions">
+              <button type="button" class="btn primary" id="printBtn">طباعة بيانات</button>
+            </div>
+          </div>
+        </div>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h2>صندوق عرض البيانات</h2>
+      <div class="table-tools">
+        <p id="countLabel">عدد السجلات: 0</p>
+        <input id="tableSearch" class="table-search" type="search" placeholder="بحث في اسم المستخدم أو الإجراء أو الصفحة أو التفاصيل" />
+        <div class="bottom-actions">
+          <button type="button" class="btn primary" id="refreshBtn">تحديث العرض</button>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table class="system-log-table">
+          <thead>
+            <tr>
+              <th>العملية</th>
+              <th>الصفحة</th>
+              <th>المستخدم</th>
+              <th>التوقيت</th>
+              <th>الحالة</th>
+              <th>التفاصيل</th>
+            </tr>
+          </thead>
+          <tbody id="rows">
+            <tr>
+              <td colspan="6">لا توجد بيانات متاحة ضمن المدة المحددة.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const authToken = localStorage.getItem('authToken');
+    if (!authToken) {
+      window.location.href = '/';
+    }
+
+    const fromDateInput = document.getElementById('fromDate');
+    const toDateInput = document.getElementById('toDate');
+    const fromDateDisplay = document.getElementById('fromDateDisplay');
+    const toDateDisplay = document.getElementById('toDateDisplay');
+    const rowsBody = document.getElementById('rows');
+    const countLabel = document.getElementById('countLabel');
+    const tableSearch = document.getElementById('tableSearch');
+    const refreshBtn = document.getElementById('refreshBtn');
+    const printBtn = document.getElementById('printBtn');
+    const backBtn = document.getElementById('backBtn');
+    let allRecords = [];
+
+    function parseJwtPayload(token) {
+      try {
+        const payload = token.split('.')[1];
+        if (!payload) return null;
+        const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+        const decoded = atob(normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '='));
+        return JSON.parse(decoded);
+      } catch (_) {
+        return null;
+      }
+    }
+
+    const currentUser = parseJwtPayload(authToken);
+    if (!currentUser) {
+      localStorage.removeItem('authToken');
+      window.location.href = '/';
+    }
+
+    const username = String(currentUser?.username || '').trim().toLowerCase();
+    if (username !== 'admin') {
+      localStorage.removeItem('authToken');
+      window.location.href = '/';
+    }
+
+    function pad2(value) {
+      return String(value).padStart(2, '0');
+    }
+
+    function toSlashDate(value) {
+      if (!value) return '';
+      const parts = String(value).split('-');
+      if (parts.length !== 3) return '';
+      return `${parts[0]}/${parts[1]}/${parts[2]}`;
+    }
+
+    function formatDateTime(value) {
+      const text = String(value || '').trim();
+      if (!text) return '';
+      const m = text.match(/^(\d{4})[-/](\d{2})[-/](\d{2})[ T](\d{2}):(\d{2}):(\d{2})$/);
+      if (m) {
+        return `${m[4]}:${m[5]}:${m[6]} ${m[1]}/${m[2]}/${m[3]}`;
+      }
+
+      const date = new Date(text);
+      if (Number.isNaN(date.getTime())) return text;
+      return `${pad2(date.getHours())}:${pad2(date.getMinutes())}:${pad2(date.getSeconds())} ${date.getFullYear()}/${pad2(date.getMonth() + 1)}/${pad2(date.getDate())}`;
+    }
+
+    function syncDateDisplays() {
+      fromDateDisplay.value = toSlashDate(fromDateInput.value);
+      toDateDisplay.value = toSlashDate(toDateInput.value);
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function getActivityStatus(item) {
+      const action = String(item?.Action || item?.action || '').toLowerCase();
+      return action.includes('failed') || action.includes('error') || action.includes('فشل') ? 'فشل' : 'نجاح';
+    }
+
+    function renderRows(items) {
+      rowsBody.innerHTML = '';
+
+      if (!Array.isArray(items) || items.length === 0) {
+        rowsBody.innerHTML = '<tr><td colspan="6">لا توجد بيانات متاحة ضمن المدة المحددة.</td></tr>';
+        countLabel.textContent = 'عدد السجلات: 0';
+        return;
+      }
+
+      items.forEach((item) => {
+        const status = getActivityStatus(item);
+        const badgeClass = status === 'فشل' ? 'fail' : '';
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${escapeHtml(item.Action || '')}</td>
+          <td>${escapeHtml(item.Target || '')}</td>
+          <td>${escapeHtml(item.UserName || '')}</td>
+          <td class="mono">${escapeHtml(formatDateTime(item.Timestamp || ''))}</td>
+          <td><span class="badge ${badgeClass}">${escapeHtml(status)}</span></td>
+          <td>${escapeHtml(item.Details || '')}</td>
+        `;
+        rowsBody.appendChild(row);
+      });
+
+      countLabel.textContent = `عدد السجلات: ${items.length}`;
+    }
+
+    function getFilteredRecords() {
+      const keyword = String(tableSearch.value || '').trim().toLowerCase();
+      if (!keyword) return [...allRecords];
+
+      return allRecords.filter((item) => {
+        const text = [
+          item.Timestamp,
+          item.UserName,
+          item.Action,
+          item.Target,
+          item.Details
+        ].map((value) => String(value || '').toLowerCase()).join(' ');
+
+        return text.includes(keyword);
+      });
+    }
+
+    async function requestJson(url, options = {}) {
+      const response = await fetch(url, {
+        ...options,
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          ...(options.headers || {})
+        }
+      });
+
+      if (response.status === 401 || response.status === 403) {
+        localStorage.removeItem('authToken');
+        window.location.href = '/';
+        return null;
+      }
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(String(data?.message || '').trim() || 'تعذر تحميل سجل النظام.');
+      }
+
+      return data;
+    }
+
+    async function loadSystemLog() {
+      const params = new URLSearchParams();
+      if (fromDateInput.value) params.set('fromDate', fromDateInput.value);
+      if (toDateInput.value) params.set('toDate', toDateInput.value);
+
+      const url = params.toString() ? `/api/system-log?${params.toString()}` : '/api/system-log';
+      const records = await requestJson(url);
+      if (!records) return;
+      allRecords = Array.isArray(records) ? records : [];
+      renderRows(getFilteredRecords());
+    }
+
+    document.querySelectorAll('.date-picker-trigger').forEach((button) => {
+      button.addEventListener('click', () => {
+        const pickerId = button.dataset.pickerId;
+        const input = document.getElementById(pickerId);
+        if (!input) return;
+
+        if (typeof input.showPicker === 'function') {
+          input.showPicker();
+          return;
+        }
+
+        input.click();
+      });
+    });
+
+    fromDateInput.addEventListener('change', () => {
+      syncDateDisplays();
+      loadSystemLog().catch((error) => {
+        countLabel.textContent = error.message || 'تعذر تحميل سجل النظام.';
+      });
+    });
+
+    toDateInput.addEventListener('change', () => {
+      syncDateDisplays();
+      loadSystemLog().catch((error) => {
+        countLabel.textContent = error.message || 'تعذر تحميل سجل النظام.';
+      });
+    });
+
+    refreshBtn.addEventListener('click', () => {
+      loadSystemLog().catch((error) => {
+        countLabel.textContent = error.message || 'تعذر تحديث العرض.';
+      });
+    });
+
+    tableSearch.addEventListener('input', () => {
+      renderRows(getFilteredRecords());
+    });
+
+    printBtn.addEventListener('click', () => {
+      window.print();
+    });
+
+    backBtn.addEventListener('click', () => {
+      window.location.href = '/dashboard.html';
+    });
+
+    syncDateDisplays();
+
+    loadSystemLog().catch((error) => {
+      countLabel.textContent = error.message || 'تعذر تحميل بيانات سجل النظام.';
+    });
+  </script>
+</body>
+</html>

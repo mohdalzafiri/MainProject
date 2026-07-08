@@ -2,7 +2,7 @@
 const { db, logSystem } = require('../database');
 
 const router = express.Router();
-const columns = ['Title', 'Name', 'CivilID', 'Department', 'Section', 'Status', 'Rank', 'Empdate', 'Startdate', 'Enddate', 'Work', 'Note'];
+const columns = ['Title', 'Name', 'CivilID', 'Department', 'Section', 'SubSection', 'Status', 'Rank', 'Empdate', 'Startdate', 'Enddate', 'Work', 'Note'];
 
 function isActiveStatus(status) {
   return String(status || '').trim() === 'نشط';
@@ -33,6 +33,22 @@ router.get('/', (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'تعذر قراءة بيانات الموظفين من قاعدة البيانات' });
+  }
+});
+
+router.get('/department-sections', (req, res) => {
+  try {
+    const rows = db.prepare(`
+      SELECT ID, Department, Section, SubSection, SortOrder
+      FROM DepartmentSectionLookup
+      WHERE IsActive = 1
+      ORDER BY ID ASC
+    `).all();
+
+    res.json(rows);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'تعذر تحميل الأقسام والنوبات.' });
   }
 });
 

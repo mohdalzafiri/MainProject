@@ -201,7 +201,7 @@
       justify-content: space-between;
       align-items: center;
       gap: 10px;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
       margin-bottom: 10px;
     }
 
@@ -212,7 +212,8 @@
     }
 
     .table-search {
-      width: min(320px, 100%);
+      flex: 1;
+      min-width: 0;
     }
 
     .table-wrap {
@@ -294,7 +295,7 @@
 
         <div class="grid">
           <div class="field">
-            <label for="name">الاسم الرباعي</label>
+            <label for="name">اسم الموظف</label>
             <input id="name" list="employeeNames" autocomplete="off" />
             <datalist id="employeeNames"></datalist>
           </div>
@@ -381,7 +382,7 @@
           <thead>
             <tr>
               <th>تسلسل</th>
-              <th>الاسم الرباعي</th>
+              <th>اسم الموظف</th>
               <th>الحالة</th>
               <th>نوع الاجازة</th>
               <th>القسم</th>
@@ -703,7 +704,7 @@
 
     function validateForm() {
       const requiredErrors = [];
-      if (!String(nameInput.value || '').trim()) requiredErrors.push('الاسم الرباعي');
+      if (!String(nameInput.value || '').trim()) requiredErrors.push('اسم الموظف');
       if (!String(typeInput.value || '').trim()) requiredErrors.push('نوع الاجازة');
       if (!String(startDateInput.value || '').trim()) requiredErrors.push('البداية');
       if (!String(endDateInput.value || '').trim()) requiredErrors.push('النهاية');
@@ -752,6 +753,10 @@
       holidayIdInput.value = item.ID;
       nameInput.value = item.Name || '';
       setSelectedEmployeeByName(item.Name || '');
+      if (!selectedEmployee) {
+        departmentInput.value = item.Department || '';
+        sectionInput.value = item.Section || '';
+      }
       statusInput.value = item.Status || 'اجازة';
 
       const typeState = getHolidayTypeForForm(item.Type);
@@ -845,7 +850,9 @@
       });
 
       if (!data) return;
-      allEmployees = Array.isArray(data) ? data : [];
+      allEmployees = (Array.isArray(data) ? data : []).filter(
+        (item) => String(item?.Status || '').trim() === 'نشط'
+      );
       populateNameOptions();
       setSelectedEmployeeByName(nameInput.value);
     }
@@ -882,27 +889,38 @@
         return text ? text : '---';
       };
 
-      function getEmployeeLeaveStatusText(endDateValue) {
+      function getEmployeeLeaveStatusText(startDateValue, endDateValue) {
+        const startDate = parseFlexibleDate(startDateValue);
         const endDate = parseFlexibleDate(endDateValue);
-        if (!endDate || Number.isNaN(endDate.getTime())) {
-          return 'تعذر تحديد حالة الموظف لعدم اكتمال تاريخ نهاية الإجازة.';
+        if (!startDate || !endDate || Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+          return 'تعذر تحديد حالة الموظف لعدم اكتمال تاريخي البداية أو النهاية.';
         }
 
         const today = new Date();
         const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        const startOnly = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
         const endOnly = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
         const dayMs = 24 * 60 * 60 * 1000;
 
+        if (todayOnly.getTime() < startOnly.getTime()) {
+          const daysUntilStart = Math.floor((startOnly.getTime() - todayOnly.getTime()) / dayMs);
+          return `لم تبدأ إجازة الموظف بعد، والمتبقي على بدايتها: ${daysUntilStart} يوم.`;
+        }
+
         if (endOnly.getTime() >= todayOnly.getTime()) {
-          const remainingDays = Math.floor((endOnly.getTime() - todayOnly.getTime()) / dayMs) + 1;
-          return `لا يزال الموظف يتمتع بالإجازة على أن تنتهي خلال مدة: ${remainingDays} يوم.`;
+          const remainingDays = Math.floor((endOnly.getTime() - todayOnly.getTime()) / dayMs);
+          if (remainingDays === 0) {
+            return 'لا يزال الموظف يتمتع بالإجازة، وتنتهي اليوم.';
+          }
+
+          return `لا يزال الموظف يتمتع بالإجازة، والمتبقي حتى نهايتها: ${remainingDays} يوم.`;
         }
 
         const passedDays = Math.floor((todayOnly.getTime() - endOnly.getTime()) / dayMs);
         return `انتهت إجازة الموظف ومن المفترض أنه قد باشر العمل منذ: ${passedDays} يوم.`;
       }
 
-      const employeeLeaveStatus = getEmployeeLeaveStatusText(row.Enddate);
+      const employeeLeaveStatus = getEmployeeLeaveStatusText(row.Startdate, row.Enddate);
 
       return `
 <!DOCTYPE html>
@@ -1082,7 +1100,7 @@
         <div class="section-title">البيانات الأساسية</div>
         <table>
           <tr>
-            <td class="label">الاسم الرباعي</td>
+            <td class="label">اسم الموظف</td>
             <td class="value">${valueOrDash(row.Name)}</td>
             <td class="label">الحالة</td>
             <td class="value">${valueOrDash(row.Status)}</td>

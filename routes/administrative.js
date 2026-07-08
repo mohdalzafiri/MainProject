@@ -2,7 +2,34 @@
 const { db, logSystem } = require('../database');
 
 const router = express.Router();
-const columns = ['EmpID', 'Name', 'Department', 'Section', 'Status', 'Department1', 'Section1', 'Enddate', 'Note'];
+const columns = ['EmpID', 'Name', 'Department', 'Section', 'SubSection', 'Status', 'Department1', 'Section1', 'SubSection1', 'Enddate', 'Note'];
+const formNameOptions = [
+  'نموذج أمر إداري',
+  'نموذج تنقل إداري',
+  'نموذج تكليف',
+  'نموذج إنذار إداري',
+  'نموذج ملاحظة إدارية'
+];
+
+function normalize(value) {
+  return String(value || '').trim();
+}
+
+function formatDateOnly(dateValue) {
+  const date = dateValue instanceof Date ? dateValue : new Date(dateValue);
+  if (Number.isNaN(date.getTime())) return '';
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  return `${yyyy}/${mm}/${dd}`;
+}
+
+function getArabicDayName(dateValue) {
+  const date = dateValue instanceof Date ? dateValue : new Date(dateValue);
+  if (Number.isNaN(date.getTime())) return '';
+  const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+  return days[date.getDay()] || '';
+}
 
 function buildInsertStatement(payload) {
   const keys = columns.filter((column) => Object.prototype.hasOwnProperty.call(payload, column));
@@ -21,6 +48,106 @@ function buildUpdateStatement(payload, id) {
     values: [...keys.map((key) => payload[key]), id]
   };
 }
+
+router.get('/forms/options', (req, res) => {
+  try {
+    res.json({ formNames: formNameOptions });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'تعذر تحميل بيانات النماذج الإدارية.' });
+  }
+});
+
+router.get('/forms', (req, res) => {
+  try {
+    const rows = db.prepare(`
+      SELECT ID, FormDate, DayName, EmployeeName, Department, Section, FormName, Notes, CreatedAt, CreatedBy
+      FROM AdministrativeForms
+      ORDER BY FormDate DESC, ID DESC
+      LIMIT 1000
+    `).all();
+
+    res.json(rows);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'تعذر تحميل أرشيف النماذج الإدارية.' });
+  }
+});
+
+router.post('/forms', (req, res) => {
+  const formDateInput = normalize(req.body.FormDate);
+  const formName = normalize(req.body.FormName);
+  const notes = normalize(req.body.Notes);
+  const selectedEmpId = normalize(req.body.EmpID);
+
+  if (!formDateInput) {
+    return res.status(400).json({ message: 'التاريخ مطلوب.' });
+  }
+
+  if (!formName) {
+    return res.status(400).json({ message: 'اسم النموذج مطلوب.' });
+  }
+
+  if (!selectedEmpId) {
+    return res.status(400).json({ message: 'اسم الموظف مطلوب.' });
+  }
+
+  const employee = db.prepare(`
+    SELECT ID, Name, Department, Section, Status
+    FROM Main
+    WHERE CAST(ID AS TEXT) = ?
+    LIMIT 1
+  `).get(selectedEmpId);
+
+  if (!employee) {
+    return res.status(404).json({ message: 'الموظف المحدد غير موجود.' });
+  }
+
+  if (normalize(employee.Status) !== 'نشط') {
+    return res.status(400).json({ message: 'لا يمكن التسجيل لموظف غير نشط.' });
+  }
+
+  const normalizedDate = formatDateOnly(formDateInput.replace(/-/g, '/'));
+  if (!normalizedDate) {
+    return res.status(400).json({ message: 'صيغة التاريخ غير صالحة.' });
+  }
+
+  const dayName = getArabicDayName(normalizedDate.replace(/\//g, '-'));
+  const createdAt = new Date().toISOString().replace('T', ' ').slice(0, 19);
+
+  try {
+    const result = db.prepare(`
+      INSERT INTO AdministrativeForms (
+        FormDate, DayName, FormName, EmpID, EmployeeName, Department, Section, Notes, CreatedAt, CreatedBy
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      normalizedDate,
+      dayName,
+      formName,
+      String(employee.ID || ''),
+      normalize(employee.Name),
+      normalize(employee.Department),
+      normalize(employee.Section),
+      notes,
+      createdAt,
+      req.user?.username || 'system'
+    );
+
+    logSystem({
+      userName: req.user?.username || 'system',
+      role: req.user?.role || '',
+      action: 'Add',
+      page: 'Administrative',
+      details: `Archived administrative form ID=${result.lastInsertRowid}`
+    });
+
+    res.json({ id: result.lastInsertRowid });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'تعذر تسجيل النموذج الإداري.' });
+  }
+});
 
 router.get('/transfers', (req, res) => {
   const records = db.prepare('SELECT * FROM Transfer ORDER BY ID DESC LIMIT 1000').all();

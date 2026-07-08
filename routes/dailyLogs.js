@@ -2,7 +2,49 @@
 const { db, dailyTables, isValidDailyTable, logSystem } = require('../database');
 
 const router = express.Router();
-const columns = ['EmpID', 'Day', 'Today', 'Name', 'Department', 'Section', 'Status', 'Period', 'InTime', 'OutTime', 'Startdate', 'Enddate', 'Type', 'Note'];
+const columns = ['EmpID', 'Day', 'Today', 'Name', 'Department', 'Section', 'SubSection', 'Status', 'Period', 'InTime', 'OutTime', 'Startdate', 'Enddate', 'Type', 'Note'];
+
+function normalizeDateInput(value) {
+  const text = String(value || '').trim();
+  if (!text) return '';
+  return text.replace(/\//g, '-');
+}
+
+function getDistinctValues(column) {
+  return db.prepare(`
+    SELECT DISTINCT TRIM(${column}) AS value
+    FROM DailyAll
+    WHERE ${column} IS NOT NULL AND TRIM(${column}) <> ''
+    ORDER BY value ASC
+  `).all().map((row) => row.value);
+}
+
+function getLookupDepartments() {
+  return db.prepare(`
+    SELECT DISTINCT TRIM(Department) AS value
+    FROM DepartmentSectionLookup
+    WHERE IsActive = 1 AND TRIM(Department) <> ''
+    ORDER BY ID ASC
+  `).all().map((row) => row.value);
+}
+
+function getLookupSections() {
+  return db.prepare(`
+    SELECT DISTINCT TRIM(Section) AS value
+    FROM DepartmentSectionLookup
+    WHERE IsActive = 1 AND TRIM(Section) <> ''
+    ORDER BY ID ASC
+  `).all().map((row) => row.value);
+}
+
+function getLookupSubSections() {
+  return db.prepare(`
+    SELECT DISTINCT TRIM(SubSection) AS value
+    FROM DepartmentSectionLookup
+    WHERE IsActive = 1 AND TRIM(SubSection) <> ''
+    ORDER BY ID ASC
+  `).all().map((row) => row.value);
+}
 
 function buildInsertStatement(table, payload) {
   const keys = columns.filter((column) => Object.prototype.hasOwnProperty.call(payload, column));
@@ -31,6 +73,27 @@ router.get('/tables', (req, res) => {
   res.json(dailyTables);
 });
 
+router.get('/filters', (req, res) => {
+  try {
+    res.json({
+      departments: getLookupDepartments(),
+      sections: getLookupSections(),
+      subSections: getLookupSubSections(),
+      departmentSections: db.prepare(`
+        SELECT Department, Section, SubSection, SortOrder
+        FROM DepartmentSectionLookup
+        WHERE IsActive = 1
+        ORDER BY ID ASC
+      `).all(),
+      periods: getDistinctValues('Period'),
+      statuses: getDistinctValues('Status')
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'تعذر تحميل فلاتر اليوميات' });
+  }
+});
+
 router.get('/table/:table', (req, res) => {
   const table = req.params.table;
   if (!isValidDailyTable(table)) {
@@ -57,20 +120,49 @@ router.get('/search', (req, res) => {
   const params = [];
   const columnsMap = {
     empId: 'EmpID',
+    name: 'Name',
     status: 'Status',
     department: 'Department',
+    section: 'Section',
+    subSection: 'SubSection',
+    period: 'Period',
+    day: 'Day',
     today: 'Today'
   };
 
   Object.entries(columnsMap).forEach(([param, column]) => {
     if (req.query[param]) {
-      filters.push(`${column} = ?`);
-      params.push(req.query[param]);
+      if (param === 'name') {
+        filters.push(`${column} LIKE ?`);
+        params.push(`%${String(req.query[param]).trim()}%`);
+      } else {
+        filters.push(`${column} = ?`);
+        params.push(req.query[param]);
+      }
     }
   });
 
+  const fromDate = normalizeDateInput(req.query.fromDate);
+  const toDate = normalizeDateInput(req.query.toDate);
+
+  if (fromDate) {
+    filters.push(`date(REPLACE(Today, '/', '-')) >= date(?)`);
+    params.push(fromDate);
+  }
+
+  if (toDate) {
+    filters.push(`date(REPLACE(Today, '/', '-')) <= date(?)`);
+    params.push(toDate);
+  }
+
   const whereClause = filters.length ? `WHERE ${filters.join(' AND ')}` : '';
-  const sql = `SELECT * FROM DailyAll ${whereClause} ORDER BY Today DESC LIMIT 1000`;
+  const sql = `
+    SELECT *
+    FROM DailyAll
+    ${whereClause}
+    ORDER BY date(REPLACE(Today, '/', '-')) DESC, Name ASC, ID DESC
+    LIMIT 5000
+  `;
   const records = db.prepare(sql).all(...params);
   res.json(records);
 });

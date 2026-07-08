@@ -76,11 +76,13 @@
       gap: 12px;
     }
     .action-item {
+      display: block;
       border-radius: 16px;
       padding: 16px;
       background: #f8fafc;
       border: 1px solid var(--border);
       color: var(--text);
+      text-decoration: none;
       text-align: center;
       font-weight: 600;
       cursor: pointer;
@@ -200,6 +202,12 @@
       color: #b91c1c;
     }
     .log-type { color: #334155; }
+    .group-row td {
+      background: #eef2ff;
+      color: #1e3a8a;
+      font-weight: 700;
+      border-bottom: 1px solid rgba(30, 58, 138, 0.15);
+    }
     .log-time {
       display: inline-block;
       direction: ltr;
@@ -244,13 +252,13 @@
 
     <div class="panel buttons-grid">
       <div class="action-item" id="employeesBtn">الموظفين</div>
-      <div class="action-item">اليوميات</div>
-      <div class="action-item">الاحصائيات</div>
+      <a class="action-item" id="dailyBtn" href="/daily.html">اليوميات</a>
+      <a class="action-item" id="statisticsBtn" href="/statistics.html">الاحصائيات</a>
       <div class="action-item" id="holidaysBtn">الاجازات</div>
       <div class="action-item" id="coursesBtn">الدورات</div>
       <div class="action-item" id="transfersBtn">التنقلات</div>
       <div class="action-item admin-only" id="evaluationsBtn">تقييم الاداء</div>
-      <div class="action-item admin-only" id="adminFormsBtn">نماذج ادارية</div>
+      <div class="action-item admin-only" id="adminFormsBtn">النماذج الادارية</div>
       <div class="action-item admin-only" id="systemLogBtn">سجل النظام</div>
       <div class="action-item admin-only" id="settingsBtn">الاعدادات</div>
       <div class="action-item" id="outsideAdminBtn">خارج الإدارة</div>
@@ -282,7 +290,7 @@
         <h2>ملخص إضافي</h2>
         <div class="stats-grid">
           <div class="stat-card">
-            <p>المنتقلون خارج الإدارة</p>
+            <p>خارج الإدارة</p>
             <h3 id="totalTransfers">--</h3>
           </div>
           <div class="stat-card">
@@ -324,10 +332,14 @@
             <thead>
               <tr>
                 <th>الاسم</th>
-                <th>أيام العمل</th>
-                <th>إجازات</th>
-                <th>غياب</th>
-                <th>ملاحظة</th>
+                <th>الحالة</th>
+                <th>الفترة</th>
+                <th>الحضور</th>
+                <th>الانصراف</th>
+                <th>بداية</th>
+                <th>نهاية</th>
+                <th>الوصف</th>
+                <th>الملاحظات</th>
               </tr>
             </thead>
             <tbody id="todaySummaryRows"></tbody>
@@ -335,19 +347,20 @@
         </div>
       </div>
       <div class="panel">
-        <h2>ملخص هذا الشهر</h2>
+        <h2>ملخص الاجازات اليومي</h2>
         <div class="table-wrap">
           <table class="mini-table">
             <thead>
               <tr>
                 <th>الاسم</th>
                 <th>القسم</th>
-                <th>الفريق</th>
-                <th>الحضور</th>
-                <th>الغياب</th>
+                <th>النوبة</th>
+                <th>نوع الاجازة</th>
+                <th>بداية</th>
+                <th>نهاية</th>
               </tr>
             </thead>
-            <tbody id="monthSummaryRows"></tbody>
+            <tbody id="leaveDailySummaryRows"></tbody>
           </table>
         </div>
       </div>
@@ -379,6 +392,7 @@
     const employeesBtn = document.getElementById('employeesBtn');
     const outsideAdminBtn = document.getElementById('outsideAdminBtn');
     const holidaysBtn = document.getElementById('holidaysBtn');
+    const statisticsBtn = document.getElementById('statisticsBtn');
     const coursesBtn = document.getElementById('coursesBtn');
     const transfersBtn = document.getElementById('transfersBtn');
     const activityRows = document.getElementById('activityRows');
@@ -387,7 +401,7 @@
     const systemLogBtn = document.getElementById('systemLogBtn');
     const settingsBtn = document.getElementById('settingsBtn');
     const todaySummaryRows = document.getElementById('todaySummaryRows');
-    const monthSummaryRows = document.getElementById('monthSummaryRows');
+    const leaveDailySummaryRows = document.getElementById('leaveDailySummaryRows');
     const authToken = localStorage.getItem('authToken');
 
     if (!authToken) {
@@ -492,6 +506,72 @@
       return formatDateTime(normalized) || normalized;
     }
 
+    function parseStoredDateParts(value) {
+      if (!value) return null;
+
+      const normalized = normalizeDigits(value)
+        .replace(/[\u200e\u200f\u061c\u202a-\u202e]/g, ' ')
+        .replace(/[،]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      const parts = normalized.match(/\d+/g) || [];
+      if (parts.length < 3) return null;
+
+      if (parts[0].length === 4) {
+        return {
+          year: Number(parts[0]),
+          month: Number(parts[1]),
+          day: Number(parts[2])
+        };
+      }
+
+      if (parts[2].length === 4) {
+        return {
+          day: Number(parts[0]),
+          month: Number(parts[1]),
+          year: Number(parts[2])
+        };
+      }
+
+      return null;
+    }
+
+    function dayDifferenceFromToday(parts) {
+      if (!parts || !Number.isFinite(parts.year) || !Number.isFinite(parts.month) || !Number.isFinite(parts.day)) {
+        return null;
+      }
+
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const target = new Date(parts.year, parts.month - 1, parts.day);
+      if (Number.isNaN(target.getTime())) return null;
+
+      return Math.round((today.getTime() - target.getTime()) / (24 * 60 * 60 * 1000));
+    }
+
+    function createGroupHeaderRow(label) {
+      const row = document.createElement('tr');
+      row.className = 'group-row';
+      row.innerHTML = `<td colspan="6">${label}</td>`;
+      return row;
+    }
+
+    function createActivityRow(item) {
+      const status = getActivityStatus(item);
+      const badgeClass = status === 'فشل' ? 'fail' : '';
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td><span class="log-type">${item.Action || ''}</span></td>
+        <td>${item.Target || ''}</td>
+        <td>${item.UserName || ''}</td>
+        <td><span class="log-time">${normalizeStoredTime(item.Timestamp)}</span></td>
+        <td><span class="badge ${badgeClass}">${status}</span></td>
+        <td>${item.Details || ''}</td>
+      `;
+      return row;
+    }
+
     function getCurrentTime() {
       return formatDateTime(new Date());
     }
@@ -525,7 +605,7 @@
     function renderTodaySummary(items) {
       todaySummaryRows.innerHTML = '';
       if (!Array.isArray(items) || items.length === 0) {
-        todaySummaryRows.innerHTML = '<tr><td colspan="5">لا توجد بيانات متاحة.</td></tr>';
+        todaySummaryRows.innerHTML = '<tr><td colspan="9">لا توجد بيانات متاحة.</td></tr>';
         return;
       }
 
@@ -533,19 +613,23 @@
         const row = document.createElement('tr');
         row.innerHTML = `
           <td>${item.Name ?? ''}</td>
-          <td>${item.WorkDays ?? 0}</td>
-          <td>${item.VacationDays ?? 0}</td>
-          <td>${item.AbsentDays ?? 0}</td>
+          <td>${item.Status ?? ''}</td>
+          <td>${item.Period ?? ''}</td>
+          <td>${item.InTime ?? ''}</td>
+          <td>${item.OutTime ?? ''}</td>
+          <td>${item.Startdate ?? ''}</td>
+          <td>${item.Enddate ?? ''}</td>
+          <td>${item.Type ?? ''}</td>
           <td>${item.Note ?? ''}</td>
         `;
         todaySummaryRows.appendChild(row);
       });
     }
 
-    function renderMonthSummary(items) {
-      monthSummaryRows.innerHTML = '';
+    function renderLeaveDailySummary(items) {
+      leaveDailySummaryRows.innerHTML = '';
       if (!Array.isArray(items) || items.length === 0) {
-        monthSummaryRows.innerHTML = '<tr><td colspan="5">لا توجد بيانات متاحة.</td></tr>';
+        leaveDailySummaryRows.innerHTML = '<tr><td colspan="6">لا توجد بيانات متاحة.</td></tr>';
         return;
       }
 
@@ -554,11 +638,12 @@
         row.innerHTML = `
           <td>${item.Name ?? ''}</td>
           <td>${item.Department ?? ''}</td>
-          <td>${item.Section ?? ''}</td>
-          <td>${item.PresentDays ?? 0}</td>
-          <td>${item.AbsentDays ?? 0}</td>
+          <td>${item.Shift ?? ''}</td>
+          <td>${item.Type ?? ''}</td>
+          <td>${item.Startdate ?? ''}</td>
+          <td>${item.Enddate ?? ''}</td>
         `;
-        monthSummaryRows.appendChild(row);
+        leaveDailySummaryRows.appendChild(row);
       });
     }
 
@@ -579,20 +664,41 @@
         return;
       }
 
+      const grouped = {
+        today: [],
+        yesterday: [],
+        dayBeforeYesterday: []
+      };
+
       items.forEach((item) => {
-        const status = getActivityStatus(item);
-        const badgeClass = status === 'فشل' ? 'fail' : '';
-        const row = document.createElement('tr');
-        row.innerHTML = `
-          <td><span class="log-type">${item.Action || ''}</span></td>
-          <td>${item.Target || ''}</td>
-          <td>${item.UserName || ''}</td>
-          <td><span class="log-time">${normalizeStoredTime(item.Timestamp)}</span></td>
-          <td><span class="badge ${badgeClass}">${status}</span></td>
-          <td>${item.Details || ''}</td>
-        `;
-        activityRows.appendChild(row);
+        const dateParts = parseStoredDateParts(item?.Timestamp);
+        const dayDiff = dayDifferenceFromToday(dateParts);
+        if (dayDiff === 0) grouped.today.push(item);
+        else if (dayDiff === 1) grouped.yesterday.push(item);
+        else if (dayDiff === 2) grouped.dayBeforeYesterday.push(item);
       });
+
+      const groupsConfig = [
+        { key: 'today', label: 'اليوم' },
+        { key: 'yesterday', label: 'الأمس' },
+        { key: 'dayBeforeYesterday', label: 'قبل الأمس' }
+      ];
+
+      let hasRows = false;
+      groupsConfig.forEach((group) => {
+        const groupItems = grouped[group.key];
+        if (!groupItems || groupItems.length === 0) return;
+
+        activityRows.appendChild(createGroupHeaderRow(group.label));
+        groupItems.forEach((item) => {
+          activityRows.appendChild(createActivityRow(item));
+          hasRows = true;
+        });
+      });
+
+      if (!hasRows) {
+        activityRows.innerHTML = '<tr><td colspan="6">لا توجد عمليات ضمن اليوم أو الأمس أو قبل الأمس.</td></tr>';
+      }
     }
 
     logoutBtn.addEventListener('click', () => {
@@ -612,6 +718,20 @@
       window.location.href = '/holidays.html';
     });
 
+    const dailyBtn = document.getElementById('dailyBtn');
+
+    if (dailyBtn) {
+      dailyBtn.addEventListener('click', () => {
+        window.location.href = '/daily.html';
+      });
+    }
+
+    if (statisticsBtn) {
+      statisticsBtn.addEventListener('click', () => {
+        window.location.href = '/statistics.html';
+      });
+    }
+
     coursesBtn.addEventListener('click', () => {
       window.location.href = '/courses.html';
     });
@@ -619,6 +739,30 @@
     transfersBtn.addEventListener('click', () => {
       window.location.href = '/transfers.html';
     });
+
+    if (evaluationsBtn) {
+      evaluationsBtn.addEventListener('click', () => {
+        window.location.href = '/evaluations.html';
+      });
+    }
+
+    if (adminFormsBtn) {
+      adminFormsBtn.addEventListener('click', () => {
+        window.location.href = '/administrative.html';
+      });
+    }
+
+    if (systemLogBtn) {
+      systemLogBtn.addEventListener('click', () => {
+        window.location.href = '/system-log.html';
+      });
+    }
+
+    if (settingsBtn) {
+      settingsBtn.addEventListener('click', () => {
+        window.location.href = '/settings.html';
+      });
+    }
 
     async function loadDashboardSummary() {
       try {
@@ -638,7 +782,7 @@
         renderBlocks('shiftStats', data.shifts || []);
         renderBlocks('sectionStats', data.sections || []);
         renderTodaySummary(data.todaySummary || []);
-        renderMonthSummary(data.monthSummary || []);
+        renderLeaveDailySummary(data.leaveDailySummary || []);
         renderRecentActivities(data.recentActivities || []);
       } catch (err) {
         console.warn('Unable to load dashboard summary', err);

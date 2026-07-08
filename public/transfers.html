@@ -198,7 +198,7 @@
       justify-content: space-between;
       align-items: center;
       gap: 10px;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
       margin-bottom: 10px;
     }
 
@@ -208,7 +208,10 @@
       font-weight: 700;
     }
 
-    .table-search { width: min(320px, 100%); }
+    .table-search {
+      flex: 1;
+      min-width: 0;
+    }
 
     .table-wrap {
       overflow: auto;
@@ -284,7 +287,7 @@
 
         <div class="grid">
           <div class="field">
-            <label for="name">الاسم الرباعي</label>
+            <label for="name">اسم الموظف</label>
             <input id="name" list="employeeNames" autocomplete="off" />
             <datalist id="employeeNames"></datalist>
           </div>
@@ -314,6 +317,11 @@
                 <label for="fromSection">من النوبة</label>
                 <input id="fromSection" readonly />
               </div>
+
+              <div class="field">
+                <label for="fromSubSection">من الشعبة</label>
+                <input id="fromSubSection" readonly />
+              </div>
             </div>
 
             <div class="transfer-stack">
@@ -327,6 +335,13 @@
               <div class="field">
                 <label for="toSection">إلى النوبة</label>
                 <select id="toSection">
+                  <option value="">-- اختر --</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label for="toSubSection">إلى الشعبة</label>
+                <select id="toSubSection">
                   <option value="">-- اختر --</option>
                 </select>
               </div>
@@ -362,13 +377,15 @@
           <thead>
             <tr>
               <th>تسلسل</th>
-              <th>الاسم الرباعي</th>
+              <th>اسم الموظف</th>
               <th>الحالة</th>
               <th>تاريخ النقل</th>
               <th>من القسم</th>
               <th>إلى القسم</th>
               <th>من النوبة</th>
               <th>إلى النوبة</th>
+              <th>من الشعبة</th>
+              <th>إلى الشعبة</th>
               <th>ملاحظات</th>
             </tr>
           </thead>
@@ -415,6 +432,8 @@
     const toDepartmentInput = document.getElementById('toDepartment');
     const fromSectionInput = document.getElementById('fromSection');
     const toSectionInput = document.getElementById('toSection');
+    const fromSubSectionInput = document.getElementById('fromSubSection');
+    const toSubSectionInput = document.getElementById('toSubSection');
     const noteInput = document.getElementById('note');
     const dateOpenButtons = document.querySelectorAll('.date-picker-trigger');
 
@@ -434,8 +453,7 @@
     let allTransfers = [];
     let allEmployees = [];
     let selectedEmployee = null;
-    let departmentOptions = [];
-    let sectionOptions = [];
+    let departmentSectionRows = [];
 
     function showStatus(message, isError = false) {
       statusLine.className = `status-line show ${isError ? 'error' : 'ok'}`;
@@ -538,69 +556,65 @@
       });
     }
 
-    function populateDepartmentOptions() {
-      const fixedDepartments = [
-        'البلاغات',
-        'العمليات',
-        'الخدمات المساندة',
-        'الموارد البشرية',
-        'المعلومات',
-        'الاحصاء'
-      ];
+    function normalizeDepartment(value) {
+      const normalized = String(value || '').trim();
+      if (normalized === 'الإحصاء') return 'الاحصاء';
+      return normalized;
+    }
 
+    function populateDepartmentOptions(preferredValue = '') {
       toDepartmentInput.innerHTML = '<option value="">-- اختر --</option>';
 
-      fixedDepartments.forEach((value) => {
+      const departments = [...new Set(
+        departmentSectionRows
+          .map((item) => normalizeDepartment(item.Department))
+          .filter(Boolean)
+      )];
+
+      departments.forEach((value) => {
         const option = document.createElement('option');
         option.value = value;
         option.textContent = value;
         toDepartmentInput.appendChild(option);
       });
+
+      toDepartmentInput.value = departments.includes(preferredValue) ? preferredValue : '';
     }
 
-    function populateSectionOptions() {
+    function populateSectionOptions(selectedDepartment = '', preferredValue = '') {
       toSectionInput.innerHTML = '<option value="">-- اختر --</option>';
 
-      const sectionGroups = [
-        {
-          label: 'البلاغات',
-          options: ['أ - البلاغات', 'ب - البلاغات', 'ج - البلاغات', 'د - البلاغات', 'هـ - البلاغات', 'ثابت صبح']
-        },
-        {
-          label: 'العمليات',
-          options: ['أ - العمليات', 'ب - العمليات', 'ج - العمليات', 'د - العمليات', 'هـ - العمليات']
-        },
-        {
-          label: 'فريق عمل البلاغات',
-          options: ['أ - فريق عمل البلاغات', 'ب - فريق عمل البلاغات', 'ج - فريق عمل البلاغات', 'د - فريق عمل البلاغات', 'فريق عمل البلاغات صباحاً']
-        },
-        {
-          label: 'الخدمات',
-          options: ['أ - الخدمات', 'ب - الخدمات', 'ج - الخدمات', 'د - الخدمات', 'هـ - الخدمات']
-        },
-        {
-          label: 'سكرتارية',
-          options: ['سكرتارية البلاغات', 'سكرتارية العمليات']
-        },
-        {
-          label: 'متفرقات',
-          options: ['امن المبنى', 'الضباط', 'العسكريين', 'المهنيين', 'صباحاً']
-        }
-      ];
+      const sectionValues = departmentSectionRows
+        .filter((item) => normalizeDepartment(item.Department) === normalizeDepartment(selectedDepartment))
+        .map((item) => String(item.Section || '').trim())
+        .filter(Boolean);
 
-      sectionGroups.forEach((group) => {
-        const optgroup = document.createElement('optgroup');
-        optgroup.label = group.label;
-
-        group.options.forEach((value) => {
-          const option = document.createElement('option');
-          option.value = value;
-          option.textContent = value;
-          optgroup.appendChild(option);
-        });
-
-        toSectionInput.appendChild(optgroup);
+      sectionValues.forEach((value) => {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = value;
+        toSectionInput.appendChild(option);
       });
+
+      toSectionInput.value = sectionValues.includes(preferredValue) ? preferredValue : '';
+    }
+
+    function populateSubSectionOptions(selectedDepartment = '', selectedSection = '', preferredValue = '') {
+      toSubSectionInput.innerHTML = '<option value="">-- اختر --</option>';
+
+      const subSectionValues = departmentSectionRows
+        .filter((item) => normalizeDepartment(item.Department) === normalizeDepartment(selectedDepartment) && String(item.Section || '').trim() === String(selectedSection || '').trim())
+        .map((item) => String(item.SubSection || '').trim())
+        .filter(Boolean);
+
+      subSectionValues.forEach((value) => {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = value;
+        toSubSectionInput.appendChild(option);
+      });
+
+      toSubSectionInput.value = subSectionValues.includes(preferredValue) ? preferredValue : '';
     }
 
     function setSelectedEmployeeByName(name) {
@@ -610,9 +624,11 @@
       if (selectedEmployee) {
         fromDepartmentInput.value = selectedEmployee.Department || '';
         fromSectionInput.value = selectedEmployee.Section || '';
+        fromSubSectionInput.value = selectedEmployee.SubSection || '';
       } else {
         fromDepartmentInput.value = '';
         fromSectionInput.value = '';
+        fromSubSectionInput.value = '';
       }
     }
 
@@ -622,9 +638,11 @@
         Name: String(nameInput.value || '').trim(),
         Department: String(fromDepartmentInput.value || '').trim(),
         Section: String(fromSectionInput.value || '').trim(),
+        SubSection: String(fromSubSectionInput.value || '').trim(),
         Status: 'نقل',
         Department1: String(toDepartmentInput.value || '').trim(),
         Section1: String(toSectionInput.value || '').trim(),
+        SubSection1: String(toSubSectionInput.value || '').trim(),
         Enddate: formatDateYmdSlash(transferDateInput.value),
         Note: String(noteInput.value || '').trim(),
         userName: currentUser.username || 'system'
@@ -633,7 +651,7 @@
 
     function validateForm() {
       const requiredErrors = [];
-      if (!String(nameInput.value || '').trim()) requiredErrors.push('الاسم الرباعي');
+      if (!String(nameInput.value || '').trim()) requiredErrors.push('اسم الموظف');
       if (!String(transferDateInput.value || '').trim()) requiredErrors.push('تاريخ النقل');
       if (!String(toDepartmentInput.value || '').trim()) requiredErrors.push('إلى القسم');
       if (!String(toSectionInput.value || '').trim()) requiredErrors.push('إلى النوبة');
@@ -661,6 +679,10 @@
       transferDateDisplayInput.value = '';
       fromDepartmentInput.value = '';
       fromSectionInput.value = '';
+      fromSubSectionInput.value = '';
+      populateDepartmentOptions();
+      populateSectionOptions();
+      populateSubSectionOptions();
       Array.from(rowsBody.querySelectorAll('tr')).forEach((row) => row.classList.remove('selected'));
       applyNameFilter();
     }
@@ -670,11 +692,15 @@
       transferIdInput.value = item.ID;
       nameInput.value = item.Name || '';
       setSelectedEmployeeByName(item.Name || '');
+      if (!selectedEmployee) {
+        fromDepartmentInput.value = item.Department || '';
+        fromSectionInput.value = item.Section || '';
+        fromSubSectionInput.value = item.SubSection || '';
+      }
       statusInput.value = item.Status || 'نقل';
-      populateDepartmentOptions();
-      populateSectionOptions();
-      toDepartmentInput.value = item.Department1 || '';
-      toSectionInput.value = item.Section1 || '';
+      populateDepartmentOptions(normalizeDepartment(item.Department1 || ''));
+      populateSectionOptions(normalizeDepartment(item.Department1 || ''), item.Section1 || '');
+      populateSubSectionOptions(normalizeDepartment(item.Department1 || ''), item.Section1 || '', item.SubSection1 || '');
       transferDateInput.value = toDateInputValue(item.Enddate);
       syncDateDisplays();
       noteInput.value = item.Note || '';
@@ -684,7 +710,7 @@
       rowsBody.innerHTML = '';
 
       if (!Array.isArray(items) || items.length === 0) {
-        rowsBody.innerHTML = '<tr><td colspan="9">لا توجد بيانات تنقلات حالياً.</td></tr>';
+        rowsBody.innerHTML = '<tr><td colspan="11">لا توجد بيانات تنقلات حالياً.</td></tr>';
         countLabel.textContent = 'عدد السجلات: 0';
         return;
       }
@@ -701,6 +727,8 @@
           <td>${item.Department1 ?? ''}</td>
           <td>${item.Section ?? ''}</td>
           <td>${item.Section1 ?? ''}</td>
+          <td>${item.SubSection ?? ''}</td>
+          <td>${item.SubSection1 ?? ''}</td>
           <td>${item.Note ?? ''}</td>
         `;
 
@@ -754,9 +782,23 @@
       });
 
       if (!data) return;
-      allEmployees = Array.isArray(data) ? data : [];
+      allEmployees = (Array.isArray(data) ? data : []).filter(
+        (item) => String(item?.Status || '').trim() === 'نشط'
+      );
       populateNameOptions();
       setSelectedEmployeeByName(nameInput.value);
+    }
+
+    async function loadDepartmentSections() {
+      const data = await requestJson('/api/employees/department-sections', {
+        headers: { Authorization: `Bearer ${authToken}` }
+      });
+
+      if (!data) return;
+      departmentSectionRows = Array.isArray(data) ? data : [];
+      populateDepartmentOptions(normalizeDepartment(toDepartmentInput.value));
+      populateSectionOptions(normalizeDepartment(toDepartmentInput.value), toSectionInput.value);
+      populateSubSectionOptions(normalizeDepartment(toDepartmentInput.value), toSectionInput.value, toSubSectionInput.value);
     }
 
     async function loadTransfers() {
@@ -778,6 +820,8 @@
         Department1: toDepartmentInput.value,
         Section: fromSectionInput.value,
         Section1: toSectionInput.value,
+        SubSection: fromSubSectionInput.value,
+        SubSection1: toSubSectionInput.value,
         Enddate: transferDateInput.value,
         Note: noteInput.value
       };
@@ -967,7 +1011,7 @@
         <div class="section-title">البيانات الأساسية</div>
         <table>
           <tr>
-            <td class="label">الاسم الرباعي</td>
+            <td class="label">اسم الموظف</td>
             <td class="value">${valueOrDash(row.Name)}</td>
             <td class="label">الحالة</td>
             <td class="value">${valueOrDash(row.Status)}</td>
@@ -983,6 +1027,12 @@
             <td class="value">${valueOrDash(row.Section)}</td>
             <td class="label">إلى النوبة</td>
             <td class="value">${valueOrDash(row.Section1)}</td>
+          </tr>
+          <tr>
+            <td class="label">من الشعبة</td>
+            <td class="value">${valueOrDash(row.SubSection)}</td>
+            <td class="label">إلى الشعبة</td>
+            <td class="value">${valueOrDash(row.SubSection1)}</td>
           </tr>
         </table>
       </section>
@@ -1088,8 +1138,22 @@
 
     nameFilterInput.addEventListener('input', applyNameFilter);
 
-    toDepartmentInput.addEventListener('focus', populateDepartmentOptions);
-    toSectionInput.addEventListener('focus', populateSectionOptions);
+    toDepartmentInput.addEventListener('focus', () => {
+      populateDepartmentOptions(normalizeDepartment(toDepartmentInput.value));
+    });
+    toDepartmentInput.addEventListener('change', () => {
+      populateSectionOptions(normalizeDepartment(toDepartmentInput.value));
+      populateSubSectionOptions(normalizeDepartment(toDepartmentInput.value), toSectionInput.value);
+    });
+    toSectionInput.addEventListener('focus', () => {
+      populateSectionOptions(normalizeDepartment(toDepartmentInput.value), toSectionInput.value);
+    });
+    toSectionInput.addEventListener('change', () => {
+      populateSubSectionOptions(normalizeDepartment(toDepartmentInput.value), toSectionInput.value);
+    });
+    toSubSectionInput.addEventListener('focus', () => {
+      populateSubSectionOptions(normalizeDepartment(toDepartmentInput.value), toSectionInput.value, toSubSectionInput.value);
+    });
 
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
@@ -1184,6 +1248,7 @@
 
     refreshBtn.addEventListener('click', async () => {
       clearStatus();
+      await loadDepartmentSections();
       await loadEmployees();
       await loadTransfers();
       showStatus('تم تحديث عرض بيانات التنقلات');
@@ -1195,9 +1260,8 @@
 
     (async () => {
       try {
+        await loadDepartmentSections();
         await loadEmployees();
-        populateDepartmentOptions();
-        populateSectionOptions();
         await loadTransfers();
       } catch (error) {
         showStatus(error.message, true);

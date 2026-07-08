@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>تقييم الاداء</title>
+  <link rel="stylesheet" href="/layout-defaults.css" />
+  <style>
+    body.app-shell {
+      background: linear-gradient(180deg, #dfeaff 0%, #f8fbff 100%);
+    }
+
+    body.app-shell .top-panel .form-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    body.app-shell .top-panel .form-grid > .form-row {
+      grid-column: 1 / -1;
+    }
+
+    body.app-shell .top-panel .form-row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .top-panel .form-grid .field {
+      min-width: 0;
+    }
+
+    .form-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-start;
+      align-items: center;
+    }
+
+    .form-actions .btn {
+      min-width: 160px;
+    }
+
+    .table-tools {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+
+    .table-tools p {
+      margin: 0;
+      color: var(--ui-muted);
+      font-weight: 700;
+    }
+
+    .bottom-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .evaluation-table {
+      table-layout: fixed;
+    }
+
+    .evaluation-table th,
+    .evaluation-table td {
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      vertical-align: top;
+      white-space: normal;
+    }
+
+    .evaluation-table th:nth-child(1),
+    .evaluation-table td:nth-child(1) { width: 16%; }
+    .evaluation-table th:nth-child(2),
+    .evaluation-table td:nth-child(2) { width: 8%; }
+    .evaluation-table th:nth-child(3),
+    .evaluation-table td:nth-child(3) { width: 8%; }
+    .evaluation-table th:nth-child(4),
+    .evaluation-table td:nth-child(4) { width: 8%; }
+    .evaluation-table th:nth-child(5),
+    .evaluation-table td:nth-child(5) { width: 8%; }
+    .evaluation-table th:nth-child(6),
+    .evaluation-table td:nth-child(6) { width: 8%; }
+    .evaluation-table th:nth-child(7),
+    .evaluation-table td:nth-child(7) { width: 12%; }
+    .evaluation-table th:nth-child(8),
+    .evaluation-table td:nth-child(8) { width: 12%; }
+    .evaluation-table th:nth-child(9),
+    .evaluation-table td:nth-child(9) { width: 10%; }
+
+    .table-wrap table {
+      min-width: 1100px;
+    }
+
+    .mono {
+      direction: ltr;
+      unicode-bidi: isolate;
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    @media (max-width: 1100px) {
+      .top-panel .form-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .header h1 {
+        font-size: 24px;
+      }
+
+      .table-wrap table {
+        min-width: 980px;
+      }
+
+      .form-actions .btn {
+        min-width: 0;
+        width: auto;
+      }
+    }
+  </style>
+</head>
+<body class="app-shell">
+  <div class="page app-page">
+    <section class="header">
+      <div>
+        <h1>واجهة تقييم الاداء</h1>
+        <p>تقييم أداء الإدارة والموظفين حسب النسبة التشغيلية لحضور وغياب الموظفين.</p>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn dark" id="backBtn">العودة للرئيسية</button>
+      </div>
+    </section>
+
+    <section class="panel top-panel">
+      <h2>تعبئة / اظهار البيانات</h2>
+      <form id="evaluationsForm">
+        <div class="form-grid">
+          <div class="form-row">
+            <div class="field">
+              <label for="department">القسم</label>
+              <select id="department">
+                <option value="">-- اختر --</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="section">النوبة</label>
+              <select id="section">
+                <option value="">-- اختر --</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="field">
+              <label for="fromDate">من التاريخ</label>
+              <div class="date-picker-wrap">
+                <input id="fromDateDisplay" class="date-display-input" type="text" placeholder="yyyy/mm/dd" readonly />
+                <button type="button" class="date-picker-trigger" data-picker-id="fromDate" aria-label="اختيار من التاريخ"></button>
+                <input id="fromDate" type="date" class="native-date-input" />
+              </div>
+            </div>
+            <div class="field">
+              <label for="toDate">الى التاريخ</label>
+              <div class="date-picker-wrap">
+                <input id="toDateDisplay" class="date-display-input" type="text" placeholder="yyyy/mm/dd" readonly />
+                <button type="button" class="date-picker-trigger" data-picker-id="toDate" aria-label="اختيار الى التاريخ"></button>
+                <input id="toDate" type="date" class="native-date-input" />
+              </div>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="field">
+              <label for="employeeName">اسم الموظف</label>
+              <select id="employeeName">
+                <option value="">-- اختر --</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="period">الفترة</label>
+              <select id="period">
+                <option value="">-- اختر --</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="field">
+              <label for="compareYear">المقارنة بعام</label>
+              <select id="compareYear">
+                <option value="">بدون مقارنة</option>
+              </select>
+            </div>
+            <div class="field"></div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-actions">
+              <button type="button" class="btn success" id="searchBtn">بحث</button>
+              <button type="button" class="btn primary" id="printBtn">طباعة بيانات</button>
+            </div>
+          </div>
+        </div>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h2>صندوق عرض البيانات</h2>
+      <div class="table-tools">
+        <p id="countLabel">عدد السجلات: 0</p>
+        <div class="bottom-actions">
+          <button type="button" class="btn primary" id="refreshBtn">تحديث العرض</button>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table class="evaluation-table">
+          <thead>
+            <tr>
+              <th>الاسم</th>
+              <th>عدد الحضور</th>
+              <th>عدد الرخص</th>
+              <th>عدد الغياب</th>
+              <th>عدد الاجازات</th>
+              <th>عدد الطبيات</th>
+              <th>النسبة المئوية</th>
+              <th>التقييم</th>
+              <th>الترتيب</th>
+            </tr>
+          </thead>
+          <tbody id="rows">
+            <tr>
+              <td colspan="9">لا توجد بيانات متاحة للمعايير الحالية.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const authToken = localStorage.getItem('authToken');
+    if (!authToken) {
+      window.location.href = '/';
+    }
+
+    const departmentInput = document.getElementById('department');
+    const sectionInput = document.getElementById('section');
+    const fromDateInput = document.getElementById('fromDate');
+    const toDateInput = document.getElementById('toDate');
+    const fromDateDisplay = document.getElementById('fromDateDisplay');
+    const toDateDisplay = document.getElementById('toDateDisplay');
+    const employeeNameInput = document.getElementById('employeeName');
+    const periodInput = document.getElementById('period');
+    const compareYearInput = document.getElementById('compareYear');
+    const rowsBody = document.getElementById('rows');
+    const countLabel = document.getElementById('countLabel');
+    const searchBtn = document.getElementById('searchBtn');
+    const printBtn = document.getElementById('printBtn');
+    const refreshBtn = document.getElementById('refreshBtn');
+    const backBtn = document.getElementById('backBtn');
+    const dateButtons = document.querySelectorAll('.date-picker-trigger');
+
+    let departmentSectionRows = [];
+
+    function pad2(value) {
+      return String(value).padStart(2, '0');
+    }
+
+    function toSlashDate(value) {
+      if (!value) return '';
+      const parts = String(value).split('-');
+      if (parts.length !== 3) return '';
+      return `${parts[0]}/${parts[1]}/${parts[2]}`;
+    }
+
+    function syncDateDisplays() {
+      fromDateDisplay.value = toSlashDate(fromDateInput.value);
+      toDateDisplay.value = toSlashDate(toDateInput.value);
+    }
+
+    function normalizeDepartment(value) {
+      const normalized = String(value || '').trim();
+      if (normalized === 'الإحصاء') return 'الاحصاء';
+      return normalized;
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function populateSelect(select, values, preferred = '') {
+      const current = preferred || select.value;
+      select.innerHTML = '<option value="">-- اختر --</option>';
+
+      Array.from(new Set(values.map((item) => String(item || '').trim()).filter(Boolean))).forEach((value) => {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = value;
+        select.appendChild(option);
+      });
+
+      if (current && Array.from(select.options).some((item) => item.value === current)) {
+        select.value = current;
+      }
+    }
+
+    function populateSectionOptions() {
+      const selectedDepartment = normalizeDepartment(departmentInput.value);
+      const sections = departmentSectionRows
+        .filter((item) => normalizeDepartment(item.Department) === selectedDepartment)
+        .map((item) => String(item.Section || '').trim())
+        .filter(Boolean);
+
+      populateSelect(sectionInput, sections);
+    }
+
+    function renderRows(items) {
+      rowsBody.innerHTML = '';
+
+      if (!Array.isArray(items) || items.length === 0) {
+        rowsBody.innerHTML = '<tr><td colspan="9">لا توجد بيانات متاحة للمعايير الحالية.</td></tr>';
+        countLabel.textContent = 'عدد السجلات: 0';
+        return;
+      }
+
+      items.forEach((item) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${escapeHtml(item.Name || '')}</td>
+          <td class="mono">${escapeHtml(item.PresentCount ?? 0)}</td>
+          <td class="mono">${escapeHtml(item.LicenseCount ?? 0)}</td>
+          <td class="mono">${escapeHtml(item.AbsentCount ?? 0)}</td>
+          <td class="mono">${escapeHtml(item.LeaveCount ?? 0)}</td>
+          <td class="mono">${escapeHtml(item.MedicalCount ?? 0)}</td>
+          <td class="mono">${escapeHtml(item.Percent ?? 0)}%</td>
+          <td>${escapeHtml(item.Evaluation || '')}</td>
+          <td class="mono">${escapeHtml(item.Rank ?? '')}</td>
+        `;
+        rowsBody.appendChild(row);
+      });
+
+      countLabel.textContent = `عدد السجلات: ${items.length}`;
+    }
+
+    async function requestJson(url, options = {}) {
+      const response = await fetch(url, options);
+      if (response.status === 401 || response.status === 403) {
+        localStorage.removeItem('authToken');
+        window.location.href = '/';
+        return null;
+      }
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(String(data?.message || '').trim() || 'تعذر تحميل البيانات المطلوبة.');
+      }
+
+      return data;
+    }
+
+    async function loadLookupOptions() {
+      const departmentSections = await requestJson('/api/employees/department-sections', {
+        headers: { Authorization: `Bearer ${authToken}` }
+      });
+      if (!departmentSections) return;
+
+      departmentSectionRows = Array.isArray(departmentSections) ? departmentSections : [];
+      const departments = departmentSectionRows
+        .map((item) => normalizeDepartment(item.Department))
+        .filter(Boolean);
+
+      populateSelect(departmentInput, departments);
+      populateSectionOptions();
+    }
+
+    async function loadEmployeeOptions() {
+      const employees = await requestJson('/api/employees', {
+        headers: { Authorization: `Bearer ${authToken}` }
+      });
+      if (!employees) return;
+
+      const activeNames = (Array.isArray(employees) ? employees : [])
+        .filter((item) => String(item?.Status || '').trim() === 'نشط')
+        .map((item) => String(item.Name || '').trim())
+        .filter(Boolean);
+
+      populateSelect(employeeNameInput, activeNames);
+    }
+
+    async function loadEvaluationFilters() {
+      const data = await requestJson('/api/evaluations/filters', {
+        headers: { Authorization: `Bearer ${authToken}` }
+      });
+      if (!data) return;
+
+      populateSelect(periodInput, Array.isArray(data.periods) ? data.periods : []);
+
+      compareYearInput.innerHTML = '<option value="">بدون مقارنة</option>';
+      (Array.isArray(data.years) ? data.years : []).forEach((year) => {
+        const option = document.createElement('option');
+        option.value = year;
+        option.textContent = year;
+        compareYearInput.appendChild(option);
+      });
+    }
+
+    async function loadEvaluationReport() {
+      const params = new URLSearchParams();
+
+      if (departmentInput.value) params.set('department', departmentInput.value);
+      if (sectionInput.value) params.set('section', sectionInput.value);
+      if (employeeNameInput.value) params.set('name', employeeNameInput.value);
+      if (periodInput.value) params.set('period', periodInput.value);
+      if (compareYearInput.value) params.set('compareYear', compareYearInput.value);
+      if (fromDateInput.value) params.set('fromDate', fromDateInput.value);
+      if (toDateInput.value) params.set('toDate', toDateInput.value);
+
+      const query = params.toString();
+      const url = query ? `/api/evaluations/report?${query}` : '/api/evaluations/report';
+      const data = await requestJson(url, {
+        headers: { Authorization: `Bearer ${authToken}` }
+      });
+
+      renderRows(Array.isArray(data?.rows) ? data.rows : []);
+    }
+
+    dateButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        const pickerId = button.dataset.pickerId;
+        const input = document.getElementById(pickerId);
+        if (!input) return;
+
+        if (typeof input.showPicker === 'function') {
+          input.showPicker();
+          return;
+        }
+
+        input.click();
+      });
+    });
+
+    fromDateInput.addEventListener('change', syncDateDisplays);
+    toDateInput.addEventListener('change', syncDateDisplays);
+
+    departmentInput.addEventListener('change', () => {
+      populateSectionOptions();
+    });
+
+    searchBtn.addEventListener('click', () => {
+      loadEvaluationReport().catch((error) => {
+        countLabel.textContent = error.message || 'تعذر تحميل تقرير تقييم الأداء.';
+      });
+    });
+
+    refreshBtn.addEventListener('click', () => {
+      Promise.all([loadLookupOptions(), loadEmployeeOptions(), loadEvaluationFilters()])
+        .then(loadEvaluationReport)
+        .catch((error) => {
+          countLabel.textContent = error.message || 'تعذر تحديث العرض.';
+        });
+    });
+
+    printBtn.addEventListener('click', () => {
+      window.print();
+    });
+
+    backBtn.addEventListener('click', () => {
+      window.location.href = '/dashboard.html';
+    });
+
+    const now = new Date();
+    const today = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`;
+    fromDateInput.value = today;
+    toDateInput.value = today;
+    syncDateDisplays();
+
+    Promise.all([loadLookupOptions(), loadEmployeeOptions(), loadEvaluationFilters()])
+      .then(loadEvaluationReport)
+      .catch((error) => {
+        countLabel.textContent = error.message || 'تعذر تحميل بيانات واجهة تقييم الأداء.';
+      });
+  </script>
+</body>
+</html>

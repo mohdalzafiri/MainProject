@@ -37,3 +37,6 @@ When creating new frontend pages (especially inside `public/`), apply these defa
 ## Consistency Rule
 - Reuse the same formatting helper for new pages that record or display activity logs.
 - Keep formatting behavior consistent across `dashboard`, `login`, and future interfaces.
+
+## Print Label Naming
+- In all current and future print templates, use `اسم الموظف` as the field label instead of `الاسم الرباعي`.

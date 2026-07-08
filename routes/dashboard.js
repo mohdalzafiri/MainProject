@@ -1,21 +1,92 @@
 const express = require('express');
 const { db } = require('../database');
-
 const router = express.Router();
+
+function replaceEmployeeIdWithName(record) {
+  if (!record || !record.Details) {
+    return record;
+  }
+
+  const details = String(record.Details);
+  const mappings = [
+    { pattern: /employee ID=(\d+)/i, table: 'Main', label: 'الموظف' },
+    { pattern: /holiday ID=(\d+)/i, table: 'Holiday', label: 'الموظف' },
+    { pattern: /course ID=(\d+)/i, table: 'Course', label: 'الموظف' },
+    { pattern: /transfer ID=(\d+)/i, table: 'Transfer', label: 'الموظف' },
+    { pattern: /daily record ID=(\d+)/i, table: record.Target, label: 'الموظف' }
+  ];
+
+  for (const mapping of mappings) {
+    const match = details.match(mapping.pattern);
+    if (!match) {
+      continue;
+    }
+
+    const rowId = Number(match[1]);
+    if (!rowId) {
+      return record;
+    }
+
+    try {
+      const source = db.prepare(`SELECT Name FROM "${String(mapping.table || '').replace(/"/g, '""')}" WHERE ID = ? LIMIT 1`).get(rowId);
+      const name = String(source?.Name || '').trim();
+      if (!name) {
+        return record;
+      }
+
+      return {
+        ...record,
+        Details: details.replace(mapping.pattern, `${mapping.label}: ${name}`)
+      };
+    } catch (error) {
+      return record;
+    }
+  }
+
+  return record;
+}
 
 function tableOrViewExists(name) {
   const row = db.prepare("SELECT 1 AS found FROM sqlite_master WHERE name = ? AND type IN ('table','view') LIMIT 1").get(name);
   return Boolean(row);
 }
 
+function getTodaySqlDate() {
+  return db.prepare("SELECT date('now', 'localtime') AS value").get().value;
+}
+
+function countActiveEmployees() {
+  if (!tableOrViewExists('Main')) return 0;
+
+  return db.prepare("SELECT COUNT(*) AS count FROM Main WHERE TRIM(Status) = 'نشط'").get().count;
+}
+
+function countOutsideEmployees() {
+  if (!tableOrViewExists('Main')) return 0;
+
+  return db.prepare("SELECT COUNT(*) AS count FROM Main WHERE TRIM(Status) = 'غير نشط'").get().count;
+}
+
+function countOngoingRecords(tableName) {
+  if (!tableOrViewExists(tableName)) return 0;
+
+  const today = getTodaySqlDate();
+  return db.prepare(`
+    SELECT COUNT(*) AS count
+    FROM ${tableName}
+    WHERE date(REPLACE(Startdate, '/', '-')) <= date(?)
+      AND date(REPLACE(Enddate, '/', '-')) >= date(?)
+  `).get(today, today).count;
+}
+
 router.get('/summary', (req, res) => {
   try {
     const totals = {
-      totalEmployees: tableOrViewExists('Main') ? db.prepare('SELECT COUNT(*) AS count FROM Main').get().count : 0,
+      totalEmployees: countActiveEmployees(),
       totalDailyRecords: tableOrViewExists('DailyAll') ? db.prepare('SELECT COUNT(*) AS count FROM DailyAll').get().count : 0,
-      totalHolidays: tableOrViewExists('Holiday') ? db.prepare('SELECT COUNT(*) AS count FROM Holiday').get().count : 0,
-      totalCourses: tableOrViewExists('Course') ? db.prepare('SELECT COUNT(*) AS count FROM Course').get().count : 0,
-      totalTransfers: tableOrViewExists('Transfer') ? db.prepare('SELECT COUNT(*) AS count FROM Transfer').get().count : 0,
+      totalHolidays: countOngoingRecords('Holiday'),
+      totalCourses: countOngoingRecords('Course'),
+      totalTransfers: countOutsideEmployees(),
       totalUsers: tableOrViewExists('Login') ? db.prepare('SELECT COUNT(*) AS count FROM Login').get().count : 0,
       totalSystemEvents: tableOrViewExists('SystemLog') ? db.prepare('SELECT COUNT(*) AS count FROM SystemLog').get().count : 0,
       totalMonthlyRecords: tableOrViewExists('DailyAll')
@@ -104,21 +175,62 @@ router.get('/summary', (req, res) => {
         `).all()
       : [];
 
-    const todaySummary = tableOrViewExists('EmpSummary_Today')
-      ? db.prepare('SELECT * FROM EmpSummary_Today ORDER BY WorkDays DESC LIMIT 8').all()
-      : [];
+    let todaySummary = [];
+    if (tableOrViewExists('DailyAll')) {
+      const latestShift = db.prepare(`
+        SELECT date(REPLACE(Today, '/', '-')) AS logDate, TRIM(Period) AS period
+        FROM DailyAll
+        WHERE Today IS NOT NULL AND TRIM(Today) <> ''
+          AND date(REPLACE(Today, '/', '-')) = date('now', 'localtime')
+        ORDER BY ID DESC
+        LIMIT 1
+      `).get();
 
-    const monthSummary = tableOrViewExists('EmpSummary_ThisMonth')
-      ? db.prepare('SELECT * FROM EmpSummary_ThisMonth ORDER BY PresentDays DESC LIMIT 8').all()
+      if (latestShift?.logDate && latestShift?.period) {
+        todaySummary = db.prepare(`
+          SELECT
+            Name,
+            Status,
+            Period,
+            InTime,
+            OutTime,
+            Startdate,
+            Enddate,
+            Type,
+            Note
+          FROM DailyAll
+          WHERE date(REPLACE(Today, '/', '-')) = date(?)
+            AND TRIM(Period) = ?
+          ORDER BY Name ASC
+          LIMIT 60
+        `).all(latestShift.logDate, latestShift.period);
+      }
+    }
+
+    const leaveDailySummary = tableOrViewExists('Holiday')
+      ? db.prepare(`
+          SELECT
+            Name,
+            Department,
+            Section AS Shift,
+            Type,
+            Startdate,
+            Enddate
+          FROM Holiday
+          WHERE date(REPLACE(Startdate, '/', '-')) <= date(?)
+            AND date(REPLACE(Enddate, '/', '-')) >= date(?)
+          ORDER BY date(REPLACE(Enddate, '/', '-')) ASC, date(REPLACE(Startdate, '/', '-')) ASC, Name ASC
+          LIMIT 12
+        `).all(getTodaySqlDate(), getTodaySqlDate())
       : [];
 
     const recentActivities = tableOrViewExists('SystemLog')
       ? db.prepare(`
           SELECT Timestamp, UserName, Action, Target, Details
           FROM SystemLog
+          WHERE date(Timestamp) BETWEEN date('now', 'localtime', '-2 day') AND date('now', 'localtime')
           ORDER BY Timestamp DESC
-          LIMIT 50
-        `).all()
+        `).all().map(replaceEmployeeIdWithName)
       : [];
 
     res.json({
@@ -127,7 +239,7 @@ router.get('/summary', (req, res) => {
       shifts,
       sections,
       todaySummary,
-      monthSummary,
+      leaveDailySummary,
       recentActivities
     });
   } catch (error) {
