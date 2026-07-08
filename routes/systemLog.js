@@ -1,5 +1,5 @@
 const express = require('express');
-const { db, logSystem } = require('../database');
+const { db } = require('../database');
 const router = express.Router();
 
 function normalizeDateInput(value) {
@@ -51,30 +51,6 @@ function replaceEmployeeIdWithName(record) {
 
   return record;
 }
-
-router.post('/client-event', (req, res) => {
-  const action = String(req.body?.action || '').trim();
-  const allowedActions = new Set(['Print', 'Search']);
-
-  if (!allowedActions.has(action)) {
-    return res.status(400).json({ message: 'نوع العملية غير مدعوم للتسجيل.' });
-  }
-
-  const target = String(req.body?.target || req.body?.path || req.body?.page || 'UI').trim() || 'UI';
-  const details = String(req.body?.details || '').trim().slice(0, 800);
-
-  logSystem({
-    userName: req.user?.username || req.user?.userName || 'system',
-    role: req.user?.role || '',
-    action,
-    target,
-    page: target,
-    details: details || `${action} event on ${target}`,
-    machine: req.headers['user-agent'] || ''
-  });
-
-  return res.json({ success: true });
-});
 
 router.get('/', (req, res) => {
   const filters = [];
