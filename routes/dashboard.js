@@ -46,6 +46,98 @@ function replaceEmployeeIdWithName(record) {
   return record;
 }
 
+function translateAction(action) {
+  const key = String(action || '').trim().toLowerCase();
+  const map = {
+    add: 'إضافة',
+    update: 'تعديل',
+    delete: 'حذف',
+    view: 'عرض',
+    print: 'طباعة',
+    search: 'بحث',
+    'login success': 'تسجيل دخول ناجح',
+    'login failed': 'فشل تسجيل الدخول',
+    'login error': 'خطأ تسجيل الدخول'
+  };
+
+  return map[key] || String(action || '');
+}
+
+function translateTarget(target) {
+  const key = String(target || '').trim();
+  const normalized = key.toLowerCase();
+
+  const map = {
+    main: 'الموظفين',
+    holiday: 'الإجازات',
+    course: 'الدورات',
+    transfer: 'التنقلات',
+    login: 'تسجيل الدخول',
+    settings: 'الإعدادات',
+    dashboard: 'الرئيسية',
+    systemlog: 'سجل النظام',
+    administrativeforms: 'النماذج الإدارية',
+    api: 'واجهة النظام'
+  };
+
+  if (/^daily[1-4]$/i.test(key) || /^dailyall(_p)?$/i.test(key)) {
+    return 'اليوميات';
+  }
+
+  return map[normalized] || key;
+}
+
+function translateDetails(details) {
+  const text = String(details || '').trim();
+  if (!text) return text;
+
+  const directMap = {
+    'User logged in': 'تم تسجيل دخول المستخدم',
+    'User not found': 'المستخدم غير موجود',
+    'Invalid password': 'كلمة المرور غير صحيحة',
+    'Inactive user': 'المستخدم غير نشط',
+    'Missing username or password': 'اسم المستخدم أو كلمة المرور مفقود'
+  };
+
+  if (directMap[text]) {
+    return directMap[text];
+  }
+
+  const entityMap = [
+    { pattern: /department-section/gi, value: 'القسم/النوبة' },
+    { pattern: /admin password/gi, value: 'كلمة سر المدير' },
+    { pattern: /login user/gi, value: 'مستخدم النظام' },
+    { pattern: /daily record/gi, value: 'سجل يومي' },
+    { pattern: /employee/gi, value: 'موظف' },
+    { pattern: /holiday/gi, value: 'إجازة' },
+    { pattern: /course/gi, value: 'دورة' },
+    { pattern: /transfer/gi, value: 'تنقل' }
+  ];
+
+  let translated = text;
+  entityMap.forEach((item) => {
+    translated = translated.replace(item.pattern, item.value);
+  });
+
+  translated = translated
+    .replace(/^Added\s+/i, 'تمت إضافة ')
+    .replace(/^Updated\s+/i, 'تم تعديل ')
+    .replace(/^Deleted\s+/i, 'تم حذف ');
+
+  return translated;
+}
+
+function localizeRecord(record) {
+  if (!record) return record;
+
+  return {
+    ...record,
+    Action: translateAction(record.Action),
+    Target: translateTarget(record.Target),
+    Details: translateDetails(record.Details)
+  };
+}
+
 function tableOrViewExists(name) {
   const row = db.prepare("SELECT 1 AS found FROM sqlite_master WHERE name = ? AND type IN ('table','view') LIMIT 1").get(name);
   return Boolean(row);
@@ -230,7 +322,7 @@ router.get('/summary', (req, res) => {
           FROM SystemLog
           WHERE date(Timestamp) BETWEEN date('now', 'localtime', '-2 day') AND date('now', 'localtime')
           ORDER BY Timestamp DESC
-        `).all().map(replaceEmployeeIdWithName)
+        `).all().map(replaceEmployeeIdWithName).map(localizeRecord)
       : [];
 
     res.json({
