@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>اليوميات Daily</title>
+  <title>اليوميات</title>
   <link rel="stylesheet" href="/layout-defaults.css" />
   <style>
     body.app-shell {
@@ -143,6 +143,83 @@
       min-width: 0;
     }
 
+    .search-box {
+      position: relative;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .search-box .table-search {
+      width: 100%;
+    }
+
+    .search-suggestions {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      right: 0;
+      max-height: 240px;
+      overflow-y: auto;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      background: #ffffff;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+      z-index: 40;
+    }
+
+    .search-suggestion-item {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      border: 0;
+      border-bottom: 1px solid #e2e8f0;
+      background: transparent;
+      padding: 8px 10px;
+      cursor: pointer;
+      text-align: right;
+      font-family: inherit;
+      font-size: 13px;
+    }
+
+    .search-suggestion-item:last-child {
+      border-bottom: 0;
+    }
+
+    .search-suggestion-item:hover {
+      background: #f8fafc;
+    }
+
+    .search-suggestion-item.hint {
+      cursor: default;
+      color: #64748b;
+      justify-content: center;
+      font-weight: 700;
+    }
+
+    .search-suggestion-meta {
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .search-suggestion-meta.in-daily {
+      color: #b45309;
+    }
+
+    .search-suggestion-meta.outside-daily {
+      color: #166534;
+    }
+
+    .search-suggestion-meta.diff-section {
+      color: #7c2d12;
+    }
+
+    .search-suggestion-meta.diff-department {
+      color: #7c3aed;
+    }
+
     .table-wrap table {
       min-width: 1050px;
     }
@@ -159,6 +236,57 @@
       font-size: 12px;
       font-weight: 700;
       white-space: nowrap;
+    }
+
+    .section-hint {
+      font-size: 12px;
+      color: #475569;
+      margin-top: 4px;
+    }
+
+    .status-select,
+    .time-input,
+    .note-input {
+      width: 100%;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 6px 8px;
+      font-family: inherit;
+      font-size: 13px;
+      background: #fff;
+    }
+
+    .row-leave {
+      background: #dbeafe;
+    }
+
+    .row-leave-end {
+      background: #93c5fd;
+    }
+
+    .row-course {
+      background: #fef9c3;
+    }
+
+    .row-delay {
+      background: #dcfce7;
+    }
+
+    .row-absent {
+      background: #fecaca;
+    }
+
+    .row-flash-added {
+      animation: rowFlashAdded 2s ease;
+    }
+
+    @keyframes rowFlashAdded {
+      0% {
+        background-color: #bbf7d0;
+      }
+      100% {
+        background-color: transparent;
+      }
     }
 
     @media (max-width: 1100px) {
@@ -262,15 +390,12 @@
               </div>
 
               <div class="field">
-                <label for="subSection">الشعبة</label>
-                <select id="subSection"><option value="">-- اختر --</option></select>
-              </div>
-
-              <div class="field">
                 <label for="period">الفترة</label>
                 <select id="period"><option value="">-- اختر --</option></select>
               </div>
             </div>
+
+            <div id="recordedSectionsLabel" class="section-hint">النوبات المسجّلة لليوم حسب التاريخ المختار: لا توجد نوبات مسجلة</div>
 
             <div class="toolbar">
               <button type="submit" class="btn success" id="addBtn">اضافة بيانات جديدة</button>
@@ -286,9 +411,14 @@
           <h2>صندوق عرض البيانات</h2>
           <div class="table-tools">
             <p id="countLabel">عدد السجلات: 0</p>
-            <input id="searchName" class="table-search" type="text" placeholder="فلترة بالاسم أثناء الكتابة" autocomplete="off" />
+            <div class="search-box">
+              <input id="searchName" class="table-search" type="text" placeholder="فلترة بالاسم أثناء الكتابة" autocomplete="off" list="employeeSuggestions" />
+              <datalist id="employeeSuggestions"></datalist>
+              <div id="searchSuggestions" class="search-suggestions" hidden></div>
+            </div>
             <div class="bottom-actions">
               <button type="button" class="btn success" id="newBtn">إضافة موظف</button>
+              <button type="button" class="btn danger" id="deleteByNameBtn">حذف موظف</button>
               <button type="button" class="btn primary" id="refreshBtn">تحديث العرض</button>
             </div>
           </div>
@@ -320,11 +450,7 @@
 
   <script>
     const authToken = localStorage.getItem('authToken');
-    if (!authToken) {
-      window.location.href = '/';
-    }
-
-    localStorage.removeItem('loggedInUser');
+    if (!authToken) window.location.href = '/';
 
     function parseJwtPayload(token) {
       try {
@@ -333,7 +459,7 @@
         const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
         const decoded = atob(normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '='));
         return JSON.parse(decoded);
-      } catch (error) {
+      } catch {
         return null;
       }
     }
@@ -344,38 +470,38 @@
       window.location.href = '/';
     }
 
+    const STATUS_OPTIONS = ['حضور', 'تأخير', 'تأخير+عقوبة', 'استئذان', 'غياب', 'حضور بعد غياب', 'طبية', 'اجازة', 'دورة', 'تكليف'];
+    const PERIOD_DEFAULTS = {
+      'نوبة صبح': { inTime: '08:00', outTime: '16:00' },
+      'نوبة عصر': { inTime: '16:00', outTime: '00:00' },
+      'نوبة ليل': { inTime: '00:00', outTime: '08:00' },
+      'صباحاً': { inTime: '07:30', outTime: '14:30' }
+    };
+
     const form = document.getElementById('dailyForm');
-    const dailyIdInput = document.getElementById('dailyId');
-    const selectedTableInput = document.getElementById('selectedTable');
     const todayInput = document.getElementById('today');
     const todayDisplayInput = document.getElementById('todayDisplay');
     const dayInput = document.getElementById('day');
     const departmentInput = document.getElementById('department');
     const sectionInput = document.getElementById('section');
-    const subSectionInput = document.getElementById('subSection');
     const periodInput = document.getElementById('period');
-    const nameInput = document.getElementById('name');
-    const statusInput = document.getElementById('status');
-    const inTimeInput = document.getElementById('inTime');
-    const outTimeInput = document.getElementById('outTime');
-    const noteInput = document.getElementById('note');
     const rowsBody = document.getElementById('rows');
     const countLabel = document.getElementById('countLabel');
     const searchNameInput = document.getElementById('searchName');
+    const employeeSuggestionsList = document.getElementById('employeeSuggestions');
+    const searchSuggestionsBox = document.getElementById('searchSuggestions');
     const statusLine = document.getElementById('statusLine');
-    const dateOpenButtons = document.querySelectorAll('.date-picker-trigger');
-    let departmentSectionRows = [];
+    const recordedSectionsLabel = document.getElementById('recordedSectionsLabel');
+
     const refreshBtn = document.getElementById('refreshBtn');
     const backBtn = document.getElementById('backBtn');
-    const addBtn = document.getElementById('addBtn');
     const newBtn = document.getElementById('newBtn');
+    const deleteByNameBtn = document.getElementById('deleteByNameBtn');
     const updateBtn = document.getElementById('updateBtn');
     const deleteBtn = document.getElementById('deleteBtn');
     const printBtn = document.getElementById('printBtn');
-
     const sideDay = document.getElementById('sideDay');
     const sideDate = document.getElementById('sideDate');
-    const summaryDate = document.getElementById('summaryDate');
     const summaryDepartment = document.getElementById('summaryDepartment');
     const summarySection = document.getElementById('summarySection');
     const summaryPeriod = document.getElementById('summaryPeriod');
@@ -388,10 +514,17 @@
     const summaryDetention = document.getElementById('summaryDetention');
     const summaryFooter = document.getElementById('summaryFooter');
 
-    let selectedId = null;
+    const dateOpenButtons = document.querySelectorAll('.date-picker-trigger');
+    let departmentSectionRows = [];
     let selectedRecord = null;
     let currentRows = [];
     let visibleRows = [];
+    let basePeriods = [];
+    let employeeSuggestionMap = new Map();
+    let employeeSuggestions = [];
+    let suggestionRequestToken = 0;
+    let suggestionDebounceHandle = null;
+    let pendingAddedEmployeeName = '';
 
     function showStatus(message, isError = false) {
       statusLine.className = `status-line show ${isError ? 'error' : 'ok'}`;
@@ -407,27 +540,24 @@
       return String(value).padStart(2, '0');
     }
 
-    function escapeHtml(value) {
-      return String(value ?? '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
+    function normalizeText(value) {
+      return String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    }
+
+    function normalizeDepartment(value) {
+      const text = String(value || '').trim();
+      if (text === 'الإحصاء') return 'الاحصاء';
+      return text;
     }
 
     function parseFlexibleDate(value) {
       if (!value) return null;
       const raw = String(value).trim();
       if (!raw) return null;
-
-      const ymd = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-      if (ymd) return new Date(Number(ymd[1]), Number(ymd[2]) - 1, Number(ymd[3]));
-
-      const ymdSlash = raw.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/);
-      if (ymdSlash) return new Date(Number(ymdSlash[1]), Number(ymdSlash[2]) - 1, Number(ymdSlash[3]));
-
-      return null;
+      const normalized = raw.replace(/\//g, '-');
+      const m = normalized.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+      if (!m) return null;
+      return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
     }
 
     function formatDateYmdSlash(value) {
@@ -449,25 +579,12 @@
       return days[date.getDay()] || '';
     }
 
-    function syncDateDisplays() {
-      todayDisplayInput.value = formatDateYmdSlash(todayInput.value);
-      dayInput.value = formatArabicDay(todayInput.value);
-      if (sideDay) sideDay.textContent = dayInput.value || '--';
-      sideDate.textContent = todayDisplayInput.value || '--';
-      if (summaryDate) summaryDate.textContent = todayDisplayInput.value || '--';
-    }
-
-    function normalizeText(value) {
-      return String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
-    }
-
-    function inferDailyTable(record) {
-      const department = normalizeDepartment(record?.Department);
-      if (!department) return '';
-      if (department === 'البلاغات') return 'Daily1';
-      if (department === 'العمليات') return 'Daily2';
-      if (department === 'الخدمات المساندة') return 'Daily3';
-      if (['الموارد البشرية', 'المعلومات', 'الاحصاء'].includes(department)) return 'Daily4';
+    function inferDailyTable(department) {
+      const dep = normalizeDepartment(department);
+      if (dep === 'البلاغات') return 'Daily1';
+      if (dep === 'العمليات') return 'Daily2';
+      if (dep === 'الخدمات المساندة') return 'Daily3';
+      if (['الموارد البشرية', 'المعلومات', 'الاحصاء'].includes(dep)) return 'Daily4';
       return '';
     }
 
@@ -492,159 +609,470 @@
         window.location.href = '/';
         return null;
       }
-
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(getApiErrorMessage(response, data));
       return data;
     }
 
+    function syncDateDisplays() {
+      todayDisplayInput.value = formatDateYmdSlash(todayInput.value);
+      dayInput.value = formatArabicDay(todayInput.value);
+      sideDay.textContent = dayInput.value || '--';
+      sideDate.textContent = todayDisplayInput.value || '--';
+    }
+
     function populateSelect(select, values) {
-      const currentValue = select.value;
+      const current = select.value;
       select.innerHTML = '<option value="">-- اختر --</option>';
-      Array.from(new Set(values.map((item) => String(item || '').trim()).filter(Boolean))).forEach((value) => {
+      Array.from(new Set((values || []).map((item) => String(item || '').trim()).filter(Boolean))).forEach((value) => {
         const option = document.createElement('option');
         option.value = value;
         option.textContent = value;
         select.appendChild(option);
       });
-      if (currentValue && Array.from(select.options).some((option) => option.value === currentValue)) {
-        select.value = currentValue;
+      if (current && Array.from(select.options).some((opt) => opt.value === current)) {
+        select.value = current;
       }
     }
 
-    function normalizeDepartment(value) {
-      const normalized = String(value || '').trim();
-      if (normalized === 'الإحصاء') return 'الاحصاء';
-      return normalized;
-    }
-
-    function populateSectionOptionsForDepartment(preferredValue = '') {
+    function populateSectionOptions(preferredValue = '') {
       const selectedDepartment = normalizeDepartment(departmentInput.value);
       const sections = departmentSectionRows
-        .filter((item) => normalizeDepartment(item.Department) === selectedDepartment)
-        .map((item) => String(item.Section || '').trim())
+        .filter((row) => normalizeDepartment(row.Department) === selectedDepartment)
+        .map((row) => String(row.Section || '').trim())
         .filter(Boolean);
 
       populateSelect(sectionInput, sections);
-      if (preferredValue && Array.from(sectionInput.options).some((option) => option.value === preferredValue)) {
+      if (preferredValue && Array.from(sectionInput.options).some((opt) => opt.value === preferredValue)) {
         sectionInput.value = preferredValue;
       }
     }
 
-    function populateSubSectionOptions(preferredValue = '') {
-      const selectedDepartment = normalizeDepartment(departmentInput.value);
-      const selectedSection = String(sectionInput.value || '').trim();
-      const subSections = departmentSectionRows
-        .filter((item) => normalizeDepartment(item.Department) === selectedDepartment && String(item.Section || '').trim() === selectedSection)
-        .map((item) => String(item.SubSection || '').trim())
-        .filter(Boolean);
+    async function loadFilterOptions() {
+      try {
+        const data = await requestJson('/api/daily-logs/filters', { headers: getHeaders() });
+        if (!data) return false;
 
-      populateSelect(subSectionInput, subSections);
-      if (preferredValue && Array.from(subSectionInput.options).some((option) => option.value === preferredValue)) {
-        subSectionInput.value = preferredValue;
+        departmentSectionRows = Array.isArray(data.departmentSections) ? data.departmentSections : [];
+        basePeriods = Array.isArray(data.periods) ? data.periods : [];
+        populateSelect(departmentInput, Array.isArray(data.departments) ? data.departments : []);
+        populateSectionOptions(sectionInput.value);
+        populateSelect(periodInput, basePeriods);
+        return true;
+      } catch {
+        // Keep the page usable without showing a blocking filters error message.
+        departmentSectionRows = [];
+        if (!basePeriods.length) {
+          basePeriods = ['نوبة صبح', 'نوبة عصر', 'نوبة ليل', 'صباحاً'];
+        }
+        populateSelect(periodInput, basePeriods);
+        return false;
       }
+    }
+
+    function syncPeriodOptionsFromRows(rows = []) {
+      const list = Array.isArray(rows) ? rows : [];
+      const periodsFromRows = Array.from(new Set(
+        list
+          .map((row) => String(row?.Period || '').trim())
+          .filter(Boolean)
+      ));
+
+      const previousValue = String(periodInput.value || '').trim();
+      const nextOptions = periodsFromRows.length ? periodsFromRows : basePeriods;
+      populateSelect(periodInput, nextOptions);
+
+      if (!previousValue && periodsFromRows.length === 1) {
+        periodInput.value = periodsFromRows[0];
+      }
+    }
+
+    async function updateRecordedSectionsLabel() {
+      const today = String(todayInput.value || '').trim();
+      const department = String(departmentInput.value || '').trim();
+      if (!today || !department) {
+        recordedSectionsLabel.textContent = 'النوبات المسجّلة لليوم حسب التاريخ المختار: لا توجد نوبات مسجلة';
+        return;
+      }
+
+      const params = new URLSearchParams({ today, department });
+      const data = await requestJson(`/api/daily-logs/recorded-sections?${params.toString()}`, { headers: getHeaders() });
+      const list = Array.isArray(data?.sections) ? data.sections : [];
+      recordedSectionsLabel.textContent = list.length
+        ? `النوبات المسجّلة لليوم حسب التاريخ المختار: ${list.join(' - ')}`
+        : 'النوبات المسجّلة لليوم حسب التاريخ المختار: لا توجد نوبات مسجلة';
     }
 
     function buildQueryString() {
       const params = new URLSearchParams();
-      const today = String(todayInput.value || '').trim();
-      const department = String(departmentInput.value || '').trim();
-      const section = String(sectionInput.value || '').trim();
-      const subSection = String(subSectionInput.value || '').trim();
-      const period = String(periodInput.value || '').trim();
-      const day = String(dayInput.value || '').trim();
-
-      if (today) params.set('today', today);
-      if (department) params.set('department', department);
-      if (section) params.set('section', section);
-      if (subSection) params.set('subSection', subSection);
-      if (period) params.set('period', period);
-      if (day) params.set('day', day);
+      if (todayInput.value) params.set('today', todayInput.value);
+      if (departmentInput.value) params.set('department', departmentInput.value);
+      if (sectionInput.value) params.set('section', sectionInput.value);
+      if (periodInput.value) params.set('period', periodInput.value);
       return params.toString();
     }
 
-    async function loadFilterOptions() {
-      const data = await requestJson('/api/daily-logs/filters', { headers: getHeaders() });
-      if (!data) return;
-      populateSelect(departmentInput, Array.isArray(data.departments) ? data.departments : []);
-      departmentSectionRows = Array.isArray(data.departmentSections) ? data.departmentSections : [];
-      populateSectionOptionsForDepartment(sectionInput.value);
-      populateSubSectionOptions(subSectionInput.value);
-      populateSelect(periodInput, Array.isArray(data.periods) ? data.periods : []);
-    }
-
-    function updateSummaryPanel(items = visibleRows) {
-      const sourceRows = Array.isArray(items) ? items : [];
-      summaryDepartment.textContent = String(departmentInput.value || '').trim() || '--';
-      summarySection.textContent = String(sectionInput.value || '').trim() || '--';
-      summaryPeriod.textContent = String(periodInput.value || '').trim() || '--';
-
-      const uniqueEmployees = new Set(sourceRows.map((item) => String(item.EmpID || item.Name || '').trim()).filter(Boolean));
-      summaryEmployees.textContent = String(uniqueEmployees.size || sourceRows.length || 0);
-
-      const countMatching = (terms) => sourceRows.filter((item) => {
-        const text = normalizeText([item.Status, item.Type, item.Note].filter(Boolean).join(' '));
-        return terms.some((term) => text.includes(term));
-      }).length;
-
-      summaryPresent.textContent = String(countMatching(['حضور']));
-      summaryAbsent.textContent = String(countMatching(['غياب']));
-      summaryPermissions.textContent = String(countMatching(['أذن', 'إذن', 'اذن', 'أذونات']));
-      summaryLeaves.textContent = String(countMatching(['إجازة', 'اجازة']));
-      summaryCourses.textContent = String(countMatching(['دورة']));
-      summaryDetention.textContent = String(countMatching(['حجز']));
-      summaryFooter.textContent = `إجمالي السجلات المعروضة: ${sourceRows.length}`;
+    async function refreshDailyView() {
+      await updateRecordedSectionsLabel();
+      await loadDailyRows();
+      scheduleEmployeeSuggestionsLoad();
     }
 
     function getNameFilteredRows() {
-      const keyword = normalizeText(searchNameInput?.value || '');
+      const keyword = normalizeText(searchNameInput.value);
       if (!keyword) return [...currentRows];
-      return currentRows.filter((item) => normalizeText(item?.Name || '').includes(keyword));
+      return currentRows.filter((row) => normalizeText(row.Name).includes(keyword));
     }
 
-    function applyNameFilterAndRender() {
-      visibleRows = getNameFilteredRows();
-      clearSelection();
-      renderRows(visibleRows);
+    function clearEmployeeSuggestions() {
+      employeeSuggestionMap = new Map();
+      employeeSuggestions = [];
+      employeeSuggestionsList.innerHTML = '';
+      searchSuggestionsBox.innerHTML = '';
+      searchSuggestionsBox.hidden = true;
     }
 
-    function clearSelection() {
-      selectedId = null;
-      selectedRecord = null;
-      dailyIdInput.value = '';
-      selectedTableInput.value = '';
+    function hideSuggestionBox() {
+      searchSuggestionsBox.hidden = true;
+    }
+
+    function showSuggestionHint(message) {
+      searchSuggestionsBox.innerHTML = '';
+      if (!message) {
+        hideSuggestionBox();
+        return;
+      }
+
+      const hint = document.createElement('div');
+      hint.className = 'search-suggestion-item hint';
+      hint.textContent = message;
+      searchSuggestionsBox.appendChild(hint);
+      searchSuggestionsBox.hidden = false;
+    }
+
+    function renderEmployeeSuggestions(items) {
+      const rows = Array.isArray(items) ? items : [];
+      employeeSuggestions = rows;
+      employeeSuggestionMap = new Map();
+      employeeSuggestionsList.innerHTML = '';
+      searchSuggestionsBox.innerHTML = '';
+
+      if (!rows.length) {
+        hideSuggestionBox();
+        return;
+      }
+
+      rows.forEach((item) => {
+        const name = String(item?.Name || '').trim();
+        if (!name) return;
+
+        employeeSuggestionMap.set(normalizeText(name), name);
+
+        const option = document.createElement('option');
+        option.value = name;
+        const inDaily = Boolean(item?.inDaily);
+        option.label = inDaily ? 'موجود في اليومية المعروضة' : 'غير موجود في اليومية المعروضة';
+        employeeSuggestionsList.appendChild(option);
+
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'search-suggestion-item';
+
+        const nameSpan = document.createElement('span');
+        nameSpan.textContent = name;
+
+        const metaSpan = document.createElement('span');
+        let metaClass = 'outside-daily';
+        let metaText = 'متاح للإضافة';
+        if (inDaily) {
+          metaClass = 'in-daily';
+          metaText = 'موجود في اليومية';
+        } else if (item?.departmentMatch === false) {
+          metaClass = 'diff-department';
+          metaText = 'من قسم مختلف';
+        } else if (item?.sectionMatch === false) {
+          metaClass = 'diff-section';
+          metaText = 'من نوبة مختلفة';
+        }
+
+        metaSpan.className = `search-suggestion-meta ${metaClass}`;
+        metaSpan.textContent = metaText;
+
+        button.appendChild(nameSpan);
+        button.appendChild(metaSpan);
+
+        button.addEventListener('mousedown', (event) => {
+          event.preventDefault();
+        });
+
+        button.addEventListener('click', () => {
+          searchNameInput.value = name;
+          applyNameFilterAndRender();
+          hideSuggestionBox();
+        });
+
+        searchSuggestionsBox.appendChild(button);
+      });
+
+      searchSuggestionsBox.hidden = false;
+    }
+
+    async function loadEmployeeSuggestions() {
+      const keyword = String(searchNameInput.value || '').trim();
+      const department = String(departmentInput.value || '').trim();
+      const section = String(sectionInput.value || '').trim();
+      const today = String(todayInput.value || '').trim();
+      const period = String(periodInput.value || '').trim();
+
+      if (!keyword) {
+        clearEmployeeSuggestions();
+        return;
+      }
+
+      if (!today || !department || !section) {
+        clearEmployeeSuggestions();
+        showSuggestionHint('لازم تختار التاريخ والقسم والنوبة قبل اقتراح الأسماء.');
+        return;
+      }
+
+      const params = new URLSearchParams({
+        q: keyword,
+        department,
+        section,
+        today
+      });
+      if (period) params.set('period', period);
+
+      const requestToken = ++suggestionRequestToken;
+      const data = await requestJson(`/api/daily-logs/employee-suggestions?${params.toString()}`, { headers: getHeaders() });
+      if (requestToken !== suggestionRequestToken) return;
+
+      renderEmployeeSuggestions(Array.isArray(data?.items) ? data.items : []);
+      if (!Array.isArray(data?.items) || data.items.length === 0) {
+        showSuggestionHint('الاسم غير موجود');
+      }
+    }
+
+    function scheduleEmployeeSuggestionsLoad() {
+      if (suggestionDebounceHandle) {
+        clearTimeout(suggestionDebounceHandle);
+      }
+      suggestionDebounceHandle = setTimeout(() => {
+        loadEmployeeSuggestions().catch(() => {
+          clearEmployeeSuggestions();
+        });
+      }, 180);
+    }
+
+    function getExactEmployeeNameFromFilter() {
+      const rawValue = String(searchNameInput.value || '').trim();
+      const normalized = normalizeText(rawValue);
+      if (!normalized) return '';
+
+      const suggestedName = employeeSuggestionMap.get(normalized);
+      if (suggestedName) return suggestedName;
+
+      const exactDisplayed = currentRows.find((row) => normalizeText(row.Name) === normalized);
+      if (exactDisplayed?.Name) return String(exactDisplayed.Name).trim();
+
+      const fromSuggestions = employeeSuggestions.filter((item) => normalizeText(item?.Name) === normalized);
+      if (fromSuggestions.length === 1) {
+        return String(fromSuggestions[0].Name || '').trim();
+      }
+
+      const partialSuggestions = employeeSuggestions.filter((item) => normalizeText(item?.Name).includes(normalized));
+      if (partialSuggestions.length === 1) {
+        return String(partialSuggestions[0].Name || '').trim();
+      }
+
+      if (visibleRows.length === 1 && normalizeText(visibleRows[0].Name).includes(normalized)) {
+        return String(visibleRows[0].Name || '').trim();
+      }
+
+      return rawValue;
+    }
+
+    async function ensureSingleEmployeeCandidate() {
+      const normalizedInput = normalizeText(searchNameInput.value);
+      if (!normalizedInput) return null;
+
+      if (!employeeSuggestions.length) {
+        await loadEmployeeSuggestions();
+      }
+
+      const exact = employeeSuggestions.filter((item) => normalizeText(item?.Name) === normalizedInput);
+      if (exact.length === 1) return exact[0];
+
+      const partial = employeeSuggestions.filter((item) => normalizeText(item?.Name).includes(normalizedInput));
+      if (partial.length === 1) return partial[0];
+
+      return null;
+    }
+
+    function findExactDisplayedEmployeeRow() {
+      const exactName = normalizeText(getExactEmployeeNameFromFilter());
+      if (!exactName) return null;
+      return currentRows.find((row) => normalizeText(row.Name) === exactName) || null;
+    }
+
+    function isDateSameDay(left, right) {
+      return formatDateYmdSlash(left) && formatDateYmdSlash(left) === formatDateYmdSlash(right);
+    }
+
+    function getRowClass(item) {
+      const status = String(item.Status || '').trim();
+      if (status === 'اجازة') {
+        if (isDateSameDay(item.Enddate, todayInput.value)) return 'row-leave-end';
+        return 'row-leave';
+      }
+      if (status === 'دورة') return 'row-course';
+      if (['تأخير', 'تأخير+عقوبة', 'استئذان'].includes(status)) return 'row-delay';
+      if (status === 'غياب') return 'row-absent';
+      return '';
+    }
+
+    function updateSummaryPanel(items = []) {
+      const rows = Array.isArray(items) ? items : [];
+      summaryDepartment.textContent = departmentInput.value || '--';
+      summarySection.textContent = sectionInput.value || '--';
+
+      const periodsFromRows = Array.from(new Set(
+        rows
+          .map((item) => String(item?.Period || '').trim())
+          .filter(Boolean)
+      ));
+
+      if (periodInput.value) {
+        summaryPeriod.textContent = periodInput.value;
+      } else if (periodsFromRows.length === 1) {
+        summaryPeriod.textContent = periodsFromRows[0];
+      } else if (periodsFromRows.length > 1) {
+        summaryPeriod.textContent = periodsFromRows.join(' / ');
+      } else {
+        summaryPeriod.textContent = '--';
+      }
+
+      const uniqueEmployees = new Set(rows.map((item) => String(item.EmpID || item.Name || '').trim()).filter(Boolean));
+      const totalEmployees = uniqueEmployees.size || rows.length;
+      const countStatus = (statuses) => rows.filter((item) => statuses.includes(String(item.Status || '').trim())).length;
+
+      const presentCount = countStatus(['حضور', 'حضور بعد غياب']);
+      const absentCount = countStatus(['غياب']);
+      const delayCount = countStatus(['تأخير', 'تأخير+عقوبة', 'استئذان']);
+      const leaveCount = countStatus(['اجازة']);
+      const courseCount = countStatus(['دورة']);
+      const detentionCount = absentCount + leaveCount + courseCount;
+
+      summaryEmployees.textContent = String(totalEmployees);
+      summaryPresent.textContent = String(presentCount);
+      summaryAbsent.textContent = String(absentCount);
+      summaryPermissions.textContent = String(delayCount);
+      summaryLeaves.textContent = String(leaveCount);
+      summaryCourses.textContent = String(courseCount);
+      summaryDetention.textContent = String(detentionCount);
+
+      const ratio = totalEmployees > 0 ? detentionCount / totalEmployees : 0;
+      summaryFooter.style.borderTopColor = 'var(--ui-border)';
+      summaryFooter.style.background = 'transparent';
+      summaryFooter.style.color = 'var(--ui-muted)';
+
+      if (ratio >= 0.5) {
+        summaryFooter.textContent = 'لقد تجاوز العجز نصف العدد الكلي للموظفين';
+        summaryFooter.style.background = '#fee2e2';
+        summaryFooter.style.color = '#991b1b';
+      } else if (ratio >= (1 / 3)) {
+        summaryFooter.textContent = 'لقد تجاوز العجز ثلث العدد الكلي للموظفين';
+        summaryFooter.style.background = '#ffedd5';
+        summaryFooter.style.color = '#9a3412';
+      } else if (ratio >= 0.25) {
+        summaryFooter.textContent = 'لقد تجاوز العجز ربع العدد الكلي للموظفين';
+        summaryFooter.style.background = '#fef9c3';
+        summaryFooter.style.color = '#854d0e';
+      } else {
+        summaryFooter.textContent = '--';
+      }
+    }
+
+    function markSelectedRow(rowElement, item) {
       Array.from(rowsBody.querySelectorAll('tr')).forEach((row) => row.classList.remove('selected'));
-    }
-
-    function resetForm() {
-      clearSelection();
-      form.reset();
-      statusInput.value = 'حضور';
-      syncDateDisplays();
-    }
-
-    function fillForm(item) {
-      selectedId = item.ID;
+      rowElement.classList.add('selected');
       selectedRecord = { ...item };
-      selectedTableInput.value = inferDailyTable(item);
-      dailyIdInput.value = item.ID || '';
-      todayInput.value = toDateInputValue(item.Today);
-      syncDateDisplays();
-      dayInput.value = item.Day || formatArabicDay(item.Today);
-      departmentInput.value = item.Department || '';
-      sectionInput.value = item.Section || '';
-      populateSubSectionOptions(item.SubSection || '');
-      periodInput.value = item.Period || '';
-      statusInput.value = item.Status || 'حضور';
-      nameInput.value = item.Name || '';
-      inTimeInput.value = item.InTime || '';
-      outTimeInput.value = item.OutTime || '';
-      noteInput.value = item.Note || '';
+      searchNameInput.value = String(item.Name || '').trim();
+      clearStatus();
+    }
+
+    async function saveRowChanges(item, payload, successMessage = '') {
+      const table = inferDailyTable(item.Department);
+      if (!table) {
+        showStatus('تعذر تحديد جدول اليومية لهذا السجل.', true);
+        return;
+      }
+
+      const body = {
+        ...payload,
+        userName: currentUser.username || 'system'
+      };
+
+      await requestJson(`/api/daily-logs/table/${table}/${item.ID}`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify(body)
+      });
+
+      Object.assign(item, payload);
+      if (successMessage) showStatus(successMessage);
+      updateSummaryPanel(visibleRows);
+    }
+
+    function createStatusSelect(item) {
+      const select = document.createElement('select');
+      select.className = 'status-select';
+      STATUS_OPTIONS.forEach((status) => {
+        const option = document.createElement('option');
+        option.value = status;
+        option.textContent = status;
+        if (String(item.Status || '').trim() === status) option.selected = true;
+        select.appendChild(option);
+      });
+
+      select.addEventListener('click', (event) => event.stopPropagation());
+      select.addEventListener('change', async (event) => {
+        const nextStatus = event.target.value;
+        const payload = { Status: nextStatus };
+
+        if (nextStatus !== 'حضور') {
+          payload.InTime = '';
+          payload.OutTime = '';
+        } else {
+          const defaults = PERIOD_DEFAULTS[String(item.Period || '').trim()] || { inTime: '', outTime: '' };
+          payload.InTime = item.InTime || defaults.inTime;
+          payload.OutTime = item.OutTime || defaults.outTime;
+        }
+
+        await saveRowChanges(item, payload, 'تم تحديث الحالة بنجاح.');
+        applyNameFilterAndRender();
+      });
+
+      return select;
+    }
+
+    function createTimeInput(item, key) {
+      const input = document.createElement('input');
+      input.type = 'time';
+      input.className = 'time-input mono';
+      input.value = String(item[key] || '').trim();
+
+      input.addEventListener('click', (event) => event.stopPropagation());
+      input.addEventListener('change', async (event) => {
+        const value = String(event.target.value || '').trim();
+        await saveRowChanges(item, { [key]: value }, 'تم حفظ تعديل الوقت تلقائياً.');
+      });
+
+      return input;
     }
 
     function renderRows(items) {
       rowsBody.innerHTML = '';
-
       if (!Array.isArray(items) || items.length === 0) {
         rowsBody.innerHTML = '<tr><td colspan="10">لا توجد بيانات متاحة للمعايير الحالية.</td></tr>';
         countLabel.textContent = 'عدد السجلات: 0';
@@ -652,328 +1080,322 @@
         return;
       }
 
-      items.forEach((item) => {
+      const pendingName = normalizeText(pendingAddedEmployeeName);
+      let hasHighlightedRow = false;
+
+      items.forEach((item, index) => {
         const tr = document.createElement('tr');
-        tr.dataset.id = item.ID;
-        tr.dataset.table = inferDailyTable(item);
+        tr.className = getRowClass(item);
+
+        if (pendingName && normalizeText(item.Name) === pendingName) {
+          tr.classList.add('row-flash-added');
+          hasHighlightedRow = true;
+        }
+
+        const description = String(item.Type || '').trim() || (String(item.Status || '').trim() === 'دورة' ? 'دورة' : '');
+
         tr.innerHTML = `
-          <td class="mono">${escapeHtml(item.ID ?? '')}</td>
-          <td>${escapeHtml(item.Name ?? '')}</td>
-          <td><span class="badge soft">${escapeHtml(item.Status ?? '')}</span></td>
-          <td>${escapeHtml(item.Period ?? '')}</td>
-          <td class="mono">${escapeHtml(item.InTime ?? '')}</td>
-          <td class="mono">${escapeHtml(item.OutTime ?? '')}</td>
-          <td class="mono">${escapeHtml(formatDateYmdSlash(item.Startdate || item.Today))}</td>
-          <td class="mono">${escapeHtml(formatDateYmdSlash(item.Enddate || item.Today))}</td>
-          <td>${escapeHtml(item.SubSection || item.Type || item.Department || '')}</td>
-          <td>${escapeHtml(item.Note ?? '')}</td>
+          <td class="mono">${index + 1}</td>
+          <td>${item.Name ?? ''}</td>
+          <td></td>
+          <td>${item.Period ?? ''}</td>
+          <td></td>
+          <td></td>
+          <td class="mono">${formatDateYmdSlash(item.Startdate || '')}</td>
+          <td class="mono">${formatDateYmdSlash(item.Enddate || '')}</td>
+          <td>${description}</td>
+          <td>${item.Note ?? ''}</td>
         `;
 
-        tr.addEventListener('click', () => {
-          Array.from(rowsBody.querySelectorAll('tr')).forEach((row) => row.classList.remove('selected'));
-          tr.classList.add('selected');
-          fillForm(item);
-          clearStatus();
-        });
+        const statusCell = tr.children[2];
+        const inCell = tr.children[4];
+        const outCell = tr.children[5];
+        statusCell.appendChild(createStatusSelect(item));
+        inCell.appendChild(createTimeInput(item, 'InTime'));
+        outCell.appendChild(createTimeInput(item, 'OutTime'));
 
+        tr.addEventListener('click', () => markSelectedRow(tr, item));
         rowsBody.appendChild(tr);
       });
 
       countLabel.textContent = `عدد السجلات: ${items.length}`;
       updateSummaryPanel(items);
+
+      if (pendingName && hasHighlightedRow) {
+        pendingAddedEmployeeName = '';
+        setTimeout(() => {
+          Array.from(rowsBody.querySelectorAll('tr.row-flash-added')).forEach((row) => {
+            row.classList.remove('row-flash-added');
+          });
+        }, 2000);
+      }
     }
 
-    async function loadDailyRows() {
-      const query = buildQueryString();
-      const url = query ? `/api/daily-logs/search?${query}` : '/api/daily-logs';
-      const data = await requestJson(url, { headers: getHeaders() });
-      if (!data) return;
-
-      currentRows = Array.isArray(data) ? data : [];
+    function applyNameFilterAndRender() {
       visibleRows = getNameFilteredRows();
       renderRows(visibleRows);
     }
 
-    function collectPayload() {
-      return {
-        EmpID: String(selectedRecord?.EmpID || '').trim(),
-        Day: String(dayInput.value || '').trim(),
-        Today: String(todayInput.value || '').trim(),
-        Name: String(nameInput.value || selectedRecord?.Name || '').trim(),
-        Department: String(departmentInput.value || '').trim(),
-        Section: String(sectionInput.value || '').trim(),
-        SubSection: String(subSectionInput.value || '').trim(),
-        Status: String(statusInput.value || '').trim() || 'حضور',
-        Period: String(periodInput.value || '').trim(),
-        InTime: String(inTimeInput.value || selectedRecord?.InTime || '').trim(),
-        OutTime: String(outTimeInput.value || selectedRecord?.OutTime || '').trim(),
-        Startdate: selectedRecord?.Startdate ?? null,
-        Enddate: selectedRecord?.Enddate ?? null,
-        Type: selectedRecord?.Type ?? null,
-        Note: String(noteInput.value || '').trim(),
-        userName: currentUser.username || 'system'
-      };
-    }
+    async function loadDailyRows() {
+      const today = String(todayInput.value || '').trim();
+      const department = String(departmentInput.value || '').trim();
+      const section = String(sectionInput.value || '').trim();
 
-    function validatePayload(payload) {
-      const requiredErrors = [];
-      if (!payload.Today) requiredErrors.push('التاريخ');
-      if (!payload.Department) requiredErrors.push('القسم');
-      if (!payload.Section) requiredErrors.push('النوبة');
-      if (!payload.Period) requiredErrors.push('الفترة');
-
-      if (requiredErrors.length) {
-        showStatus(`الحقول الإلزامية ناقصة: ${requiredErrors.join(' - ')}`, true);
-        return false;
-      }
-
-      return true;
-    }
-
-    async function saveRecord() {
-      const payload = collectPayload();
-      if (!validatePayload(payload)) return;
-
-      const table = inferDailyTable(payload);
-      if (!table) {
-        showStatus('تعذر تحديد جدول اليومية لهذا القسم.', true);
+      if (!today || !department || !section) {
+        currentRows = [];
+        visibleRows = [];
+        syncPeriodOptionsFromRows([]);
+        clearEmployeeSuggestions();
+        renderRows([]);
         return;
       }
 
-      const isEdit = Boolean(selectedId);
-      const url = isEdit ? `/api/daily-logs/table/${table}/${selectedId}` : `/api/daily-logs/table/${table}`;
-      const result = await requestJson(url, {
-        method: isEdit ? 'PUT' : 'POST',
+      const query = buildQueryString();
+      const data = await requestJson(query ? `/api/daily-logs/search?${query}` : '/api/daily-logs', { headers: getHeaders() });
+      currentRows = Array.isArray(data) ? data : [];
+      syncPeriodOptionsFromRows(currentRows);
+      applyNameFilterAndRender();
+      scheduleEmployeeSuggestionsLoad();
+    }
+
+    async function generateRowsFromFilters() {
+      const payload = {
+        today: String(todayInput.value || '').trim(),
+        day: String(dayInput.value || '').trim(),
+        department: String(departmentInput.value || '').trim(),
+        section: String(sectionInput.value || '').trim(),
+        period: String(periodInput.value || '').trim(),
+        userName: currentUser.username || 'system'
+      };
+
+      if (!payload.today || !payload.department || !payload.period) {
+        showStatus('التاريخ والقسم والفترة حقول إلزامية للإضافة.', true);
+        return;
+      }
+
+      const result = await requestJson('/api/daily-logs/generate', {
+        method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify(payload)
       });
 
-      if (!result) return;
-
-      showStatus(isEdit ? 'تم تعديل سجل اليوميات بنجاح.' : 'تمت إضافة سجل اليومية بنجاح.');
-      await loadFilterOptions();
-      await loadDailyRows();
-      resetForm();
+      showStatus(result?.message || 'تم إنشاء سجلات اليومية بنجاح.');
+      if (Number(result?.added || 0) > 0) {
+        searchNameInput.value = '';
+        selectedRecord = null;
+      }
+      await refreshDailyView();
     }
 
-    async function deleteRecord() {
-      if (!selectedId || !selectedRecord) {
-        showStatus('حدد سجلًا من صندوق العرض أولاً قبل الحذف.', true);
+    async function addSingleEmployeeFromFilter() {
+      let employeeName = getExactEmployeeNameFromFilter();
+      if (!employeeName) {
+        showStatus('اكتب اسم الموظف في صندوق الفلتر أولاً.', true);
         return;
       }
 
-      const table = inferDailyTable(selectedRecord);
+      const candidate = await ensureSingleEmployeeCandidate();
+      if (candidate?.Name) {
+        employeeName = String(candidate.Name).trim();
+        searchNameInput.value = employeeName;
+      }
+
+      const payload = {
+        today: String(todayInput.value || '').trim(),
+        day: String(dayInput.value || '').trim(),
+        department: String(departmentInput.value || '').trim(),
+        section: String(sectionInput.value || '').trim(),
+        period: String(periodInput.value || '').trim(),
+        employeeName,
+        userName: currentUser.username || 'system'
+      };
+
+      if (!payload.today || !payload.department || !payload.section || !payload.period) {
+        showStatus('التاريخ والقسم والنوبة والفترة مطلوبة قبل إضافة موظف واحد.', true);
+        return;
+      }
+
+      if (!candidate && normalizeText(employeeName) !== normalizeText(searchNameInput.value)) {
+        showStatus('اكتب اسم الموظف بشكل صحيح أو اختره من القائمة أثناء الكتابة.', true);
+        return;
+      }
+
+      const result = await requestJson('/api/daily-logs/generate', {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(payload)
+      });
+
+      if (Number(result?.added || 0) > 0) {
+        pendingAddedEmployeeName = employeeName;
+        searchNameInput.value = '';
+        selectedRecord = null;
+        showStatus(result?.message || 'تمت إضافة بيانات الموظف إلى اليومية.');
+      } else {
+        showStatus(result?.message || 'تعذر إضافة الموظف لليومية المعروضة.', true);
+      }
+      await refreshDailyView();
+    }
+
+    async function deleteEmployeeByFilter() {
+      const employeeName = getExactEmployeeNameFromFilter();
+      if (!employeeName) {
+        showStatus('اكتب اسم الموظف في صندوق الفلتر أولاً.', true);
+        return;
+      }
+
+      const targetRow = findExactDisplayedEmployeeRow();
+      if (!targetRow) {
+        showStatus('لم يتم العثور على هذا الموظف داخل اليومية المعروضة.', true);
+        return;
+      }
+
+      const table = inferDailyTable(targetRow.Department);
       if (!table) {
-        showStatus('تعذر تحديد جدول السجل المحدد للحذف.', true);
+        showStatus('تعذر تحديد جدول اليومية للسجل المطلوب.', true);
         return;
       }
 
-      const confirmed = window.confirm(`هل تريد حذف سجل اليومية للموظف ${selectedRecord.Name || ''}؟`);
+      const confirmed = window.confirm(`هل تريد حذف بيانات اليومية للموظف ${targetRow.Name || ''}؟`);
       if (!confirmed) return;
 
-      const result = await requestJson(`/api/daily-logs/table/${table}/${selectedId}`, {
+      await requestJson(`/api/daily-logs/table/${table}/${targetRow.ID}`, {
         method: 'DELETE',
         headers: getHeaders(),
         body: JSON.stringify({ userName: currentUser.username || 'system' })
       });
 
-      if (!result) return;
-
-      showStatus('تم حذف سجل اليومية بنجاح.');
-      await loadDailyRows();
-      resetForm();
+      showStatus('تم حذف بيانات اليومية للموظف بنجاح.');
+      selectedRecord = null;
+      searchNameInput.value = '';
+      await refreshDailyView();
     }
 
-    function buildPrintHtml(record) {
-      const row = record || collectPayload();
-      const now = new Date();
-      const stamp = `${pad2(now.getHours())}:${pad2(now.getMinutes())}:${pad2(now.getSeconds())} ${now.getFullYear()}/${pad2(now.getMonth() + 1)}/${pad2(now.getDate())}`;
-      const valueOrDash = (value) => {
-        const text = String(value ?? '').trim();
-        return text ? escapeHtml(text) : '---';
-      };
-
-      return `<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-  <meta charset="UTF-8" />
-  <title>بيانات اليوميات - ${valueOrDash(row.Name)}</title>
-  <style>
-    * { box-sizing: border-box; }
-    body { margin: 0; font-family: Tahoma, Arial, sans-serif; background: #fff; color: #0f172a; }
-    .page { width: 210mm; min-height: 297mm; margin: 0 auto; padding: 10mm; }
-    .sheet { border: 1.5px solid #0f172a; min-height: 277mm; padding: 8mm; display: flex; flex-direction: column; gap: 4mm; }
-    .top { display: flex; justify-content: space-between; align-items: start; gap: 6mm; }
-    .title-wrap { text-align: center; flex: 1; }
-    .title { margin: 0; font-size: 11mm; line-height: 1.15; font-weight: 800; color: #0b3a6f; }
-    .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 2mm; font-size: 3.2mm; color: #334155; }
-    .meta div { border: 1px solid #cbd5e1; padding: 1.2mm 1.8mm; border-radius: 1.5mm; background: #f8fafc; }
-    .section { border: 1px solid #0f172a; border-radius: 1.5mm; overflow: hidden; }
-    .section-title { background: #0b3a6f; color: #fff; font-size: 3.4mm; font-weight: 700; padding: 1.4mm 2.2mm; }
-    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-    td { border: 1px solid #cbd5e1; padding: 1.8mm 2mm; font-size: 3.5mm; vertical-align: middle; }
-    .label { width: 26mm; background: #f8fafc; font-weight: 700; color: #334155; text-align: center; }
-    .value { font-weight: 700; text-align: right; color: #0f172a; word-break: break-word; overflow-wrap: anywhere; }
-    .ltr { direction: ltr; unicode-bidi: isolate; text-align: center; font-variant-numeric: tabular-nums; }
-    .note { margin-top: auto; font-size: 3.1mm; color: #334155; line-height: 1.45; display: flex; align-items: center; gap: 4mm; }
-    .note-text { flex: 1 1 auto; }
-    .note-sign { min-width: 55mm; text-align: left; direction: rtl; unicode-bidi: plaintext; }
-    @media print { @page { size: A4; margin: 0; } .page { width: 210mm; min-height: 297mm; padding: 10mm; } }
-  </style>
-</head>
-<body>
-  <section class="page"><article class="sheet">
-    <header class="top"><div></div><div class="title-wrap"><h1 class="title">بيانات اليوميات</h1></div><div></div></header>
-    <div class="meta"><div>اسم الموظف: ${valueOrDash(row.Name)}</div><div class="ltr">وقت الطباعة: ${stamp}</div></div>
-    <section class="section">
-      <div class="section-title">البيانات الأساسية</div>
-      <table>
-        <tr><td class="label">التاريخ</td><td class="value ltr">${valueOrDash(formatDateYmdSlash(row.Today))}</td><td class="label">اليوم</td><td class="value">${valueOrDash(row.Day)}</td></tr>
-        <tr><td class="label">القسم</td><td class="value">${valueOrDash(row.Department)}</td><td class="label">النوبة</td><td class="value">${valueOrDash(row.Section)}</td></tr>
-        <tr><td class="label">الفترة</td><td class="value">${valueOrDash(row.Period)}</td><td class="label">الحالة</td><td class="value">${valueOrDash(row.Status)}</td></tr>
-      </table>
-    </section>
-    <section class="section">
-      <div class="section-title">أوقات الحضور والانصراف</div>
-      <table><tr><td class="label">الدخول</td><td class="value ltr">${valueOrDash(row.InTime)}</td><td class="label">الانصراف</td><td class="value ltr">${valueOrDash(row.OutTime)}</td></tr></table>
-    </section>
-    <section class="section">
-      <div class="section-title">ملاحظات</div>
-      <table><tr><td class="value" style="min-height:34mm; line-height:1.6;">${valueOrDash(row.Note)}</td></tr></table>
-    </section>
-    <div class="note"><span class="note-text">أقر أنا الموقع أدناه بأن البيانات أعلاه صحيحة، وأتعهد بإبلاغ الإدارة عند حدوث أي تغيير.</span><span class="note-sign">التوقيع: ____________________</span></div>
-  </article></section>
-</body>
-</html>`;
-    }
-
-    function printRecord() {
-      const selected = currentRows.find((item) => String(item.ID) === String(selectedId));
-      const html = buildPrintHtml(selected || collectPayload());
-      const frame = document.createElement('iframe');
-      frame.style.position = 'fixed';
-      frame.style.left = '0';
-      frame.style.bottom = '0';
-      frame.style.width = '210mm';
-      frame.style.height = '297mm';
-      frame.style.border = '0';
-      frame.style.opacity = '0.01';
-      frame.style.pointerEvents = 'none';
-      frame.style.zIndex = '-1';
-      document.body.appendChild(frame);
-
-      const win = frame.contentWindow;
-      const doc = frame.contentDocument || win?.document;
-      if (!win || !doc) {
-        showStatus('تعذر تجهيز نافذة الطباعة.', true);
-        frame.remove();
+    async function deleteSelectedRecord() {
+      if (!selectedRecord?.ID) {
+        showStatus('اختر سجلًا من الجدول أولاً قبل الحذف.', true);
         return;
       }
 
-      const cleanup = () => { if (frame.isConnected) frame.remove(); };
-      win.onafterprint = cleanup;
-      window.setTimeout(cleanup, 60000);
+      const table = inferDailyTable(selectedRecord.Department);
+      if (!table) {
+        showStatus('تعذر تحديد جدول السجل المحدد للحذف.', true);
+        return;
+      }
 
-      doc.open();
-      doc.write(html);
-      doc.close();
+      const confirmed = window.confirm(`هل تريد حذف سجل ${selectedRecord.Name || ''}؟`);
+      if (!confirmed) return;
 
-      window.setTimeout(() => {
-        win.focus();
-        win.print();
-      }, 130);
+      await requestJson(`/api/daily-logs/table/${table}/${selectedRecord.ID}`, {
+        method: 'DELETE',
+        headers: getHeaders(),
+        body: JSON.stringify({ userName: currentUser.username || 'system' })
+      });
+
+      showStatus('تم حذف سجل اليومية بنجاح.');
+      selectedRecord = null;
+      searchNameInput.value = '';
+      await refreshDailyView();
+    }
+
+    function printRecord() {
+      window.print();
     }
 
     dateOpenButtons.forEach((button) => {
       button.addEventListener('click', () => {
-        const pickerId = button.dataset.pickerId;
-        const pickerInput = document.getElementById(pickerId);
+        const pickerInput = document.getElementById(button.dataset.pickerId);
         if (!pickerInput) return;
         if (typeof pickerInput.showPicker === 'function') {
           pickerInput.showPicker();
-          return;
+        } else {
+          pickerInput.click();
         }
-        pickerInput.click();
       });
     });
 
-    todayInput.addEventListener('change', () => {
+    todayInput.addEventListener('change', async () => {
       syncDateDisplays();
-      clearSelection();
-      loadDailyRows().catch((error) => showStatus(error.message, true));
+      await refreshDailyView();
     });
 
-    [departmentInput, sectionInput, periodInput].forEach((control) => {
-      control.addEventListener('input', () => {
-        if (control === departmentInput) {
-          populateSectionOptionsForDepartment();
-          populateSubSectionOptions();
-        }
-        if (control === sectionInput) {
-          populateSubSectionOptions();
-        }
-        clearSelection();
-        loadDailyRows().catch((error) => showStatus(error.message, true));
-      });
-      control.addEventListener('change', () => {
-        if (control === departmentInput) {
-          populateSectionOptionsForDepartment();
-          populateSubSectionOptions();
-        }
-        if (control === sectionInput) {
-          populateSubSectionOptions();
-        }
-        clearSelection();
-        loadDailyRows().catch((error) => showStatus(error.message, true));
-      });
+    departmentInput.addEventListener('change', async () => {
+      populateSectionOptions();
+      periodInput.value = '';
+      syncPeriodOptionsFromRows([]);
+      await refreshDailyView();
     });
 
+    sectionInput.addEventListener('change', async () => {
+      periodInput.value = '';
+      syncPeriodOptionsFromRows([]);
+      await refreshDailyView();
+    });
+
+    periodInput.addEventListener('change', async () => {
+      await refreshDailyView();
+    });
+
+    searchNameInput.addEventListener('input', applyNameFilterAndRender);
     searchNameInput.addEventListener('input', () => {
-      applyNameFilterAndRender();
+      scheduleEmployeeSuggestionsLoad();
+    });
+    searchNameInput.addEventListener('focus', () => {
+      if (searchSuggestionsBox.children.length > 0) {
+        searchSuggestionsBox.hidden = false;
+      }
+    });
+    searchNameInput.addEventListener('blur', () => {
+      setTimeout(hideSuggestionBox, 120);
     });
 
-    refreshBtn.addEventListener('click', () => {
-      loadFilterOptions().then(loadDailyRows).catch((error) => showStatus(error.message, true));
+    document.addEventListener('click', (event) => {
+      const container = searchSuggestionsBox.parentElement;
+      if (!container || !container.contains(event.target)) {
+        hideSuggestionBox();
+      }
     });
 
-    const backHandler = () => { window.location.href = '/dashboard.html'; };
-    backBtn.addEventListener('click', backHandler);
+    refreshBtn.addEventListener('click', async () => {
+      await loadFilterOptions();
+      await refreshDailyView();
+    });
+
+    backBtn.addEventListener('click', () => {
+      window.location.href = '/dashboard.html';
+    });
 
     form.addEventListener('submit', (event) => {
       event.preventDefault();
-      saveRecord().catch((error) => showStatus(error.message, true));
+      generateRowsFromFilters().catch((error) => showStatus(error.message, true));
     });
 
-    const newHandler = () => {
-      resetForm();
-      showStatus('تم تجهيز نموذج جديد.');
-    };
-    newBtn.addEventListener('click', newHandler);
+    newBtn.addEventListener('click', () => {
+      addSingleEmployeeFromFilter().catch((error) => showStatus(error.message, true));
+    });
 
-    addBtn.addEventListener('click', () => { form.requestSubmit(); });
+    deleteByNameBtn.addEventListener('click', () => {
+      deleteEmployeeByFilter().catch((error) => showStatus(error.message, true));
+    });
 
-    const updateHandler = () => {
-      if (!selectedId) {
-        showStatus('حدد سجلًا من صندوق العرض أولاً قبل التعديل.', true);
-        return;
-      }
-      saveRecord().catch((error) => showStatus(error.message, true));
-    };
-    updateBtn.addEventListener('click', updateHandler);
+    updateBtn.addEventListener('click', () => {
+      showStatus('التعديل يتم مباشرة من الجدول مع حفظ تلقائي.', false);
+    });
 
-    const deleteHandler = () => { deleteRecord().catch((error) => showStatus(error.message, true)); };
-    deleteBtn.addEventListener('click', deleteHandler);
+    deleteBtn.addEventListener('click', () => {
+      deleteSelectedRecord().catch((error) => showStatus(error.message, true));
+    });
 
-    printBtn.addEventListener('click', () => { printRecord(); });
+    printBtn.addEventListener('click', printRecord);
 
     async function init() {
       const now = new Date();
       todayInput.value = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`;
       syncDateDisplays();
       await loadFilterOptions();
-      await loadDailyRows();
-      updateSummaryPanel();
+      await refreshDailyView();
     }
+
     init().catch((error) => showStatus(error.message, true));
   </script>
 </body>

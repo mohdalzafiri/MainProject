@@ -2,22 +2,38 @@ const path = require('path');
 const fs = require('fs');
 const Database = require('better-sqlite3');
 
+function canOpenDatabase(candidatePath) {
+  try {
+    if (!candidatePath || !fs.existsSync(candidatePath)) return false;
+    const probe = new Database(candidatePath, { readonly: true, fileMustExist: true });
+    probe.prepare('SELECT 1 AS ok').get();
+    probe.close();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function resolveDatabasePath() {
   const configuredPath = process.env.DB_PATH && process.env.DB_PATH.trim();
+  const uncPath = '\\\\PC-SERVER\\Database\\database.db';
+  const mappedPath = 'Z:\\database.db';
+  const localPath = path.resolve(__dirname, 'database.db');
+
   const candidates = [
-    'Z:\\database.db',
     configuredPath,
-    path.resolve(__dirname, 'database.db'),
-    '\\\\PC-SERVER\\Database\\database.db'
+    uncPath,
+    mappedPath,
+    localPath
   ].filter(Boolean);
 
   for (const candidate of candidates) {
-    if (fs.existsSync(candidate)) {
+    if (canOpenDatabase(candidate)) {
       return candidate;
     }
   }
 
-  return configuredPath || path.resolve(__dirname, 'database.db');
+  return configuredPath || localPath;
 }
 
 const dbPath = resolveDatabasePath();
@@ -157,44 +173,46 @@ function ensureDepartmentSectionLookupTable() {
     ['الخدمات المساندة', 'ب - الخدمات', ''],
     ['الخدمات المساندة', 'ج - الخدمات', ''],
     ['الخدمات المساندة', 'د - الخدمات', ''],
+    ['الخدمات المساندة', 'هـ - الخدمات', ''],
     ['الموارد البشرية', 'صباحاً', ''],
     ['المعلومات', 'صباحاً', ''],
     ['الاحصاء', 'صباحاً', '']
   ];
 
-  const seedRows = [];
-  const hasMainTable = db.prepare("SELECT 1 AS found FROM sqlite_master WHERE type = 'table' AND name = 'Main' LIMIT 1").get();
-  if (hasMainTable) {
-    const mainRows = db.prepare(`
-      SELECT DISTINCT TRIM(Department) AS Department, TRIM(Section) AS Section
-      FROM Main
-      WHERE TRIM(Department) <> '' AND TRIM(Section) <> ''
-    `).all();
+  const timestamp = getCurrentTimestamp();
+  const totalRows = db.prepare('SELECT COUNT(*) AS count FROM DepartmentSectionLookup').get().count;
 
-    mainRows.forEach((row) => {
-      const department = String(row.Department || '').trim() === 'الإحصاء' ? 'الاحصاء' : String(row.Department || '').trim();
-      const section = String(row.Section || '').trim();
-      if (department && section) {
-        seedRows.push([department, section, '']);
-      }
+  db.prepare(`
+    UPDATE DepartmentSectionLookup
+    SET Department = 'الاحصاء', UpdatedAt = ?
+    WHERE TRIM(Department) = 'الإحصاء'
+  `).run(timestamp);
+
+  if (totalRows === 0) {
+    const insert = db.prepare(`
+      INSERT INTO DepartmentSectionLookup (Department, Section, SubSection, SortOrder, IsActive, CreatedAt, UpdatedAt)
+      VALUES (?, ?, ?, ?, 1, ?, ?)
+    `);
+
+    seedDefaults.forEach(([department, section, subSection], index) => {
+      insert.run(department, section, subSection, index + 1, timestamp, timestamp);
     });
   }
 
-  seedDefaults.forEach((item) => seedRows.push(item));
+  const rowsWithoutSort = db.prepare(`
+    SELECT ID
+    FROM DepartmentSectionLookup
+    WHERE IFNULL(SortOrder, 0) <= 0
+    ORDER BY ID ASC
+  `).all();
 
-  const insert = db.prepare(`
-    INSERT OR IGNORE INTO DepartmentSectionLookup (Department, Section, SubSection, SortOrder, IsActive, CreatedAt, UpdatedAt)
-    VALUES (?, ?, ?, ?, 1, ?, ?)
-  `);
-
-  seedRows.forEach(([department, section, subSection], index) => {
-    const normalizedDepartment = String(department || '').trim();
-    const normalizedSection = String(section || '').trim();
-    const normalizedSubSection = String(subSection || '').trim();
-    if (!normalizedDepartment || !normalizedSection) return;
-    const timestamp = getCurrentTimestamp();
-    insert.run(normalizedDepartment, normalizedSection, normalizedSubSection, index + 1, timestamp, timestamp);
-  });
+  if (rowsWithoutSort.length) {
+    const maxSortOrder = db.prepare('SELECT COALESCE(MAX(SortOrder), 0) AS value FROM DepartmentSectionLookup').get().value;
+    const updateSort = db.prepare('UPDATE DepartmentSectionLookup SET SortOrder = ?, UpdatedAt = ? WHERE ID = ?');
+    rowsWithoutSort.forEach((row, index) => {
+      updateSort.run(maxSortOrder + index + 1, timestamp, row.ID);
+    });
+  }
 }
 
 function ensureColumn(tableName, columnName, columnType, defaultSql = '') {
@@ -264,6 +282,110 @@ function ensureAdministrativeFormsTable() {
   `).run();
 }
 
+function ensureOutgoingDocumentsTable() {
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS OutgoingDocuments (
+      ID INTEGER PRIMARY KEY AUTOINCREMENT,
+      DocNumber TEXT NOT NULL,
+      DocDate TEXT NOT NULL,
+      Subject TEXT NOT NULL,
+      Recipient TEXT NOT NULL,
+      Notes TEXT,
+      UserName TEXT,
+      CreatedAt TEXT NOT NULL,
+      UpdatedAt TEXT NOT NULL
+    )
+  `).run();
+
+  ensureColumn('OutgoingDocuments', 'Notes', 'TEXT');
+}
+
+function ensureHolidayTable() {
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS Holiday (
+      ID INTEGER PRIMARY KEY AUTOINCREMENT,
+      EmpID INTEGER,
+      Name TEXT,
+      Department TEXT,
+      Section TEXT,
+      Status TEXT,
+      Type TEXT,
+      Startdate TEXT,
+      Enddate TEXT,
+      Days INTEGER,
+      Note TEXT,
+      UserName TEXT
+    )
+  `).run();
+
+  ensureColumn('Holiday', 'UserName', 'TEXT');
+}
+
+function ensureCourseTable() {
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS Course (
+      ID INTEGER PRIMARY KEY AUTOINCREMENT,
+      EmpID INTEGER,
+      Name TEXT,
+      Department TEXT,
+      Section TEXT,
+      Status TEXT,
+      CourseName TEXT,
+      CourseProvider TEXT,
+      Startdate TEXT,
+      Enddate TEXT,
+      Days INTEGER,
+      Note TEXT,
+      UserName TEXT
+    )
+  `).run();
+
+  ensureColumn('Course', 'UserName', 'TEXT');
+}
+
+function ensureTransferTable() {
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS Transfer (
+      ID INTEGER PRIMARY KEY AUTOINCREMENT,
+      EmpID INTEGER,
+      Name TEXT,
+      Department TEXT,
+      Section TEXT,
+      SubSection TEXT,
+      Status TEXT,
+      Department1 TEXT,
+      Section1 TEXT,
+      SubSection1 TEXT,
+      Enddate TEXT,
+      Note TEXT,
+      UserName TEXT
+    )
+  `).run();
+
+  ensureColumn('Transfer', 'UserName', 'TEXT');
+}
+
+function ensureIncomingDocumentsTable() {
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS IncomingDocuments (
+      ID INTEGER PRIMARY KEY AUTOINCREMENT,
+      DocNumber TEXT NOT NULL,
+      DocDate TEXT NOT NULL,
+      BookNumber TEXT NOT NULL,
+      BookDate TEXT NOT NULL,
+      Subject TEXT NOT NULL,
+      SourceDepartment TEXT NOT NULL,
+      SpecialDepartment TEXT NOT NULL,
+      Notes TEXT,
+      UserName TEXT,
+      CreatedAt TEXT NOT NULL,
+      UpdatedAt TEXT NOT NULL
+    )
+  `).run();
+
+  ensureColumn('IncomingDocuments', 'Notes', 'TEXT');
+}
+
 function quoteIdentifier(name) {
   return `"${String(name).replace(/"/g, '""')}"`;
 }
@@ -302,6 +424,11 @@ ensureLoginTable();
 ensureDepartmentSectionLookupTable();
 ensureWorkflowSubSectionColumns();
 ensureAdministrativeFormsTable();
+ensureOutgoingDocumentsTable();
+ensureIncomingDocumentsTable();
+ensureHolidayTable();
+ensureCourseTable();
+ensureTransferTable();
 normalizeDepartmentNames();
 
 console.log(`Database path: ${dbPath}`);

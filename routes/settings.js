@@ -32,7 +32,7 @@ router.get('/department-sections', (req, res) => {
     const rows = db.prepare(`
       SELECT ID, Department, Section, SubSection, SortOrder, IsActive, CreatedAt, UpdatedAt
       FROM DepartmentSectionLookup
-      ORDER BY ID ASC
+      ORDER BY SortOrder ASC, ID ASC
     `).all();
 
     res.json(rows);
@@ -70,10 +70,11 @@ router.post('/department-sections', (req, res) => {
 
   try {
     const timestamp = new Date().toISOString().replace('T', ' ').slice(0, 19);
+    const nextSortOrder = db.prepare('SELECT COALESCE(MAX(SortOrder), 0) + 1 AS value FROM DepartmentSectionLookup').get().value;
     const result = db.prepare(`
       INSERT INTO DepartmentSectionLookup (Department, Section, SubSection, SortOrder, IsActive, CreatedAt, UpdatedAt)
       VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(department, section, subSection, 0, isActive, timestamp, timestamp);
+    `).run(department, section, subSection, nextSortOrder, isActive, timestamp, timestamp);
 
     logSystem({
       userName: req.user?.username || 'system',

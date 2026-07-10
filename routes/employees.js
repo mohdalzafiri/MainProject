@@ -42,7 +42,7 @@ router.get('/department-sections', (req, res) => {
       SELECT ID, Department, Section, SubSection, SortOrder
       FROM DepartmentSectionLookup
       WHERE IsActive = 1
-      ORDER BY ID ASC
+      ORDER BY SortOrder ASC, ID ASC
     `).all();
 
     res.json(rows);
@@ -68,9 +68,25 @@ router.get('/:id', (req, res) => {
 });
 
 router.post('/', (req, res) => {
+  const civilId = String(req.body.CivilID || '').trim();
   const statement = buildInsertStatement(req.body);
   if (!statement) {
     return res.status(400).json({ message: 'البيانات المرسلة غير كافية' });
+  }
+
+  if (civilId) {
+    const existingEmployee = db.prepare(`
+      SELECT ID, Name
+      FROM Main
+      WHERE TRIM(CivilID) = ?
+      LIMIT 1
+    `).get(civilId);
+
+    if (existingEmployee) {
+      return res.status(409).json({
+        message: `الرقم المدني مسجل مسبقاً باسم ${String(existingEmployee.Name || '').trim() || 'موظف آخر'}.`
+      });
+    }
   }
 
   try {

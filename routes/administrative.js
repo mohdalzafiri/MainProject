@@ -2,7 +2,34 @@
 const { db, logSystem } = require('../database');
 
 const router = express.Router();
-const columns = ['EmpID', 'Name', 'Department', 'Section', 'SubSection', 'Status', 'Department1', 'Section1', 'SubSection1', 'Enddate', 'Note'];
+const columns = ['EmpID', 'Name', 'Department', 'Section', 'SubSection', 'Status', 'Department1', 'Section1', 'SubSection1', 'Enddate', 'Note', 'UserName'];
+
+function ensureTransferTable() {
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS Transfer (
+      ID INTEGER PRIMARY KEY AUTOINCREMENT,
+      EmpID INTEGER,
+      Name TEXT,
+      Department TEXT,
+      Section TEXT,
+      SubSection TEXT,
+      Status TEXT,
+      Department1 TEXT,
+      Section1 TEXT,
+      SubSection1 TEXT,
+      Enddate TEXT,
+      Note TEXT,
+      UserName TEXT
+    )
+  `).run();
+
+  const columnsInfo = db.prepare('PRAGMA table_info(Transfer)').all();
+  if (!columnsInfo.some((column) => String(column.name || '').toLowerCase() === 'username')) {
+    db.prepare('ALTER TABLE Transfer ADD COLUMN UserName TEXT').run();
+  }
+}
+
+ensureTransferTable();
 const formNameOptions = [
   'نموذج أمر إداري',
   'نموذج تنقل إداري',

@@ -423,6 +423,18 @@
         return false;
       }
 
+      if (!selectedId) {
+        const enteredCivilId = civilIdInput.value.trim();
+        const duplicateEmployee = allEmployees.find((item) =>
+          String(item.CivilID || '').trim() === enteredCivilId && String(item.ID) !== String(selectedId || '')
+        );
+
+        if (duplicateEmployee) {
+          showStatus(`الرقم المدني مسجل مسبقاً باسم ${duplicateEmployee.Name || 'موظف آخر'}.`, true);
+          return false;
+        }
+      }
+
       return true;
     }
 

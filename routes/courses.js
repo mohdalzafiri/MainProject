@@ -2,7 +2,7 @@ const express = require('express');
 const { db, logSystem } = require('../database');
 
 const router = express.Router();
-const columns = ['EmpID', 'Name', 'Department', 'Section', 'Status', 'CourseName', 'CourseProvider', 'Startdate', 'Enddate', 'Days', 'Note'];
+const columns = ['EmpID', 'Name', 'Department', 'Section', 'Status', 'CourseName', 'CourseProvider', 'Startdate', 'Enddate', 'Days', 'Note', 'UserName'];
 
 function ensureCourseTable() {
   db.prepare(`
@@ -18,9 +18,15 @@ function ensureCourseTable() {
       Startdate TEXT,
       Enddate TEXT,
       Days INTEGER,
-      Note TEXT
+      Note TEXT,
+      UserName TEXT
     )
   `).run();
+
+  const columnsInfo = db.prepare('PRAGMA table_info(Course)').all();
+  if (!columnsInfo.some((column) => String(column.name || '').toLowerCase() === 'username')) {
+    db.prepare('ALTER TABLE Course ADD COLUMN UserName TEXT').run();
+  }
 }
 
 function normalizeText(value) {

@@ -81,6 +81,14 @@
       grid-column: 1 / -1;
     }
 
+    .admin-only-field {
+      display: none;
+    }
+
+    .user-name-column {
+      display: table-cell;
+    }
+
     label {
       font-size: 13px;
       color: #334155;
@@ -350,6 +358,11 @@
             <label for="note">ملاحظات</label>
             <textarea id="note"></textarea>
           </div>
+
+          <div class="field full admin-only-field" id="userNameField">
+            <label for="userName">اسم المستخدم</label>
+            <input id="userName" type="text" readonly />
+          </div>
         </div>
 
         <div class="toolbar">
@@ -385,6 +398,7 @@
               <th>النهاية</th>
               <th>عدد الايام</th>
               <th>ملاحظات</th>
+              <th class="user-name-column">اسم المستخدم</th>
             </tr>
           </thead>
           <tbody id="rows"></tbody>
@@ -419,6 +433,8 @@
       window.location.href = '/';
     }
 
+    const isAdminUser = String(currentUser?.role || currentUser?.username || '').trim().toLowerCase() === 'admin';
+
     const form = document.getElementById('courseForm');
     const courseIdInput = document.getElementById('courseId');
     const nameInput = document.getElementById('name');
@@ -434,6 +450,8 @@
     const endDateInput = document.getElementById('endDate');
     const daysInput = document.getElementById('days');
     const noteInput = document.getElementById('note');
+    const userNameInput = document.getElementById('userName');
+    const userNameField = document.getElementById('userNameField');
     const dateOpenButtons = document.querySelectorAll('.date-picker-trigger');
 
     const addBtn = document.getElementById('addBtn');
@@ -447,11 +465,22 @@
     const rowsBody = document.getElementById('rows');
     const countLabel = document.getElementById('countLabel');
     const statusLine = document.getElementById('statusLine');
+    const userNameColumnCells = () => document.querySelectorAll('.user-name-column');
 
     let selectedId = null;
     let allCourses = [];
     let allEmployees = [];
     let selectedEmployee = null;
+
+    if (userNameField) {
+      userNameField.style.display = isAdminUser ? 'grid' : 'none';
+    }
+
+    function syncUserNameColumnVisibility() {
+      userNameColumnCells().forEach((cell) => {
+        cell.style.display = isAdminUser ? 'table-cell' : 'none';
+      });
+    }
 
     function showStatus(message, isError = false) {
       statusLine.className = `status-line show ${isError ? 'error' : 'ok'}`;
@@ -591,6 +620,10 @@
     }
 
     function collectPayload() {
+      const userNameValue = isAdminUser
+        ? String(userNameInput.value || currentUser.username || 'system').trim()
+        : String(currentUser.username || 'system').trim();
+
       return {
         EmpID: selectedEmployee?.ID || null,
         Name: String(nameInput.value || '').trim(),
@@ -603,7 +636,8 @@
         Enddate: formatDateYmdSlash(endDateInput.value),
         Days: Number(daysInput.value || 0),
         Note: String(noteInput.value || '').trim(),
-        userName: currentUser.username || 'system'
+        UserName: userNameValue,
+        userName: userNameValue
       };
     }
 
@@ -646,6 +680,10 @@
       endDateDisplayInput.value = '';
       departmentInput.value = '';
       sectionInput.value = '';
+      if (userNameInput) {
+        userNameInput.value = String(currentUser?.username || 'system');
+      }
+      syncUserNameColumnVisibility();
       Array.from(rowsBody.querySelectorAll('tr')).forEach((row) => row.classList.remove('selected'));
       applyNameFilter();
     }
@@ -672,14 +710,18 @@
       }
 
       noteInput.value = item.Note || '';
+      if (userNameInput) {
+        userNameInput.value = item.UserName || currentUser?.username || 'system';
+      }
     }
 
     function renderRows(items) {
       rowsBody.innerHTML = '';
 
       if (!Array.isArray(items) || items.length === 0) {
-        rowsBody.innerHTML = '<tr><td colspan="11">لا توجد بيانات دورات حالياً.</td></tr>';
+        rowsBody.innerHTML = `<tr><td colspan="${isAdminUser ? 12 : 11}">لا توجد بيانات دورات حالياً.</td></tr>`;
         countLabel.textContent = 'عدد السجلات: 0';
+        syncUserNameColumnVisibility();
         return;
       }
 
@@ -698,6 +740,7 @@
           <td class="mono">${formatDateYmdSlash(item.Enddate)}</td>
           <td class="mono">${item.Days ?? ''}</td>
           <td>${item.Note ?? ''}</td>
+          <td class="user-name-column">${item.UserName ?? ''}</td>
         `;
 
         tr.addEventListener('click', () => {
@@ -711,6 +754,7 @@
       });
 
       countLabel.textContent = `عدد السجلات: ${items.length}`;
+      syncUserNameColumnVisibility();
 
       if (selectedId) {
         const selectedRow = rowsBody.querySelector(`tr[data-id="${selectedId}"]`);

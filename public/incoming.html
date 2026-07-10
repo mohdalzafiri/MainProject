@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>الوارد</title>
+  <style>
+    :root {
+      --bg: #eef4ff;
+      --panel: #ffffff;
+      --text: #0f172a;
+      --muted: #64748b;
+      --border: rgba(15, 23, 42, 0.12);
+      --primary: #1d4ed8;
+      --primary-dark: #1e40af;
+      --success: #16a34a;
+      --success-dark: #15803d;
+      --warning: #d97706;
+      --warning-dark: #b45309;
+      --danger: #dc2626;
+      --danger-dark: #b91c1c;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: Tahoma, Arial, sans-serif;
+      color: var(--text);
+      background: linear-gradient(180deg, #dfeaff 0%, #f8fbff 100%);
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .header h1 {
+      margin: 0;
+      font-size: 28px;
+    }
+
+    .header p {
+      margin: 5px 0 0;
+      color: var(--muted);
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: 0 14px 35px rgba(15, 23, 42, 0.08);
+    }
+
+    .panel h2 {
+      margin: 0 0 12px;
+      font-size: 20px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .inline-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+    }
+
+    .field.full {
+      grid-column: 1 / -1;
+    }
+
+    .admin-only-field {
+      display: none;
+    }
+
+    .user-name-column {
+      display: table-cell;
+    }
+
+    label {
+      font-size: 13px;
+      color: #334155;
+      font-weight: 700;
+    }
+
+    input,
+    textarea {
+      width: 100%;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      padding: 10px;
+      font-family: inherit;
+      font-size: 14px;
+      outline: none;
+      background: #fff;
+      color: var(--text);
+    }
+
+    input:focus,
+    textarea:focus {
+      border-color: #60a5fa;
+      box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2);
+    }
+
+    input[readonly] {
+      background: #f8fafc;
+      color: #334155;
+    }
+
+    .date-picker-wrap { position: relative; }
+
+    .date-display-input {
+      padding-left: 44px;
+      cursor: pointer;
+      direction: ltr;
+      text-align: right;
+    }
+
+    .date-picker-trigger {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 26px;
+      height: 26px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      background: #f8fafc;
+      color: #1e293b;
+      font-size: 0;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+      padding: 0;
+    }
+
+    .date-picker-trigger::before {
+      content: '📅';
+      font-size: 14px;
+      line-height: 1;
+    }
+
+    .date-picker-trigger:hover { background: #eef2ff; }
+
+    .native-date-input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    textarea {
+      min-height: 84px;
+      resize: vertical;
+    }
+
+    .toolbar {
+      margin-top: 12px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .status-line {
+      display: none;
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .status-line.show { display: block; }
+    .status-line.ok { background: #dcfce7; color: #166534; }
+    .status-line.error { background: #fee2e2; color: #991b1b; }
+
+    .table-tools {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: nowrap;
+      margin-bottom: 10px;
+    }
+
+    .table-tools p {
+      margin: 0;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .table-search {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .table-wrap {
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1250px;
+      background: #fff;
+    }
+
+    th, td {
+      padding: 11px 9px;
+      border-bottom: 1px solid #e2e8f0;
+      text-align: right;
+      font-size: 14px;
+      vertical-align: top;
+    }
+
+    th {
+      background: #f8fafc;
+      color: #475569;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    tbody tr:hover {
+      background: #f8fbff;
+      cursor: pointer;
+    }
+
+    tbody tr.selected { background: #dbeafe; }
+
+    .mono {
+      direction: ltr;
+      unicode-bidi: isolate;
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .btn-icon,
+    .action-icon {
+      font-size: 1.05em;
+      line-height: 1;
+      flex: 0 0 auto;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 18px;
+      border: none;
+      border-radius: 12px;
+      background: var(--primary);
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform .18s ease, background .18s ease;
+      text-decoration: none;
+    }
+
+    .btn:hover { transform: translateY(-1px); background: var(--primary-dark); }
+    .btn.success { background: var(--success); }
+    .btn.success:hover { background: var(--success-dark); }
+    .btn.warning { background: var(--warning); }
+    .btn.warning:hover { background: var(--warning-dark); }
+    .btn.danger { background: var(--danger); }
+    .btn.danger:hover { background: var(--danger-dark); }
+    .btn.dark { background: #475569; }
+    .btn.dark:hover { background: #334155; }
+
+    @media print {
+      .header,
+      .toolbar,
+      .table-tools,
+      .actions,
+      .status-line,
+      .date-picker-trigger,
+      .native-date-input {
+        display: none !important;
+      }
+
+      body {
+        background: #fff;
+      }
+
+      .panel {
+        box-shadow: none;
+      }
+
+      .table-wrap {
+        border: 0;
+      }
+    }
+
+    @media (max-width: 1100px) {
+      .grid { grid-template-columns: 1fr; }
+      table { min-width: 1080px; }
+    }
+
+    @media (max-width: 680px) {
+      .header h1 {
+        font-size: 24px;
+      }
+
+      table { min-width: 980px; }
+    }
+  </style>
+  <link rel="stylesheet" href="/layout-defaults.css" />
+</head>
+<body class="app-shell">
+  <div class="page app-page">
+    <header class="header">
+      <div>
+        <h1>الوارد</h1>
+        <p>إدارة بيانات الوارد مع إضافة وتعديل وحذف وطباعة السجلات.</p>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn dark" id="backBtn"><span class="btn-icon" aria-hidden="true">↩️</span><span>العودة للرئيسية</span></button>
+      </div>
+    </header>
+
+    <section class="panel">
+      <h2>تعبئة / اظهار البيانات</h2>
+      <form id="incomingForm" autocomplete="off">
+        <input id="recordId" type="hidden" />
+        <div class="grid">
+          <div class="field">
+            <label for="docNumber">رقم الوارد</label>
+            <input id="docNumber" type="text" inputmode="numeric" />
+          </div>
+
+          <div class="field">
+            <label for="docDate">تاريخ الوارد</label>
+            <div class="date-picker-wrap">
+              <input id="docDateDisplay" class="date-display-input" type="text" placeholder="yyyy/mm/dd" readonly />
+              <button type="button" class="date-picker-trigger" data-picker-id="docDate" aria-label="اختيار تاريخ الوارد"></button>
+              <input id="docDate" type="date" class="native-date-input" />
+            </div>
+          </div>
+
+          <div class="field full">
+            <div class="inline-grid">
+              <div class="field">
+                <label for="bookNumber">رقم الكتاب الوارد</label>
+                <input id="bookNumber" type="text" />
+              </div>
+
+              <div class="field">
+                <label for="bookDate">تاريخ الكتاب الوارد</label>
+                <div class="date-picker-wrap">
+                  <input id="bookDateDisplay" class="date-display-input" type="text" placeholder="yyyy/mm/dd" readonly />
+                  <button type="button" class="date-picker-trigger" data-picker-id="bookDate" aria-label="اختيار تاريخ الكتاب الوارد"></button>
+                  <input id="bookDate" type="date" class="native-date-input" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="field full">
+            <label for="subject">الموضوع</label>
+            <input id="subject" type="text" />
+          </div>
+
+          <div class="field">
+            <label for="sourceDepartment">الجهة الوارد منها</label>
+            <input id="sourceDepartment" type="text" />
+          </div>
+
+          <div class="field">
+            <label for="specialDepartment">القسم المختص</label>
+            <input id="specialDepartment" type="text" />
+          </div>
+
+          <div class="field full admin-only-field" id="userNameField">
+            <label for="userName">اسم المستخدم</label>
+            <input id="userName" type="text" readonly />
+          </div>
+
+          <div class="field full">
+            <label for="notes">ملاحظات</label>
+            <textarea id="notes"></textarea>
+          </div>
+        </div>
+
+        <div class="toolbar">
+          <button type="submit" class="btn success" id="addBtn"><span class="btn-icon" aria-hidden="true">➕</span><span>اضافة بيانات جديدة</span></button>
+          <button type="button" class="btn warning" id="updateBtn"><span class="btn-icon" aria-hidden="true">✏️</span><span>تعديل بيانات</span></button>
+          <button type="button" class="btn danger" id="deleteBtn"><span class="btn-icon" aria-hidden="true">🗑️</span><span>حذف بيانات</span></button>
+          <button type="button" class="btn primary" id="printBtn"><span class="btn-icon" aria-hidden="true">🖨️</span><span>طباعة بيانات</span></button>
+        </div>
+      </form>
+
+      <div id="statusLine" class="status-line"></div>
+    </section>
+
+    <section class="panel">
+      <h2>صندوق عرض البيانات</h2>
+      <div class="table-tools">
+        <p id="countLabel">عدد السجلات: 0</p>
+        <input id="tableSearch" class="table-search" type="search" placeholder="بحث في السجلات" />
+        <button type="button" class="btn primary" id="refreshBtn"><span class="btn-icon" aria-hidden="true">🔄</span><span>تحديث العرض</span></button>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>م</th>
+              <th>رقم الوارد</th>
+              <th>تاريخ الوارد</th>
+              <th>رقم الكتاب الوارد</th>
+              <th>تاريخ الكتاب الوارد</th>
+              <th>الموضوع</th>
+              <th>الجهة الوارد منها</th>
+              <th>القسم المختص</th>
+              <th>ملاحظات</th>
+              <th class="user-name-column">اسم المستخدم</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const authToken = localStorage.getItem('authToken');
+    if (!authToken) {
+      window.location.href = '/';
+    }
+
+    localStorage.removeItem('loggedInUser');
+
+    function parseJwtPayload(token) {
+      try {
+        const payload = token.split('.')[1];
+        if (!payload) return null;
+        const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+        const decoded = atob(normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '='));
+        return JSON.parse(decoded);
+      } catch (error) {
+        return null;
+      }
+    }
+
+    const currentUser = parseJwtPayload(authToken);
+    if (!currentUser) {
+      localStorage.removeItem('authToken');
+      window.location.href = '/';
+    }
+
+    const form = document.getElementById('incomingForm');
+    const recordIdInput = document.getElementById('recordId');
+    const docNumberInput = document.getElementById('docNumber');
+    const docDateDisplayInput = document.getElementById('docDateDisplay');
+    const docDateInput = document.getElementById('docDate');
+    const bookNumberInput = document.getElementById('bookNumber');
+    const bookDateDisplayInput = document.getElementById('bookDateDisplay');
+    const bookDateInput = document.getElementById('bookDate');
+    const subjectInput = document.getElementById('subject');
+    const sourceDepartmentInput = document.getElementById('sourceDepartment');
+    const specialDepartmentInput = document.getElementById('specialDepartment');
+    const notesInput = document.getElementById('notes');
+    const userNameField = document.getElementById('userNameField');
+    const userNameInput = document.getElementById('userName');
+    const addBtn = document.getElementById('addBtn');
+    const updateBtn = document.getElementById('updateBtn');
+    const deleteBtn = document.getElementById('deleteBtn');
+    const printBtn = document.getElementById('printBtn');
+    const refreshBtn = document.getElementById('refreshBtn');
+    const backBtn = document.getElementById('backBtn');
+    const tableSearch = document.getElementById('tableSearch');
+    const rowsBody = document.getElementById('rows');
+    const countLabel = document.getElementById('countLabel');
+    const statusLine = document.getElementById('statusLine');
+    const dateOpenButtons = document.querySelectorAll('.date-picker-trigger');
+    const userNameColumnCells = () => document.querySelectorAll('.user-name-column');
+
+    const apiBase = '/api/incoming';
+    let allRecords = [];
+    let selectedRowId = null;
+
+    function showStatus(message, isError = false) {
+      statusLine.className = `status-line show ${isError ? 'error' : 'ok'}`;
+      statusLine.textContent = message;
+    }
+
+    function clearStatus() {
+      statusLine.className = 'status-line';
+      statusLine.textContent = '';
+    }
+
+    function isAdminUser() {
+      return String(currentUser?.role || '').toLowerCase() === 'admin' || String(currentUser?.username || '').toLowerCase() === 'admin';
+    }
+
+    function syncUserNameColumnVisibility() {
+      userNameColumnCells().forEach((cell) => {
+        cell.style.display = isAdminUser() ? 'table-cell' : 'none';
+      });
+    }
+
+    function pad2(value) {
+      return String(value).padStart(2, '0');
+    }
+
+    function parseFlexibleDate(value) {
+      if (!value) return null;
+      const raw = String(value).trim();
+      if (!raw) return null;
+
+      const ymd = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (ymd) {
+        return new Date(Number(ymd[1]), Number(ymd[2]) - 1, Number(ymd[3]));
+      }
+
+      const ymdSlash = raw.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/);
+      if (ymdSlash) {
+        return new Date(Number(ymdSlash[1]), Number(ymdSlash[2]) - 1, Number(ymdSlash[3]));
+      }
+
+      const dmy = raw.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+      if (dmy) {
+        return new Date(Number(dmy[3]), Number(dmy[2]) - 1, Number(dmy[1]));
+      }
+
+      return null;
+    }
+
+    function formatDateYmdSlash(value) {
+      const date = parseFlexibleDate(value);
+      if (!date || Number.isNaN(date.getTime())) return '';
+      return `${date.getFullYear()}/${pad2(date.getMonth() + 1)}/${pad2(date.getDate())}`;
+    }
+
+    function toDateInputValue(value) {
+      const date = parseFlexibleDate(value);
+      if (!date || Number.isNaN(date.getTime())) return '';
+      return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+    }
+
+    function getHeaders() {
+      return {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${authToken}`
+      };
+    }
+
+    function getApiErrorMessage(response, data) {
+      const serverMessage = String(data?.message || '').trim();
+      if (serverMessage) return serverMessage;
+      if (response.status === 400) return 'البيانات المدخلة غير مكتملة أو غير صحيحة.';
+      if (response.status === 404) return 'السجل المطلوب غير موجود.';
+      if (response.status === 409) return 'تعذر تنفيذ العملية بسبب تعارض أو تكرار في البيانات.';
+      if (response.status >= 500) return 'حدث خطأ في الخادم أو قاعدة البيانات. حاول مرة أخرى.';
+      return 'تعذر إكمال العملية. تحقق من الاتصال ثم حاول مرة أخرى.';
+    }
+
+    async function requestJson(url, options = {}) {
+      const response = await fetch(url, options);
+      if (response.status === 401 || response.status === 403) {
+        localStorage.removeItem('authToken');
+        window.location.href = '/';
+        return null;
+      }
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(getApiErrorMessage(response, data));
+      }
+
+      return data;
+    }
+
+    function setCurrentUser() {
+      const displayName = String(currentUser?.name || currentUser?.username || '').trim();
+      userNameInput.value = displayName;
+
+      if (userNameField) {
+        userNameField.style.display = isAdminUser() ? 'grid' : 'none';
+      }
+
+      syncUserNameColumnVisibility();
+    }
+
+    function syncDateDisplays() {
+      docDateDisplayInput.value = formatDateYmdSlash(docDateInput.value);
+      bookDateDisplayInput.value = formatDateYmdSlash(bookDateInput.value);
+    }
+
+    function clearForm() {
+      recordIdInput.value = '';
+      selectedRowId = null;
+      docNumberInput.value = '';
+      docDateInput.value = '';
+      bookNumberInput.value = '';
+      bookDateInput.value = '';
+      subjectInput.value = '';
+      sourceDepartmentInput.value = '';
+      specialDepartmentInput.value = '';
+      notesInput.value = '';
+      setCurrentUser();
+      syncDateDisplays();
+      Array.from(rowsBody.querySelectorAll('tr')).forEach((row) => row.classList.remove('selected'));
+    }
+
+    function loadRecord(record) {
+      if (!record) return;
+      recordIdInput.value = record.ID || '';
+      selectedRowId = Number(record.ID || 0) || null;
+      docNumberInput.value = String(record.DocNumber || '');
+      docDateInput.value = toDateInputValue(record.DocDate);
+      bookNumberInput.value = String(record.BookNumber || '');
+      bookDateInput.value = toDateInputValue(record.BookDate);
+      subjectInput.value = String(record.Subject || '');
+      sourceDepartmentInput.value = String(record.SourceDepartment || '');
+      specialDepartmentInput.value = String(record.SpecialDepartment || '');
+      notesInput.value = String(record.Notes || '');
+      userNameInput.value = String(record.UserName || currentUser?.name || currentUser?.username || '');
+      syncDateDisplays();
+      Array.from(rowsBody.querySelectorAll('tr')).forEach((row) => {
+        row.classList.toggle('selected', Number(row.dataset.id || 0) === selectedRowId);
+      });
+    }
+
+    function getVisibleRecords() {
+      const query = String(tableSearch.value || '').trim().toLowerCase();
+      if (!query) return allRecords;
+      return allRecords.filter((record) => [
+        record.DocNumber,
+        record.DocDate,
+        record.BookNumber,
+        record.BookDate,
+        record.Subject,
+        record.SourceDepartment,
+        record.SpecialDepartment,
+        record.Notes,
+        record.UserName
+      ].some((value) => String(value || '').toLowerCase().includes(query)));
+    }
+
+    function renderRows() {
+      const records = getVisibleRecords();
+      countLabel.textContent = `عدد السجلات: ${records.length}`;
+
+      if (!records.length) {
+        rowsBody.innerHTML = `<tr><td colspan="${isAdminUser() ? 10 : 9}">لا توجد بيانات متاحة حالياً.</td></tr>`;
+        syncUserNameColumnVisibility();
+        return;
+      }
+
+      rowsBody.innerHTML = records.map((record, index) => `
+        <tr data-id="${record.ID}">
+          <td class="mono">${index + 1}</td>
+          <td class="mono">${record.DocNumber || ''}</td>
+          <td class="mono">${record.DocDate || ''}</td>
+          <td class="mono">${record.BookNumber || ''}</td>
+          <td class="mono">${record.BookDate || ''}</td>
+          <td>${record.Subject || ''}</td>
+          <td>${record.SourceDepartment || ''}</td>
+          <td>${record.SpecialDepartment || ''}</td>
+          <td>${record.Notes || ''}</td>
+          <td class="user-name-column">${record.UserName || ''}</td>
+        </tr>
+      `).join('');
+
+      syncUserNameColumnVisibility();
+
+      Array.from(rowsBody.querySelectorAll('tr')).forEach((row) => {
+        row.addEventListener('click', () => {
+          const selected = allRecords.find((item) => Number(item.ID) === Number(row.dataset.id));
+          if (selected) {
+            loadRecord(selected);
+          }
+        });
+      });
+    }
+
+    async function loadRecords() {
+      clearStatus();
+      const records = await requestJson(apiBase, {
+        headers: getHeaders()
+      });
+
+      if (!records) return;
+      allRecords = Array.isArray(records) ? records : [];
+      renderRows();
+      if (selectedRowId) {
+        const selected = allRecords.find((item) => Number(item.ID) === selectedRowId);
+        if (selected) {
+          loadRecord(selected);
+        }
+      }
+    }
+
+    async function submitRecord() {
+      const payload = {
+        DocNumber: String(docNumberInput.value || '').trim(),
+        DocDate: String(docDateInput.value || '').trim(),
+        BookNumber: String(bookNumberInput.value || '').trim(),
+        BookDate: String(bookDateInput.value || '').trim(),
+        Subject: String(subjectInput.value || '').trim(),
+        SourceDepartment: String(sourceDepartmentInput.value || '').trim(),
+        SpecialDepartment: String(specialDepartmentInput.value || '').trim(),
+        Notes: String(notesInput.value || '').trim(),
+        UserName: String(userNameInput.value || '').trim()
+      };
+
+      const response = await requestJson(apiBase, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(payload)
+      });
+
+      if (!response) return;
+      showStatus('تمت إضافة بيانات الوارد بنجاح.');
+      clearForm();
+      await loadRecords();
+    }
+
+    async function updateRecord() {
+      if (!selectedRowId) {
+        showStatus('اختر سجل الوارد المراد تعديله أولاً.', true);
+        return;
+      }
+
+      const payload = {
+        DocNumber: String(docNumberInput.value || '').trim(),
+        DocDate: String(docDateInput.value || '').trim(),
+        BookNumber: String(bookNumberInput.value || '').trim(),
+        BookDate: String(bookDateInput.value || '').trim(),
+        Subject: String(subjectInput.value || '').trim(),
+        SourceDepartment: String(sourceDepartmentInput.value || '').trim(),
+        SpecialDepartment: String(specialDepartmentInput.value || '').trim(),
+        Notes: String(notesInput.value || '').trim(),
+        UserName: String(userNameInput.value || '').trim()
+      };
+
+      const response = await requestJson(`${apiBase}/${selectedRowId}`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify(payload)
+      });
+
+      if (!response) return;
+      showStatus('تم تعديل بيانات الوارد بنجاح.');
+      await loadRecords();
+    }
+
+    async function deleteRecord() {
+      if (!selectedRowId) {
+        showStatus('اختر سجل الوارد المراد حذفه أولاً.', true);
+        return;
+      }
+
+      const confirmed = window.confirm('هل تريد حذف سجل الوارد المحدد؟');
+      if (!confirmed) return;
+
+      const response = await requestJson(`${apiBase}/${selectedRowId}`, {
+        method: 'DELETE',
+        headers: getHeaders(),
+        body: JSON.stringify({ userName: userNameInput.value })
+      });
+
+      if (!response) return;
+      showStatus('تم حذف بيانات الوارد بنجاح.');
+      clearForm();
+      await loadRecords();
+    }
+
+    function printRecord() {
+      window.print();
+    }
+
+    dateOpenButtons.forEach((button) => {
+      const pickerId = button.dataset.pickerId;
+      const nativeInput = document.getElementById(pickerId);
+      if (nativeInput) {
+        button.addEventListener('click', () => nativeInput.showPicker?.() || nativeInput.focus());
+      }
+    });
+
+    docDateInput.addEventListener('change', syncDateDisplays);
+    docDateInput.addEventListener('input', syncDateDisplays);
+    bookDateInput.addEventListener('change', syncDateDisplays);
+    bookDateInput.addEventListener('input', syncDateDisplays);
+    tableSearch.addEventListener('input', renderRows);
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      await submitRecord();
+    });
+
+    updateBtn.addEventListener('click', updateRecord);
+    deleteBtn.addEventListener('click', deleteRecord);
+    printBtn.addEventListener('click', printRecord);
+    refreshBtn.addEventListener('click', loadRecords);
+    backBtn.addEventListener('click', () => {
+      window.location.href = '/dashboard.html';
+    });
+
+    setCurrentUser();
+    clearForm();
+    loadRecords();
+  </script>
+</body>
+</html>

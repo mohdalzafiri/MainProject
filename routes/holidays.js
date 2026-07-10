@@ -2,7 +2,36 @@
 const { db, logSystem } = require('../database');
 
 const router = express.Router();
-const columns = ['EmpID', 'Name', 'Department', 'Section', 'Status', 'Type', 'Startdate', 'Enddate', 'Days', 'Note'];
+const columns = ['EmpID', 'Name', 'Department', 'Section', 'Status', 'Type', 'Startdate', 'Enddate', 'Days', 'Note', 'UserName'];
+
+function ensureHolidayTable() {
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS Holiday (
+      ID INTEGER PRIMARY KEY AUTOINCREMENT,
+      EmpID INTEGER,
+      Name TEXT,
+      Department TEXT,
+      Section TEXT,
+      Status TEXT,
+      Type TEXT,
+      Startdate TEXT,
+      Enddate TEXT,
+      Days INTEGER,
+      Note TEXT,
+      UserName TEXT
+    )
+  `).run();
+}
+
+function ensureColumn(tableName, columnName, columnType) {
+  const columnsInfo = db.prepare(`PRAGMA table_info(${tableName})`).all();
+  const hasColumn = columnsInfo.some((column) => String(column.name || '').toLowerCase() === String(columnName || '').toLowerCase());
+  if (hasColumn) return;
+  db.prepare(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${columnType}`).run();
+}
+
+ensureHolidayTable();
+ensureColumn('Holiday', 'UserName', 'TEXT');
 
 function normalizeText(value) {
   return String(value || '').trim();

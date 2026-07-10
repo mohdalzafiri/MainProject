@@ -199,6 +199,33 @@ function countOngoingRecords(tableName) {
   `).get(today, today).count;
 }
 
+function summarizeDocumentTable(tableName, dateColumn, numberColumn, subjectColumn, extraColumn) {
+  if (!tableOrViewExists(tableName)) {
+    return {
+      total: 0,
+      latest: null
+    };
+  }
+
+  const total = db.prepare(`SELECT COUNT(*) AS count FROM ${tableName}`).get().count;
+  const latest = db.prepare(`
+    SELECT ${numberColumn} AS numberValue, ${dateColumn} AS dateValue, ${subjectColumn} AS subjectValue${extraColumn ? `, ${extraColumn} AS extraValue` : ''}
+    FROM ${tableName}
+    ORDER BY date(REPLACE(${dateColumn}, '/', '-')) DESC, ID DESC
+    LIMIT 1
+  `).get();
+
+  return {
+    total,
+    latest: latest ? {
+      number: String(latest.numberValue || '').trim(),
+      date: String(latest.dateValue || '').trim(),
+      subject: String(latest.subjectValue || '').trim(),
+      extra: String(latest.extraValue || '').trim()
+    } : null
+  };
+}
+
 router.get('/summary', (req, res) => {
   try {
     const totals = {
@@ -213,6 +240,9 @@ router.get('/summary', (req, res) => {
         ? db.prepare("SELECT COUNT(*) AS count FROM DailyAll WHERE strftime('%Y-%m', Today) = strftime('%Y-%m', 'now')").get().count
         : 0
     };
+
+    const outgoingSummary = summarizeDocumentTable('OutgoingDocuments', 'DocDate', 'DocNumber', 'Subject', 'Recipient');
+    const incomingSummary = summarizeDocumentTable('IncomingDocuments', 'DocDate', 'DocNumber', 'Subject', 'SourceDepartment');
 
     const departments = tableOrViewExists('DailyAll_P')
       ? db.prepare(`
@@ -358,6 +388,8 @@ router.get('/summary', (req, res) => {
       departments,
       shifts,
       sections,
+      outgoingSummary,
+      incomingSummary,
       todaySummary,
       leaveDailySummary,
       recentActivities

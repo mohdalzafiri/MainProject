@@ -56,6 +56,12 @@
       transition: transform .18s ease, background .18s ease;
       text-decoration: none;
     }
+    .btn-icon,
+    .action-icon {
+      font-size: 1.05em;
+      line-height: 1;
+      flex: 0 0 auto;
+    }
     .btn:hover { transform: translateY(-1px); background: var(--primary-dark); }
     .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
     .panel {
@@ -76,7 +82,10 @@
       gap: 12px;
     }
     .action-item {
-      display: block;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
       border-radius: 16px;
       padding: 16px;
       background: #f8fafc;
@@ -198,6 +207,9 @@
       vertical-align: top;
       white-space: normal;
     }
+    .user-name-column {
+      display: table-cell;
+    }
     .activity-table th:nth-child(1),
     .activity-table td:nth-child(1) { width: 16%; }
     .activity-table th:nth-child(2),
@@ -246,11 +258,42 @@
       background: #22c55e;
       margin-left: 8px;
     }
+    .admin-only-section {
+      display: block;
+    }
+    .document-summary-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 20px;
+    }
+    .document-summary-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .document-summary-item {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: #f8fafc;
+      border: 1px solid rgba(15, 23, 42, 0.08);
+    }
+    .document-summary-item span:first-child {
+      color: var(--muted);
+      font-weight: 700;
+    }
+    .document-summary-item span:last-child {
+      font-weight: 700;
+      color: var(--text);
+    }
     @media (max-width: 900px) {
       .grid-2 { grid-template-columns: 1fr; }
       .buttons-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .summary-row-3 { grid-template-columns: 1fr; }
       .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .document-summary-grid { grid-template-columns: 1fr; }
     }
     @media (max-width: 600px) {
       .actions { justify-content: center; }
@@ -268,22 +311,24 @@
         <p>لوحة التحكم الرئيسية مع أزرار الوصول وإحصائيات الموظفين.</p>
       </div>
       <div class="actions">
-        <button class="btn" id="logoutBtn" type="button">تسجيل الخروج</button>
+        <button class="btn" id="logoutBtn" type="button"><span class="btn-icon" aria-hidden="true">🚪</span><span>تسجيل الخروج</span></button>
       </div>
     </div>
 
     <div class="panel buttons-grid">
-      <div class="action-item" id="employeesBtn">الموظفين</div>
-      <a class="action-item" id="dailyBtn" href="/daily.html">اليوميات</a>
-      <a class="action-item" id="statisticsBtn" href="/statistics.html">الاحصائيات</a>
-      <div class="action-item" id="holidaysBtn">الاجازات</div>
-      <div class="action-item" id="coursesBtn">الدورات</div>
-      <div class="action-item" id="transfersBtn">التنقلات</div>
-      <div class="action-item admin-only" id="evaluationsBtn">تقييم الاداء</div>
-      <div class="action-item admin-only" id="adminFormsBtn">النماذج الادارية</div>
-      <div class="action-item admin-only" id="systemLogBtn">سجل النظام</div>
-      <div class="action-item admin-only" id="settingsBtn">الاعدادات</div>
-      <div class="action-item" id="outsideAdminBtn">خارج الإدارة</div>
+      <div class="action-item" id="employeesBtn"><span class="action-icon" aria-hidden="true">👥</span><span>الموظفين</span></div>
+      <a class="action-item" id="dailyBtn" href="/daily.html"><span class="action-icon" aria-hidden="true">🗓️</span><span>اليوميات</span></a>
+      <a class="action-item" id="statisticsBtn" href="/statistics.html"><span class="action-icon" aria-hidden="true">📊</span><span>الاحصائيات</span></a>
+      <div class="action-item" id="holidaysBtn"><span class="action-icon" aria-hidden="true">🏖️</span><span>الاجازات</span></div>
+      <div class="action-item" id="coursesBtn"><span class="action-icon" aria-hidden="true">🎓</span><span>الدورات</span></div>
+      <div class="action-item" id="transfersBtn"><span class="action-icon" aria-hidden="true">🔄</span><span>التنقلات</span></div>
+      <div class="action-item admin-only" id="evaluationsBtn"><span class="action-icon" aria-hidden="true">⭐</span><span>تقييم الاداء</span></div>
+      <div class="action-item admin-only" id="adminFormsBtn"><span class="action-icon" aria-hidden="true">📝</span><span>النماذج الادارية</span></div>
+      <div class="action-item admin-only" id="systemLogBtn"><span class="action-icon" aria-hidden="true">📜</span><span>سجل النظام</span></div>
+      <div class="action-item admin-only" id="settingsBtn"><span class="action-icon" aria-hidden="true">⚙️</span><span>الاعدادات</span></div>
+      <div class="action-item" id="outsideAdminBtn"><span class="action-icon" aria-hidden="true">🏢</span><span>خارج الإدارة</span></div>
+      <a class="action-item" id="newPage1Btn" href="/outgoing.html"><span class="action-icon" aria-hidden="true">📤</span><span>الصادر</span></a>
+      <a class="action-item" id="newPage2Btn" href="/incoming.html"><span class="action-icon" aria-hidden="true">📥</span><span>الوارد</span></a>
     </div>
 
     <div class="summary-row">
@@ -388,7 +433,18 @@
       </div>
     </div>
 
-    <div class="panel" style="margin-top: 24px;">
+    <div class="summary-row">
+      <div class="panel">
+        <h2>ملخص الصادر</h2>
+        <div class="document-summary-list" id="outgoingSummary"></div>
+      </div>
+      <div class="panel">
+        <h2>ملخص الوارد</h2>
+        <div class="document-summary-list" id="incomingSummary"></div>
+      </div>
+    </div>
+
+    <div class="panel admin-only-section" id="recentActivitiesPanel" style="margin-top: 24px;">
       <h2>آخر العمليات</h2>
       <div class="table-wrap">
         <table class="activity-table">
@@ -396,7 +452,7 @@
             <tr>
               <th>العملية</th>
               <th>الصفحة</th>
-              <th>المستخدم</th>
+              <th class="user-name-column">المستخدم</th>
               <th>التوقيت</th>
               <th>الحالة</th>
               <th>التفاصيل</th>
@@ -418,6 +474,9 @@
     const coursesBtn = document.getElementById('coursesBtn');
     const transfersBtn = document.getElementById('transfersBtn');
     const activityRows = document.getElementById('activityRows');
+    const outgoingSummary = document.getElementById('outgoingSummary');
+    const incomingSummary = document.getElementById('incomingSummary');
+    const recentActivitiesPanel = document.getElementById('recentActivitiesPanel');
     const evaluationsBtn = document.getElementById('evaluationsBtn');
     const adminFormsBtn = document.getElementById('adminFormsBtn');
     const systemLogBtn = document.getElementById('systemLogBtn');
@@ -460,6 +519,9 @@
           item.style.display = 'none';
         }
       });
+      if (recentActivitiesPanel) {
+        recentActivitiesPanel.style.display = 'none';
+      }
     }
 
     function pad2(value) {
@@ -575,7 +637,7 @@
     function createGroupHeaderRow(label) {
       const row = document.createElement('tr');
       row.className = 'group-row';
-      row.innerHTML = `<td colspan="6">${label}</td>`;
+      row.innerHTML = `<td colspan="${isAdminUser ? 6 : 5}">${label}</td>`;
       return row;
     }
 
@@ -586,12 +648,39 @@
       row.innerHTML = `
         <td><span class="log-type">${item.Action || ''}</span></td>
         <td>${item.Target || ''}</td>
-        <td>${item.UserName || ''}</td>
+        <td class="user-name-column">${item.UserName || ''}</td>
         <td><span class="log-time">${normalizeStoredTime(item.Timestamp)}</span></td>
         <td><span class="badge ${badgeClass}">${status}</span></td>
         <td>${item.Details || ''}</td>
       `;
       return row;
+    }
+
+    function renderDocumentSummary(container, title, summary, latestExtraLabel) {
+      if (!container) return;
+      const latest = summary?.latest;
+      const latestNumber = latest?.number || '—';
+      const latestDate = latest?.date || '—';
+      const latestSubject = latest?.subject || '—';
+      const latestExtra = latest?.extra || '—';
+
+      container.innerHTML = `
+        <div class="document-summary-grid">
+          <div class="stat-card">
+            <p>إجمالي السجلات</p>
+            <h3>${summary?.total ?? 0}</h3>
+          </div>
+          <div class="stat-card">
+            <p>آخر سجل</p>
+            <h3>${latestNumber}</h3>
+          </div>
+        </div>
+        <div class="document-summary-list">
+          <div class="document-summary-item"><span>تاريخ آخر سجل</span><span>${latestDate}</span></div>
+          <div class="document-summary-item"><span>الموضوع</span><span>${latestSubject}</span></div>
+          <div class="document-summary-item"><span>${latestExtraLabel}</span><span>${latestExtra}</span></div>
+        </div>
+      `;
     }
 
     function getCurrentTime() {
@@ -680,9 +769,12 @@
 
     function renderRecentActivities(items) {
       activityRows.innerHTML = '';
+      document.querySelectorAll('.user-name-column').forEach((cell) => {
+        cell.style.display = isAdminUser ? 'table-cell' : 'none';
+      });
 
       if (!Array.isArray(items) || items.length === 0) {
-        activityRows.innerHTML = '<tr><td colspan="6">لا توجد عمليات مسجلة حالياً.</td></tr>';
+        activityRows.innerHTML = `<tr><td colspan="${isAdminUser ? 6 : 5}">لا توجد عمليات مسجلة حالياً.</td></tr>`;
         return;
       }
 
@@ -719,8 +811,12 @@
       });
 
       if (!hasRows) {
-        activityRows.innerHTML = '<tr><td colspan="6">لا توجد عمليات ضمن اليوم أو الأمس أو قبل الأمس.</td></tr>';
+        activityRows.innerHTML = `<tr><td colspan="${isAdminUser ? 6 : 5}">لا توجد عمليات ضمن اليوم أو الأمس أو قبل الأمس.</td></tr>`;
       }
+
+      document.querySelectorAll('.user-name-column').forEach((cell) => {
+        cell.style.display = isAdminUser ? 'table-cell' : 'none';
+      });
     }
 
     logoutBtn.addEventListener('click', () => {
@@ -803,6 +899,8 @@
         renderBlocks('departmentStats', data.departments || []);
         renderBlocks('shiftStats', data.shifts || []);
         renderBlocks('sectionStats', data.sections || []);
+        renderDocumentSummary(outgoingSummary, 'ملخص الصادر', data.outgoingSummary || {}, 'الجهة المرسل لها');
+        renderDocumentSummary(incomingSummary, 'ملخص الوارد', data.incomingSummary || {}, 'الجهة الوارد منها');
         renderTodaySummary(data.todaySummary || []);
         renderLeaveDailySummary(data.leaveDailySummary || []);
         renderRecentActivities(data.recentActivities || []);
