@@ -493,7 +493,27 @@
     let employeesMap = new Map();
     let departmentSectionRows = [];
 
+    function resetEmployeeLinkedFields() {
+      renderDepartmentOptions('');
+      renderSectionOptions('', '');
+      renderSubSectionOptions('', '', '');
+    }
 
+    function syncEmployeeSelectionFromInput() {
+      const selected = employeesMap.get(String(employeeIdSelect.value || '').trim());
+      const selectedDepartment = selected ? String(selected.Department || '').trim() : '';
+      const selectedSection = selected ? String(selected.Section || '').trim() : '';
+      const selectedSubSection = selected ? String(selected.SubSection || '').trim() : '';
+
+      if (!selected) {
+        resetEmployeeLinkedFields();
+        return;
+      }
+
+      renderDepartmentOptions(selectedDepartment);
+      renderSectionOptions(selectedDepartment, selectedSection);
+      renderSubSectionOptions(selectedDepartment, selectedSection, selectedSubSection);
+    }
 
     function parseJwtPayload(token) {
       try {
@@ -821,20 +841,17 @@
         .filter((item) => String(item?.Status || '').trim() === 'نشط')
         .filter((item) => String(item?.Name || '').trim() !== '');
 
-      employeeIdSelect.innerHTML = '<option value="">-- اختر --</option>';
       employeesMap = new Map();
+      const options = ['<option value="">-- اختر --</option>'];
       activeEmployees.forEach((emp) => {
         const employeeName = String(emp.Name || '').trim();
         employeesMap.set(employeeName, emp);
-        const option = document.createElement('option');
-        option.value = employeeName;
-        option.textContent = employeeName;
-        employeeIdSelect.appendChild(option);
+        options.push(`<option value="${employeeName}">${employeeName}</option>`);
       });
 
-      departmentInput.value = '';
-      subSectionInput.value = '';
-      sectionInput.value = '';
+      employeeIdSelect.innerHTML = options.join('');
+      employeeIdSelect.value = '';
+      resetEmployeeLinkedFields();
     }
 
     async function loadDepartmentSectionOptions() {
@@ -1022,15 +1039,8 @@
 
     leaveEndDateInput.addEventListener('change', () => {
       leaveEndDateDisplay.value = formatYmd(leaveEndDateInput.value);
-    });change', () => {
-      const selected = employeesMap.get(String(employeeIdSelect.value || '').trim());
-      const selectedDepartment = selected ? String(selected.Department || '').trim() : '';
-      const selectedSection = selected ? String(selected.Section || '').trim() : '';
-      const selectedSubSection = selected ? String(selected.SubSection || '').trim() : '';
+    });
 
-      renderDepartmentOptions(selectedDepartment);
-      renderSectionOptions(selectedDepartment, selectedSection);
-      renderSubSectionOptions(selectedDepartment, selectedSection, selectedSubSection
     employeeIdSelect.addEventListener('change', () => {
       syncEmployeeSelectionFromInput();
     });
