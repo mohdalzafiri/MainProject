@@ -267,8 +267,9 @@
           <div class="form-row">
             <div class="field">
               <label for="employeeId">اسم الموظف</label>
-              <input id="employeeId" type="text" list="employeeIdList" autocomplete="off" placeholder="اكتب اسم الموظف" />
-              <datalist id="employeeIdList"></datalist>
+              <select id="employeeId">
+                <option value="">-- اختر --</option>
+              </select>
             </div>
             <div class="field">
               <label for="formName">اسم النموذج</label>
@@ -463,7 +464,6 @@
     const dayNameInput = document.getElementById('dayName');
     const formNameSelect = document.getElementById('formName');
     const employeeIdSelect = document.getElementById('employeeId');
-    const employeeIdList = document.getElementById('employeeIdList');
     const departmentInput = document.getElementById('department');
     const subSectionInput = document.getElementById('subSection');
     const sectionInput = document.getElementById('section');
@@ -493,27 +493,7 @@
     let employeesMap = new Map();
     let departmentSectionRows = [];
 
-    function resetEmployeeLinkedFields() {
-      renderDepartmentOptions('');
-      renderSectionOptions('', '');
-      renderSubSectionOptions('', '', '');
-    }
 
-    function syncEmployeeSelectionFromInput() {
-      const selected = employeesMap.get(String(employeeIdSelect.value || '').trim());
-      const selectedDepartment = selected ? String(selected.Department || '').trim() : '';
-      const selectedSection = selected ? String(selected.Section || '').trim() : '';
-      const selectedSubSection = selected ? String(selected.SubSection || '').trim() : '';
-
-      if (!selected) {
-        resetEmployeeLinkedFields();
-        return;
-      }
-
-      renderDepartmentOptions(selectedDepartment);
-      renderSectionOptions(selectedDepartment, selectedSection);
-      renderSubSectionOptions(selectedDepartment, selectedSection, selectedSubSection);
-    }
 
     function parseJwtPayload(token) {
       try {
@@ -841,18 +821,20 @@
         .filter((item) => String(item?.Status || '').trim() === 'نشط')
         .filter((item) => String(item?.Name || '').trim() !== '');
 
-      employeeIdList.innerHTML = '';
+      employeeIdSelect.innerHTML = '<option value="">-- اختر --</option>';
       employeesMap = new Map();
       activeEmployees.forEach((emp) => {
         const employeeName = String(emp.Name || '').trim();
         employeesMap.set(employeeName, emp);
         const option = document.createElement('option');
         option.value = employeeName;
-        employeeIdList.appendChild(option);
+        option.textContent = employeeName;
+        employeeIdSelect.appendChild(option);
       });
 
-      employeeIdSelect.value = '';
-      resetEmployeeLinkedFields();
+      departmentInput.value = '';
+      subSectionInput.value = '';
+      sectionInput.value = '';
     }
 
     async function loadDepartmentSectionOptions() {
@@ -1040,12 +1022,15 @@
 
     leaveEndDateInput.addEventListener('change', () => {
       leaveEndDateDisplay.value = formatYmd(leaveEndDateInput.value);
-    });
+    });change', () => {
+      const selected = employeesMap.get(String(employeeIdSelect.value || '').trim());
+      const selectedDepartment = selected ? String(selected.Department || '').trim() : '';
+      const selectedSection = selected ? String(selected.Section || '').trim() : '';
+      const selectedSubSection = selected ? String(selected.SubSection || '').trim() : '';
 
-    employeeIdSelect.addEventListener('input', () => {
-      syncEmployeeSelectionFromInput();
-    });
-
+      renderDepartmentOptions(selectedDepartment);
+      renderSectionOptions(selectedDepartment, selectedSection);
+      renderSubSectionOptions(selectedDepartment, selectedSection, selectedSubSection
     employeeIdSelect.addEventListener('change', () => {
       syncEmployeeSelectionFromInput();
     });
