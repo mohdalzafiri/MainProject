@@ -52,6 +52,13 @@
       align-items: center;
     }
 
+    .search-message {
+      margin: 8px 0 0;
+      color: #334155;
+      font-weight: 700;
+      min-height: 22px;
+    }
+
     .form-actions .btn {
       min-width: 160px;
     }
@@ -288,7 +295,9 @@
             <div class="form-row fields-row-3">
               <div class="field">
                 <label for="employeeName">اسم الموظف</label>
-                <input id="employeeName" type="text" placeholder="ابحث باسم الموظف" />
+                <select id="employeeName">
+                  <option value="">-- اختر --</option>
+                </select>
               </div>
             </div>
 
@@ -297,6 +306,7 @@
                 <button type="button" class="btn success" id="searchBtn">بحث</button>
                 <button type="button" class="btn primary" id="printBtn">طباعة بيانات</button>
               </div>
+              <p id="searchMessage" class="search-message"></p>
             </div>
           </div>
       </form>
@@ -378,11 +388,13 @@
     const employeeNameInput = document.getElementById('employeeName');
     const rowsBody = document.getElementById('rows');
     const countLabel = document.getElementById('countLabel');
+    const searchMessage = document.getElementById('searchMessage');
     const searchBtn = document.getElementById('searchBtn');
     const refreshBtn = document.getElementById('refreshBtn');
     const dateButtons = document.querySelectorAll('.date-picker-trigger');
     let departmentSectionRows = [];
     let currentRows = [];
+    let activeEmployees = [];
 
     const statusCheckboxes = {
       حضور: document.getElementById('statusPresent'),
@@ -395,9 +407,29 @@
       دورة: document.getElementById('statusCourse')
     };
 
+    function setSearchMessage(message) {
+      searchMessage.textContent = String(message || '').trim();
+    }
+
     function syncDateDisplays() {
       fromDateDisplay.value = toSlashDate(fromDate.value);
       toDateDisplay.value = toSlashDate(toDate.value);
+    }
+
+    function clearEmployeeNameFilter() {
+      if (employeeNameInput.value) {
+        employeeNameInput.value = '';
+      }
+    }
+
+    function clearDepartmentSectionFilters() {
+      if (departmentInput.value) {
+        departmentInput.value = '';
+      }
+      populateStatisticsSections();
+      if (sectionInput.value) {
+        sectionInput.value = '';
+      }
     }
 
     function normalizeDepartment(value) {
@@ -428,6 +460,15 @@
         .filter(Boolean);
 
       populateSelect(sectionInput, sections, preferredValue);
+    }
+
+    function populateEmployeeNames() {
+      const selected = String(employeeNameInput.value || '').trim();
+      populateSelect(employeeNameInput, activeEmployees.map((item) => String(item.Name || '').trim()).filter(Boolean), selected);
+
+      if (selected && !activeEmployees.some((item) => String(item?.Name || '').trim() === selected)) {
+        employeeNameInput.value = '';
+      }
     }
 
     function normalizeText(value) {
@@ -503,6 +544,23 @@
     }
 
     async function loadStatisticsRows() {
+      const hasDepartment = Boolean(departmentInput.value);
+      const hasEmployee = Boolean(employeeNameInput.value.trim());
+      if (!hasDepartment && !hasEmployee) {
+        currentRows = [];
+        renderRows([]);
+        setSearchMessage('اختر القسم أو اسم الموظف ثم اضغط بحث.');
+        return;
+      }
+
+      const selectedStatuses = getSelectedStatusTerms();
+      if (!selectedStatuses.length) {
+        currentRows = [];
+        renderRows([]);
+        setSearchMessage('اختر حالة واحدة على الأقل ثم اضغط بحث.');
+        return;
+      }
+
       const params = new URLSearchParams();
       if (departmentInput.value) params.set('department', departmentInput.value);
       if (sectionInput.value) params.set('section', sectionInput.value);
@@ -517,12 +575,128 @@
       });
       if (!data) return;
 
-      currentRows = Array.isArray(data) ? data : [];
+      const rows = Array.isArray(data) ? data : [];
+      currentRows = rows.filter((item) => {
+        const haystack = normalizeText([item.Status, item.Type, item.Note].filter(Boolean).join(' '));
+        return selectedStatuses.some((entry) => entry.terms.some((term) => haystack.includes(normalizeText(term))));
+      });
       renderRows(getFilteredRows());
+      setSearchMessage('');
     }
 
     function refreshRenderedRows() {
       renderRows(getFilteredRows());
+    }
+
+    function printCurrentTable() {
+      const filteredRows = getFilteredRows();
+      if (!filteredRows.length) {
+        setSearchMessage('لا توجد بيانات في الجدول للطباعة.');
+        return;
+      }
+
+      const tableHead = `
+        <thead>
+          <tr>
+            <th>م</th>
+            <th>التاريخ</th>
+            <th>الاسم</th>
+            <th>القسم</th>
+            <th>النوبة</th>
+            <th>الحالة</th>
+            <th>الفترة</th>
+            <th>الحضور</th>
+            <th>الانصراف</th>
+            <th>بداية</th>
+            <th>نهاية</th>
+            <th>الوصف</th>
+            <th>ملاحظات</th>
+          </tr>
+        </thead>
+      `;
+
+      const tableBody = filteredRows.map((item, index) => `
+        <tr>
+          <td>${index + 1}</td>
+          <td>${escapeHtml(item.Today || '')}</td>
+          <td>${escapeHtml(item.Name || '')}</td>
+          <td>${escapeHtml(item.Department || '')}</td>
+          <td>${escapeHtml(item.Section || '')}</td>
+          <td>${escapeHtml(item.Status || '')}</td>
+          <td>${escapeHtml(item.Period || '')}</td>
+          <td>${escapeHtml(item.InTime || '')}</td>
+          <td>${escapeHtml(item.OutTime || '')}</td>
+          <td>${escapeHtml(item.Startdate || '')}</td>
+          <td>${escapeHtml(item.Enddate || '')}</td>
+          <td>${escapeHtml(item.Type || item.SubSection || '')}</td>
+          <td>${escapeHtml(item.Note || '')}</td>
+        </tr>
+      `).join('');
+
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        setSearchMessage('تعذر فتح نافذة الطباعة. تحقق من مانع النوافذ المنبثقة.');
+        return;
+      }
+
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html lang="ar" dir="rtl">
+        <head>
+          <meta charset="UTF-8" />
+          <title>طباعة بيانات الاحصائيات</title>
+          <style>
+            body {
+              font-family: Tahoma, Arial, sans-serif;
+              margin: 16px;
+              color: #0f172a;
+            }
+            h1 {
+              margin: 0 0 12px;
+              font-size: 20px;
+            }
+            p {
+              margin: 0 0 12px;
+              font-size: 13px;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              table-layout: fixed;
+              font-size: 12px;
+            }
+            th, td {
+              border: 1px solid #94a3b8;
+              padding: 6px;
+              vertical-align: top;
+              word-break: break-word;
+              text-align: center;
+            }
+            th {
+              background: #e2e8f0;
+            }
+            @page {
+              size: A4 landscape;
+              margin: 10mm;
+            }
+          </style>
+        </head>
+        <body>
+          <h1>بيانات الاحصائيات</h1>
+          <p>عدد السجلات: ${filteredRows.length}</p>
+          <table>
+            ${tableHead}
+            <tbody>${tableBody}</tbody>
+          </table>
+        </body>
+        </html>
+      `);
+
+      printWindow.document.close();
+      printWindow.focus();
+      printWindow.print();
+      printWindow.close();
+      setSearchMessage('');
     }
 
     async function requestJson(url, options = {}) {
@@ -552,6 +726,17 @@
       populateStatisticsSections(sectionInput.value);
     }
 
+    async function loadActiveEmployees() {
+      const data = await requestJson('/api/employees', {
+        headers: { Authorization: `Bearer ${authToken}` }
+      });
+
+      if (!data) return;
+
+      activeEmployees = (Array.isArray(data) ? data : []).filter((item) => String(item?.Status || '').trim() === 'نشط');
+      populateEmployeeNames();
+    }
+
     dateButtons.forEach((button) => {
       button.addEventListener('click', () => {
         const pickerId = button.dataset.pickerId;
@@ -570,7 +755,8 @@
 
     const now = new Date();
     const today = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`;
-    fromDate.value = today;
+    const monthStart = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-01`;
+    fromDate.value = monthStart;
     toDate.value = today;
     syncDateDisplays();
 
@@ -579,16 +765,21 @@
     });
 
     document.getElementById('printBtn').addEventListener('click', () => {
-      window.print();
+      printCurrentTable();
     });
 
     departmentInput.addEventListener('change', () => {
       populateStatisticsSections();
+      clearEmployeeNameFilter();
+    });
+
+    sectionInput.addEventListener('change', () => {
+      clearEmployeeNameFilter();
     });
 
     searchBtn.addEventListener('click', () => {
       loadStatisticsRows().catch((error) => {
-        countLabel.textContent = error.message || 'تعذر تحميل البيانات.';
+        setSearchMessage(error.message || 'تعذر تحميل البيانات.');
       });
     });
 
@@ -600,10 +791,14 @@
 
     refreshBtn.addEventListener('click', () => {
       clearStatusFilters();
-      loadDepartmentSections()
-        .then(loadStatisticsRows)
+      currentRows = [];
+      renderRows([]);
+      Promise.all([loadDepartmentSections(), loadActiveEmployees()])
+        .then(() => {
+          setSearchMessage('');
+        })
         .catch((error) => {
-          countLabel.textContent = error.message || 'تعذر تحديث عرض البيانات.';
+          setSearchMessage(error.message || 'تعذر تحديث عرض البيانات.');
         });
     });
 
@@ -616,17 +811,20 @@
       checkbox?.addEventListener('change', refreshRenderedRows);
     });
 
-    employeeNameInput.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') {
-        event.preventDefault();
-        searchBtn.click();
+    employeeNameInput.addEventListener('change', () => {
+      if (employeeNameInput.value.trim()) {
+        clearDepartmentSectionFilters();
       }
     });
 
-    loadDepartmentSections()
-      .then(loadStatisticsRows)
+    Promise.all([loadDepartmentSections(), loadActiveEmployees()])
+      .then(() => {
+        currentRows = [];
+        renderRows([]);
+        setSearchMessage('');
+      })
       .catch((error) => {
-        countLabel.textContent = error.message || 'تعذر تحميل بيانات الاحصائيات.';
+        setSearchMessage(error.message || 'تعذر تحميل بيانات الاحصائيات.');
       });
   </script>
 </body>

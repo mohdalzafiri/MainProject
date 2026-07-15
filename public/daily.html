@@ -1298,8 +1298,93 @@
       await refreshDailyView();
     }
 
+    function escapePrintHtml(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
     function printRecord() {
-      window.print();
+      const rows = Array.isArray(visibleRows) ? visibleRows : [];
+      if (!rows.length) {
+        showStatus('لا توجد بيانات في الجدول للطباعة.', true);
+        return;
+      }
+
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        showStatus('تعذر فتح نافذة الطباعة. تحقق من مانع النوافذ المنبثقة.', true);
+        return;
+      }
+
+      const rowsHtml = rows.map((item, index) => {
+        const description = String(item.Type || '').trim() || (String(item.Status || '').trim() === 'دورة' ? 'دورة' : '');
+        return `
+          <tr>
+            <td>${index + 1}</td>
+            <td>${escapePrintHtml(item.Name || '')}</td>
+            <td>${escapePrintHtml(item.Status || '')}</td>
+            <td>${escapePrintHtml(item.Period || '')}</td>
+            <td>${escapePrintHtml(item.InTime || '')}</td>
+            <td>${escapePrintHtml(item.OutTime || '')}</td>
+            <td>${escapePrintHtml(formatDateYmdSlash(item.Startdate || ''))}</td>
+            <td>${escapePrintHtml(formatDateYmdSlash(item.Enddate || ''))}</td>
+            <td>${escapePrintHtml(description)}</td>
+            <td>${escapePrintHtml(item.Note || '')}</td>
+          </tr>
+        `;
+      }).join('');
+
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html lang="ar" dir="rtl">
+        <head>
+          <meta charset="UTF-8" />
+          <title>طباعة بيانات اليوميات</title>
+          <style>
+            body { font-family: Tahoma, Arial, sans-serif; margin: 16px; color: #0f172a; }
+            h1 { margin: 0 0 10px; font-size: 20px; }
+            .meta { margin: 0 0 10px; font-size: 13px; }
+            table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 12px; }
+            th, td { border: 1px solid #94a3b8; padding: 6px; text-align: center; vertical-align: top; word-break: break-word; }
+            th { background: #e2e8f0; }
+            @page { size: A4 landscape; margin: 10mm; }
+          </style>
+        </head>
+        <body>
+          <h1>بيانات اليوميات</h1>
+          <p class="meta">اليوم: ${escapePrintHtml(dayInput.value || '--')} | التاريخ: ${escapePrintHtml(formatDateYmdSlash(todayInput.value || ''))}</p>
+          <p class="meta">القسم: ${escapePrintHtml(departmentInput.value || '--')} | النوبة: ${escapePrintHtml(sectionInput.value || '--')} | الفترة: ${escapePrintHtml(periodInput.value || '--')}</p>
+          <p class="meta">عدد السجلات: ${rows.length}</p>
+          <table>
+            <thead>
+              <tr>
+                <th>م</th>
+                <th>الاسم</th>
+                <th>الحالة</th>
+                <th>الفترة</th>
+                <th>الحضور</th>
+                <th>الانصراف</th>
+                <th>بداية</th>
+                <th>نهاية</th>
+                <th>الوصف</th>
+                <th>ملاحظات</th>
+              </tr>
+            </thead>
+            <tbody>${rowsHtml}</tbody>
+          </table>
+        </body>
+        </html>
+      `);
+
+      printWindow.document.close();
+      printWindow.focus();
+      printWindow.print();
+      printWindow.close();
+      clearStatus();
     }
 
     dateOpenButtons.forEach((button) => {

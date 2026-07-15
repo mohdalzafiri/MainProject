@@ -118,10 +118,103 @@
       white-space: nowrap;
     }
 
+    .time-ltr {
+      direction: ltr;
+      unicode-bidi: isolate;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .preview-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 70;
+      display: none;
+      padding: 18px;
+      background: rgba(15, 23, 42, 0.78);
+      backdrop-filter: blur(4px);
+    }
+
+    .preview-modal.show {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .preview-dialog {
+      width: min(1200px, 100%);
+      height: min(92vh, 980px);
+      display: grid;
+      grid-template-rows: auto 1fr;
+      overflow: hidden;
+      border-radius: 18px;
+      background: #fff;
+      box-shadow: 0 28px 80px rgba(15, 23, 42, 0.38);
+    }
+
+    .preview-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 18px;
+      border-bottom: 1px solid #dbe4f0;
+      background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+    }
+
+    .preview-toolbar h3 {
+      margin: 0;
+      font-size: 18px;
+      color: #0f172a;
+    }
+
+    .preview-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .preview-frame {
+      width: 100%;
+      height: 100%;
+      border: 0;
+      background: #fff;
+    }
+
+    .preview-info {
+      padding: 20px;
+      display: grid;
+      gap: 14px;
+      align-content: center;
+      justify-items: start;
+      color: #0f172a;
+    }
+
+    .preview-info p {
+      margin: 0;
+      line-height: 1.8;
+      color: #334155;
+      font-weight: 700;
+    }
+
+    .preview-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      padding: 0 16px;
+      border-radius: 12px;
+      background: #e0edff;
+      color: #0f172a;
+      text-decoration: none;
+      font-weight: 800;
+    }
+
     @media (max-width: 1100px) {
       .top-panel .form-row {
         grid-template-columns: 1fr;
       }
+
     }
 
     @media (max-width: 720px) {
@@ -174,9 +267,8 @@
           <div class="form-row">
             <div class="field">
               <label for="employeeId">اسم الموظف</label>
-              <select id="employeeId">
-                <option value="">-- اختر --</option>
-              </select>
+              <input id="employeeId" type="text" list="employeeIdList" autocomplete="off" placeholder="اكتب اسم الموظف" />
+              <datalist id="employeeIdList"></datalist>
             </div>
             <div class="field">
               <label for="formName">اسم النموذج</label>
@@ -189,11 +281,94 @@
           <div class="form-row">
             <div class="field">
               <label for="department">القسم</label>
-              <input id="department" type="text" readonly />
+              <select id="department">
+                <option value="">-- اختر --</option>
+              </select>
             </div>
             <div class="field">
               <label for="section">النوبة</label>
-              <input id="section" type="text" readonly />
+              <select id="section">
+                <option value="">-- اختر --</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="field">
+              <label for="subSection">الشعبة</label>
+              <select id="subSection">
+                <option value="">-- اختر --</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="permitDate">تاريخ الاستئذان</label>
+              <div class="date-picker-wrap">
+                <input id="permitDateDisplay" class="date-display-input" type="text" placeholder="yyyy/mm/dd" readonly />
+                <button type="button" class="date-picker-trigger" data-picker-id="permitDate" aria-label="اختيار تاريخ الاستئذان"></button>
+                <input id="permitDate" type="date" class="native-date-input" />
+              </div>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="field">
+              <label for="fromTime">وقت الخروج</label>
+              <select id="fromTime" class="time-ltr">
+                <option value="">-- اختر --</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="toTime">وقت العودة</label>
+              <select id="toTime" class="time-ltr">
+                <option value="">-- اختر --</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="field">
+              <label for="permitReason">سبب الاستئذان</label>
+              <textarea id="permitReason"></textarea>
+            </div>
+            <div class="field"></div>
+          </div>
+
+          <div class="form-row">
+            <div class="field">
+              <label for="leaveType">نوع الاجازة</label>
+              <select id="leaveType">
+                <option value="">-- اختر --</option>
+                <option value="اجازة سنوية">اجازة سنوية</option>
+                <option value="اجازة مرضية">اجازة مرضية</option>
+                <option value="اجازة ادارية">اجازة ادارية</option>
+                <option value="اجازة امومة">اجازة امومة</option>
+                <option value="اجازة طارئة">اجازة طارئة</option>
+                <option value="اجازة وضع">اجازة وضع</option>
+                <option value="تفرغ رياضي">تفرغ رياضي</option>
+                <option value="لجنة طبية">لجنة طبية</option>
+                <option value="مرافق مريض">مرافق مريض</option>
+                <option value="اخرى">اخرى</option>
+              </select>
+            </div>
+            <div class="field"></div>
+          </div>
+
+          <div class="form-row">
+            <div class="field">
+              <label for="leaveStartDate">بداية الإجازة</label>
+              <div class="date-picker-wrap">
+                <input id="leaveStartDateDisplay" class="date-display-input" type="text" placeholder="yyyy/mm/dd" readonly />
+                <button type="button" class="date-picker-trigger" data-picker-id="leaveStartDate" aria-label="اختيار التاريخ"></button>
+                <input id="leaveStartDate" type="date" class="native-date-input" />
+              </div>
+            </div>
+            <div class="field">
+              <label for="leaveEndDate">نهاية الإجازة</label>
+              <div class="date-picker-wrap">
+                <input id="leaveEndDateDisplay" class="date-display-input" type="text" placeholder="yyyy/mm/dd" readonly />
+                <button type="button" class="date-picker-trigger" data-picker-id="leaveEndDate" aria-label="اختيار التاريخ"></button>
+                <input id="leaveEndDate" type="date" class="native-date-input" />
+              </div>
             </div>
           </div>
 
@@ -220,9 +395,9 @@
             <div class="field">
               <label>&nbsp;</label>
               <div class="form-actions">
-                <button type="button" class="btn success" id="searchBtn">إضافة بيانات جديدة</button>
                 <button type="button" class="btn primary" id="printBtn">طباعة بيانات</button>
               </div>
+              <div id="printStatusMsg" class="status-line"></div>
             </div>
           </div>
         </div>
@@ -245,9 +420,6 @@
             <tr>
               <th>التاريخ</th>
               <th>اليوم</th>
-              <th>اسم الموظف</th>
-              <th>القسم</th>
-              <th>النوبة</th>
               <th>اسم النموذج</th>
               <th>ملاحظات</th>
               <th>أنشئ بواسطة</th>
@@ -256,12 +428,25 @@
           </thead>
           <tbody id="rows">
             <tr>
-              <td colspan="9">لا توجد بيانات متاحة حالياً.</td>
+              <td colspan="6">لا توجد بيانات متاحة حالياً.</td>
             </tr>
           </tbody>
         </table>
       </div>
     </section>
+  </div>
+
+  <div id="previewModal" class="preview-modal" aria-hidden="true">
+    <div class="preview-dialog" role="dialog" aria-modal="true" aria-labelledby="previewTitle">
+      <div class="preview-toolbar">
+        <h3 id="previewTitle">معاينة الطباعة</h3>
+        <div class="preview-actions">
+          <button type="button" class="btn dark" id="previewPrintBtn">طباعة</button>
+          <button type="button" class="btn" id="previewCloseBtn">إغلاق</button>
+        </div>
+      </div>
+      <div id="previewBody" class="preview-info"></div>
+    </div>
   </div>
 
   <script>
@@ -273,16 +458,32 @@
     const backBtn = document.getElementById('backBtn');
     const formDateInput = document.getElementById('formDate');
     const formDateDisplay = document.getElementById('formDateDisplay');
+    const permitDateInput = document.getElementById('permitDate');
+    const permitDateDisplay = document.getElementById('permitDateDisplay');
     const dayNameInput = document.getElementById('dayName');
     const formNameSelect = document.getElementById('formName');
     const employeeIdSelect = document.getElementById('employeeId');
+    const employeeIdList = document.getElementById('employeeIdList');
     const departmentInput = document.getElementById('department');
+    const subSectionInput = document.getElementById('subSection');
     const sectionInput = document.getElementById('section');
+    const fromTimeInput = document.getElementById('fromTime');
+    const toTimeInput = document.getElementById('toTime');
+    const permitReasonInput = document.getElementById('permitReason');
+    const leaveTypeInput = document.getElementById('leaveType');
+    const leaveStartDateInput = document.getElementById('leaveStartDate');
+    const leaveStartDateDisplay = document.getElementById('leaveStartDateDisplay');
+    const leaveEndDateInput = document.getElementById('leaveEndDate');
+    const leaveEndDateDisplay = document.getElementById('leaveEndDateDisplay');
     const createdByInput = document.getElementById('createdBy');
     const createdAtInput = document.getElementById('createdAt');
     const notesInput = document.getElementById('notes');
-    const searchBtn = document.getElementById('searchBtn');
     const printBtn = document.getElementById('printBtn');
+    const printStatusMsg = document.getElementById('printStatusMsg');
+    const previewModal = document.getElementById('previewModal');
+    const previewBody = document.getElementById('previewBody');
+    const previewCloseBtn = document.getElementById('previewCloseBtn');
+    const previewPrintBtn = document.getElementById('previewPrintBtn');
     const refreshBtn = document.getElementById('refreshBtn');
     const tableSearch = document.getElementById('tableSearch');
     const countLabel = document.getElementById('countLabel');
@@ -290,6 +491,29 @@
 
     let allRows = [];
     let employeesMap = new Map();
+    let departmentSectionRows = [];
+
+    function resetEmployeeLinkedFields() {
+      renderDepartmentOptions('');
+      renderSectionOptions('', '');
+      renderSubSectionOptions('', '', '');
+    }
+
+    function syncEmployeeSelectionFromInput() {
+      const selected = employeesMap.get(String(employeeIdSelect.value || '').trim());
+      const selectedDepartment = selected ? String(selected.Department || '').trim() : '';
+      const selectedSection = selected ? String(selected.Section || '').trim() : '';
+      const selectedSubSection = selected ? String(selected.SubSection || '').trim() : '';
+
+      if (!selected) {
+        resetEmployeeLinkedFields();
+        return;
+      }
+
+      renderDepartmentOptions(selectedDepartment);
+      renderSectionOptions(selectedDepartment, selectedSection);
+      renderSubSectionOptions(selectedDepartment, selectedSection, selectedSubSection);
+    }
 
     function parseJwtPayload(token) {
       try {
@@ -319,14 +543,32 @@
       return String(value).padStart(2, '0');
     }
 
+    function parseInputDateParts(value) {
+      const raw = String(value || '').trim();
+      const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/) || raw.match(/^(\d{4})\/(\d{2})\/(\d{2})$/);
+      if (!match) return null;
+
+      const year = Number(match[1]);
+      const month = Number(match[2]);
+      const day = Number(match[3]);
+      if (!year || month < 1 || month > 12 || day < 1 || day > 31) return null;
+      return { year, month, day };
+    }
+
+    function getLocalDateInputValue(date = new Date()) {
+      return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+    }
+
     function formatYmd(value) {
       if (!value) return '';
+      const parts = parseInputDateParts(value);
+      if (parts) {
+        return `${parts.year}/${pad2(parts.month)}/${pad2(parts.day)}`;
+      }
+
       const date = new Date(value);
       if (Number.isNaN(date.getTime())) return '';
-      const y = date.getFullYear();
-      const m = String(date.getMonth() + 1).padStart(2, '0');
-      const d = String(date.getDate()).padStart(2, '0');
-      return `${y}/${m}/${d}`;
+      return `${date.getFullYear()}/${pad2(date.getMonth() + 1)}/${pad2(date.getDate())}`;
     }
 
     function formatDateTime(value) {
@@ -352,7 +594,10 @@
 
     function getArabicDay(value) {
       if (!value) return '';
-      const date = new Date(value);
+      const parts = parseInputDateParts(value);
+      const date = parts
+        ? new Date(parts.year, parts.month - 1, parts.day)
+        : new Date(value);
       if (Number.isNaN(date.getTime())) return '';
       const names = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
       return names[date.getDay()] || '';
@@ -364,15 +609,70 @@
       dayNameInput.value = getArabicDay(formDateInput.value);
     }
 
+    function syncPermitDateField() {
+      permitDateDisplay.value = formatYmd(permitDateInput.value);
+    }
+
+    function buildTimeOptions() {
+      const options = [];
+      for (let hour = 0; hour < 24; hour += 1) {
+        for (let minute = 0; minute < 60; minute += 5) {
+          options.push(`${pad2(hour)}:${pad2(minute)}`);
+        }
+      }
+      return options;
+    }
+
+    function populateTimeSelect(selectElement) {
+      const currentValue = String(selectElement.value || '').trim();
+      const options = ['<option value="">-- اختر --</option>']
+        .concat(buildTimeOptions().map((value) => `<option value="${value}">${value}</option>`));
+      selectElement.innerHTML = options.join('');
+      if (currentValue) {
+        selectElement.value = currentValue;
+      }
+    }
+
+    function normalizeTimeValue(value) {
+      const raw = String(value || '')
+        .replace(/[\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, '')
+        .replace(/[\u066B\uFF1A]/g, ':')
+        .trim();
+      if (!raw) return '';
+      const match = raw.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+      if (!match) return '';
+
+      const hours = Number(match[1]);
+      const minutes = Number(match[2]);
+      if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return '';
+      return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+    }
+
+    function hasSelectedTime(selectElement) {
+      if (!selectElement) return false;
+      if (selectElement.selectedIndex > 0) return true;
+      return Boolean(normalizeTimeValue(selectElement.value));
+    }
+
+    function isLeavePermitFormName(value) {
+      const normalized = String(value || '').trim();
+      return normalized.includes('استئذان') || normalized.includes('اجاز') || normalized.includes('إجاز');
+    }
+
     function setTodayDefault() {
       const now = new Date();
-      formDateInput.value = now.toISOString().slice(0, 10);
+      formDateInput.value = getLocalDateInputValue(now);
+      permitDateInput.value = '';
       syncDateFields();
+      syncPermitDateField();
+      populateTimeSelect(fromTimeInput);
+      populateTimeSelect(toTimeInput);
       createdAtInput.value = formatDateTime(now);
     }
 
     async function requestJson(url, options = {}) {
       const response = await fetch(url, {
+        cache: 'no-store',
         ...options,
         headers: {
           'Content-Type': 'application/json',
@@ -396,7 +696,7 @@
 
     function renderTable(items) {
       if (!items.length) {
-        rows.innerHTML = '<tr><td colspan="9">لا توجد بيانات متاحة حالياً.</td></tr>';
+        rows.innerHTML = '<tr><td colspan="6">لا توجد بيانات متاحة حالياً.</td></tr>';
         countLabel.textContent = 'عدد السجلات: 0';
         return;
       }
@@ -405,9 +705,6 @@
         <tr>
           <td class="mono">${item.FormDate || ''}</td>
           <td>${item.DayName || ''}</td>
-          <td>${item.EmployeeName || ''}</td>
-          <td>${item.Department || ''}</td>
-          <td>${item.Section || ''}</td>
           <td>${item.FormName || ''}</td>
           <td>${item.Notes || ''}</td>
           <td>${item.CreatedBy || ''}</td>
@@ -429,9 +726,6 @@
         const text = [
           item.FormDate,
           item.DayName,
-          item.EmployeeName,
-          item.Department,
-          item.Section,
           item.FormName,
           item.Notes,
           item.CreatedBy,
@@ -441,6 +735,87 @@
       });
 
       renderTable(filtered);
+    }
+
+    function normalizeDepartment(value) {
+      return String(value || '').trim();
+    }
+
+    function renderDepartmentOptions(preferredValue = '') {
+      const departmentValues = [...new Set(
+        departmentSectionRows
+          .filter((item) => Number(item.IsActive) === 1)
+          .map((item) => normalizeDepartment(item.Department))
+          .filter(Boolean)
+      )];
+
+      const previousValue = String(departmentInput.value || '').trim();
+      const targetValue = String(preferredValue || previousValue || '').trim();
+
+      departmentInput.innerHTML = '<option value="">-- اختر --</option>';
+      departmentValues.forEach((department) => {
+        const option = document.createElement('option');
+        option.value = department;
+        option.textContent = department;
+        departmentInput.appendChild(option);
+      });
+
+      departmentInput.value = departmentValues.includes(targetValue) ? targetValue : '';
+    }
+
+    function renderSectionOptions(selectedDepartment = '', preferredValue = '') {
+      const normalizedDepartment = normalizeDepartment(selectedDepartment);
+      const sectionValues = [...new Set(
+        departmentSectionRows
+          .filter((item) => Number(item.IsActive) === 1)
+          .filter((item) => normalizeDepartment(item.Department) === normalizedDepartment)
+          .map((item) => String(item.Section || '').trim())
+          .filter(Boolean)
+      )];
+
+      sectionInput.innerHTML = '<option value="">-- اختر --</option>';
+      sectionValues.forEach((section) => {
+        const option = document.createElement('option');
+        option.value = section;
+        option.textContent = section === 'بدون نوبة' ? ' ' : section;
+        sectionInput.appendChild(option);
+      });
+
+      sectionInput.value = sectionValues.includes(preferredValue) ? preferredValue : '';
+    }
+
+    function renderSubSectionOptions(selectedDepartment = '', selectedSection = '', preferredValue = '') {
+      const normalizedDepartment = normalizeDepartment(selectedDepartment);
+      const normalizedSection = String(selectedSection || '').trim();
+
+      const subSectionBySection = [...new Set(
+        departmentSectionRows
+          .filter((item) => Number(item.IsActive) === 1)
+          .filter((item) => normalizeDepartment(item.Department) === normalizedDepartment)
+          .filter((item) => String(item.Section || '').trim() === normalizedSection)
+          .map((item) => String(item.SubSection || '').trim())
+          .filter(Boolean)
+      )];
+
+      const subSectionByDepartment = [...new Set(
+        departmentSectionRows
+          .filter((item) => Number(item.IsActive) === 1)
+          .filter((item) => normalizeDepartment(item.Department) === normalizedDepartment)
+          .map((item) => String(item.SubSection || '').trim())
+          .filter(Boolean)
+      )];
+
+      const subSectionValues = subSectionBySection.length ? subSectionBySection : subSectionByDepartment;
+
+      subSectionInput.innerHTML = '<option value="">-- اختر --</option>';
+      subSectionValues.forEach((subSection) => {
+        const option = document.createElement('option');
+        option.value = subSection;
+        option.textContent = subSection;
+        subSectionInput.appendChild(option);
+      });
+
+      subSectionInput.value = subSectionValues.includes(preferredValue) ? preferredValue : '';
     }
 
     async function loadFormNameOptions() {
@@ -466,23 +841,30 @@
         .filter((item) => String(item?.Status || '').trim() === 'نشط')
         .filter((item) => String(item?.Name || '').trim() !== '');
 
-      employeeIdSelect.innerHTML = '<option value="">-- اختر --</option>';
+      employeeIdList.innerHTML = '';
       employeesMap = new Map();
       activeEmployees.forEach((emp) => {
         const employeeName = String(emp.Name || '').trim();
         employeesMap.set(employeeName, emp);
         const option = document.createElement('option');
         option.value = employeeName;
-        option.textContent = employeeName;
-        employeeIdSelect.appendChild(option);
+        employeeIdList.appendChild(option);
       });
 
-      departmentInput.value = '';
-      sectionInput.value = '';
+      employeeIdSelect.value = '';
+      resetEmployeeLinkedFields();
+    }
+
+    async function loadDepartmentSectionOptions() {
+      const rowsData = await requestJson('/api/settings/department-sections');
+      departmentSectionRows = Array.isArray(rowsData) ? rowsData : [];
+      renderDepartmentOptions('');
+      renderSectionOptions('', '');
+      renderSubSectionOptions('', '', '');
     }
 
     async function loadArchive() {
-      const data = await requestJson('/api/administrative/forms');
+      const data = await requestJson(`/api/administrative/forms?ts=${Date.now()}`);
       if (!data) return;
       allRows = Array.isArray(data) ? data : [];
       renderBySearch();
@@ -492,8 +874,18 @@
       const selectedEmployee = employeesMap.get(String(employeeIdSelect.value || '').trim());
       const payload = {
         FormDate: formDateInput.value,
+        PermitDate: permitDateInput.value,
         FormName: String(formNameSelect.value || '').trim(),
         EmpID: selectedEmployee ? String(selectedEmployee.ID || '') : '',
+        Department: String(departmentInput.value || '').trim(),
+        Section: String(sectionInput.value || '').trim(),
+        SubSection: String(subSectionInput.value || '').trim(),
+        FromTime: normalizeTimeValue(fromTimeInput.value),
+        ToTime: normalizeTimeValue(toTimeInput.value),
+        PermitReason: String(permitReasonInput.value || '').trim(),
+        LeaveStartDate: String(leaveStartDateInput.value || '').trim(),
+        LeaveEndDate: String(leaveEndDateInput.value || '').trim(),
+        LeaveType: String(leaveTypeInput.value || '').trim(),
         Notes: String(notesInput.value || '').trim()
       };
 
@@ -503,8 +895,8 @@
       if (!payload.FormName) {
         throw new Error('يرجى اختيار اسم النموذج.');
       }
-      if (!payload.EmpID) {
-        throw new Error('يرجى اختيار اسم الموظف.');
+      if (!payload.Department) {
+        throw new Error('يرجى اختيار القسم.');
       }
 
       await requestJson('/api/administrative/forms', {
@@ -513,10 +905,89 @@
       });
 
       notesInput.value = '';
+  fromTimeInput.value = '';
+  toTimeInput.value = '';
+  permitReasonInput.value = '';
+  permitDateInput.value = '';
+  syncPermitDateField();
+  leaveStartDateInput.value = '';
+  leaveEndDateInput.value = '';
+  leaveStartDateDisplay.value = '';
+  leaveEndDateDisplay.value = '';
+  leaveTypeInput.value = '';
       createdAtInput.value = formatDateTime(new Date());
       await loadArchive();
       countLabel.textContent = `عدد السجلات: ${allRows.length}`;
     }
+
+    function collectPrintPayload() {
+      return {
+        FormName: String(formNameSelect.value || '').trim(),
+        FormDate: String(formDateInput.value || '').trim(),
+        PermitDate: String(permitDateInput.value || '').trim(),
+        EmpID: (() => {
+          const selectedEmployee = employeesMap.get(String(employeeIdSelect.value || '').trim());
+          return selectedEmployee ? String(selectedEmployee.ID || '') : '';
+        })(),
+        FromTime: normalizeTimeValue(fromTimeInput.value),
+        ToTime: normalizeTimeValue(toTimeInput.value),
+        Reason: String(permitReasonInput.value || '').trim(),
+        LeaveStartDate: String(leaveStartDateInput.value || '').trim(),
+        LeaveEndDate: String(leaveEndDateInput.value || '').trim(),
+        LeaveType: String(leaveTypeInput.value || '').trim(),
+        Department: String(departmentInput.value || '').trim(),
+        Section: String(sectionInput.value || '').trim(),
+        SubSection: String(subSectionInput.value || '').trim(),
+        Notes: String(notesInput.value || '').trim()
+      };
+    }
+
+    function setPrintStatus(message = '', type = '') {
+      printStatusMsg.textContent = String(message || '').trim();
+      printStatusMsg.className = 'status-line';
+
+      if (!message) return;
+
+      printStatusMsg.classList.add('show');
+      if (type === 'success') printStatusMsg.classList.add('ok');
+      if (type === 'error') printStatusMsg.classList.add('error');
+    }
+
+    function openEmployeesPrintPreview(previewData) {
+      const payload = previewData || {};
+      const docxUrl = String(payload.docxUrl || '').trim();
+      const pdfUrl = String(payload.pdfUrl || '').trim();
+      const fileUrl = pdfUrl || docxUrl;
+
+      previewBody.innerHTML = `
+        <p>تم تجهيز الملف من القالب المرفوع نفسه.</p>
+        <p>إذا كان PDF متاحًا فسيُفتح مباشرة، وإلا فسيُفتح ملف DOCX الأصلي.</p>
+        <a class="preview-link" href="${fileUrl}" target="_blank" rel="noreferrer">فتح الملف</a>
+      `;
+      previewModal.classList.add('show');
+      previewModal.setAttribute('aria-hidden', 'false');
+    }
+
+    function closePreviewModal() {
+      previewModal.classList.remove('show');
+      previewModal.setAttribute('aria-hidden', 'true');
+      previewBody.innerHTML = '';
+    }
+
+    previewCloseBtn.addEventListener('click', closePreviewModal);
+
+    previewModal.addEventListener('click', (event) => {
+      if (event.target === previewModal) {
+        closePreviewModal();
+      }
+    });
+
+    previewPrintBtn.addEventListener('click', () => {
+      const link = previewBody.querySelector('a.preview-link');
+      if (link) {
+        window.open(link.href, '_blank');
+      }
+    });
 
     backBtn.addEventListener('click', () => {
       window.location.href = '/dashboard.html';
@@ -545,26 +1016,116 @@
       countLabel.textContent = `عدد السجلات: ${allRows.length}`;
     });
 
-    employeeIdSelect.addEventListener('change', () => {
-      const selected = employeesMap.get(String(employeeIdSelect.value || '').trim());
-      departmentInput.value = selected ? String(selected.Department || '') : '';
-      sectionInput.value = selected ? String(selected.Section || '') : '';
-    });
-
-    searchBtn.addEventListener('click', async () => {
-      try {
-        await saveRecord();
-      } catch (error) {
-        countLabel.textContent = error.message || 'تعذر تسجيل البيانات.';
+    permitDateDisplay.addEventListener('click', () => {
+      if (typeof permitDateInput.showPicker === 'function') {
+        permitDateInput.showPicker();
       }
     });
 
-    printBtn.addEventListener('click', () => {
-      window.print();
+    permitDateInput.addEventListener('change', () => {
+      syncPermitDateField();
+    });
+
+    fromTimeInput.addEventListener('change', () => {
+      fromTimeInput.value = normalizeTimeValue(fromTimeInput.value);
+    });
+
+    toTimeInput.addEventListener('change', () => {
+      toTimeInput.value = normalizeTimeValue(toTimeInput.value);
+    });
+
+    leaveStartDateInput.addEventListener('change', () => {
+      leaveStartDateDisplay.value = formatYmd(leaveStartDateInput.value);
+    });
+
+    leaveEndDateInput.addEventListener('change', () => {
+      leaveEndDateDisplay.value = formatYmd(leaveEndDateInput.value);
+    });
+
+    employeeIdSelect.addEventListener('input', () => {
+      syncEmployeeSelectionFromInput();
+    });
+
+    employeeIdSelect.addEventListener('change', () => {
+      syncEmployeeSelectionFromInput();
+    });
+
+    departmentInput.addEventListener('change', () => {
+      const selectedDepartment = String(departmentInput.value || '').trim();
+      renderSectionOptions(selectedDepartment, '');
+      renderSubSectionOptions(selectedDepartment, '', '');
+    });
+
+    sectionInput.addEventListener('change', () => {
+      const selectedDepartment = String(departmentInput.value || '').trim();
+      const selectedSection = String(sectionInput.value || '').trim();
+      renderSubSectionOptions(selectedDepartment, selectedSection, '');
+    });
+
+    printBtn.addEventListener('click', async () => {
+      try {
+        setPrintStatus('');
+        const printPayload = collectPrintPayload();
+        const isLeavePermit = isLeavePermitFormName(printPayload.FormName);
+        if (isLeavePermit) {
+          if (!printPayload.EmpID) throw new Error('يرجى اختيار اسم الموظف قبل طباعة الاستئذان.');
+          if (!printPayload.PermitDate && !printPayload.LeaveStartDate && !printPayload.LeaveEndDate) {
+            throw new Error('يرجى إدخال تاريخ الاستئذان أو فترة الإجازة قبل الطباعة.');
+          }
+          if (!printPayload.FromTime && !printPayload.ToTime && !printPayload.LeaveStartDate && !printPayload.LeaveEndDate) {
+            throw new Error('يرجى إدخال وقت الخروج أو وقت العودة على الأقل بصيغة ساعة ودقيقة.');
+          }
+        }
+
+        await saveRecord();
+
+        const result = await requestJson(
+          isLeavePermit ? '/api/word-templates/leave-permit/generate' : '/api/administrative/forms/print-group',
+          {
+            method: 'POST',
+            body: JSON.stringify(
+              isLeavePermit
+                ? {
+                    templateName: printPayload.FormName,
+                    empId: printPayload.EmpID,
+                    permitDate: printPayload.PermitDate,
+                    fromTime: printPayload.FromTime,
+                    toTime: printPayload.ToTime,
+                    reason: printPayload.Reason,
+                    leaveStartDate: printPayload.LeaveStartDate,
+                    leaveEndDate: printPayload.LeaveEndDate,
+                    leaveType: printPayload.LeaveType,
+                    notes: printPayload.Notes
+                  }
+                : printPayload
+            )
+          }
+        );
+
+        const pdfUrl = String(result?.result?.pdfUrl || '').trim();
+        const docxUrl = String(result?.result?.docxUrl || '').trim();
+        const targetUrl = docxUrl || pdfUrl;
+
+        if (!targetUrl) {
+          throw new Error('لم يتم إنشاء ملف للطباعة.');
+        }
+
+        window.open(targetUrl, '_blank');
+
+        setPrintStatus('تم حفظ وطباعة البيانات بنجاح.', 'success');
+      } catch (error) {
+        setPrintStatus(error.message || 'فشل حفظ وطباعة البيانات.', 'error');
+      } finally {
+        try {
+          await loadArchive();
+        } catch (_) {}
+      }
     });
 
     refreshBtn.addEventListener('click', async () => {
       try {
+        await loadFormNameOptions();
+        await loadDepartmentSectionOptions();
         await loadEmployeeOptions();
         await loadArchive();
       } catch (_) {
@@ -581,6 +1142,7 @@
         createdByInput.value = currentUser?.username || '';
         setTodayDefault();
         await loadFormNameOptions();
+        await loadDepartmentSectionOptions();
         await loadEmployeeOptions();
         await loadArchive();
       } catch (_) {

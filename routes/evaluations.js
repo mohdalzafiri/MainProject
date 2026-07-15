@@ -39,13 +39,57 @@ function isPresentEntry(text) {
   return content.includes('حضور');
 }
 
-function calculatePercent(present, absent, leave, license, medical) {
-  const denominator = present + absent + leave + license + medical;
-  if (!denominator) return 0;
-  return Number(((present / denominator) * 100).toFixed(2));
+function isDelayEntry(text) {
+  const content = normalizeText(text);
+  return content.includes('تأخير');
 }
 
-function getEvaluationProfile(percent, present, absent) {
+function isAssignmentEntry(text) {
+  const content = normalizeText(text);
+  return content.includes('تكليف');
+}
+
+function classifyDailyEntry(row) {
+  const bucketText = [row.Status, row.Type, row.Note].filter(Boolean).join(' ');
+
+  if (isMedicalEntry(bucketText)) return 'medical';
+  if (isLeaveEntry(bucketText)) return 'leave';
+  if (isLicenseEntry(bucketText)) return 'license';
+  if (isPresentEntry(bucketText)) return 'present';
+  if (isAbsentEntry(bucketText)) return 'absent';
+  if (isDelayEntry(bucketText)) return 'delay';
+  if (isAssignmentEntry(bucketText)) return 'assignment';
+  return 'other';
+}
+
+function calculatePercent(metrics) {
+  const denominator = metrics.totalCount || 0;
+  if (!denominator) return 0;
+
+  if (metrics.presentCount === denominator) {
+    return 100;
+  }
+
+  const allPermissionOrDelay = metrics.presentCount === 0 && (metrics.licenseCount + metrics.delayCount) === denominator;
+  if (allPermissionOrDelay) {
+    return 50;
+  }
+
+  const allNegative = metrics.presentCount === 0 && (
+    metrics.absentCount +
+    metrics.leaveCount +
+    metrics.medicalCount +
+    metrics.assignmentCount +
+    metrics.otherCount
+  ) === denominator;
+  if (allNegative) {
+    return 0;
+  }
+
+  return Number(((metrics.presentCount / denominator) * 100).toFixed(2));
+}
+
+function getEvaluationProfile(percent, metrics) {
   const levels = [
     { min: 97, label: 'ممتاز' },
     { min: 93, label: 'ممتاز جدا' },
@@ -58,8 +102,7 @@ function getEvaluationProfile(percent, present, absent) {
   let levelIndex = levels.findIndex((item) => percent >= item.min);
   if (levelIndex < 0) levelIndex = levels.length - 1;
 
-  // Apply one-step downgrade when absenteeism is high enough to impact operational reliability.
-  const hasHighAbsence = absent >= present && (present + absent) >= 5;
+  const hasHighAbsence = metrics.absentCount >= metrics.presentCount && (metrics.presentCount + metrics.absentCount) >= 5;
   if (hasHighAbsence && levelIndex < levels.length - 1) {
     levelIndex += 1;
   }
@@ -68,70 +111,155 @@ function getEvaluationProfile(percent, present, absent) {
   return { label: selected.label };
 }
 
-function summarizeRows(rows) {
-  const byEmployee = new Map();
+function buildPerformanceReason(metrics) {
+  const reasons = [];
+
+  if (metrics.presentCount === metrics.totalCount && metrics.totalCount > 0) {
+    return 'حضور كامل';
+  }
+
+  if (metrics.presentCount === 0 && (metrics.licenseCount + metrics.delayCount) === metrics.totalCount && metrics.totalCount > 0) {
+    return 'استئذان أو تأخير طوال الفترة';
+  }
+
+  if (metrics.presentCount === 0 && metrics.totalCount > 0) {
+    if (metrics.absentCount) reasons.push(`غياب ${metrics.absentCount}`);
+    if (metrics.leaveCount) reasons.push(`إجازات ${metrics.leaveCount}`);
+    if (metrics.medicalCount) reasons.push(`طبية ${metrics.medicalCount}`);
+    if (metrics.assignmentCount) reasons.push(`تكليف ${metrics.assignmentCount}`);
+    if (metrics.delayCount) reasons.push(`تأخير ${metrics.delayCount}`);
+    if (metrics.licenseCount) reasons.push(`استئذان ${metrics.licenseCount}`);
+    if (metrics.otherCount) reasons.push(`أخرى ${metrics.otherCount}`);
+    return reasons.slice(0, 2).join('، ');
+  }
+
+  if (metrics.delayCount) reasons.push(`تأخير ${metrics.delayCount}`);
+  if (metrics.licenseCount) reasons.push(`استئذان ${metrics.licenseCount}`);
+  if (metrics.leaveCount) reasons.push(`إجازات ${metrics.leaveCount}`);
+  if (metrics.medicalCount) reasons.push(`طبية ${metrics.medicalCount}`);
+  if (metrics.assignmentCount) reasons.push(`تكليف ${metrics.assignmentCount}`);
+  if (metrics.absentCount) reasons.push(`غياب ${metrics.absentCount}`);
+
+  return reasons.slice(0, 2).join('، ');
+}
+
+function resolveReportScope(department, section, name) {
+  if (name) return 'employee';
+  if (section) return 'section';
+  if (department) return 'department';
+  return 'employee';
+}
+
+function buildReportKey(row, scope) {
+  const department = String(row.Department || '').trim();
+  const section = String(row.Section || '').trim();
+  const employeeId = String(row.EmpID || '').trim();
+  const employeeName = String(row.Name || '').trim();
+
+  if (scope === 'section') {
+    return `section:${department}|${section}`;
+  }
+
+  if (scope === 'department') {
+    return `department:${department}`;
+  }
+
+  return `employee:${employeeId || employeeName}`;
+}
+
+function buildReportDisplayName(row, scope) {
+  if (scope === 'section') {
+    return String(row.Section || '').trim() || String(row.Department || '').trim();
+  }
+
+  if (scope === 'department') {
+    return String(row.Department || '').trim();
+  }
+
+  return String(row.Name || '').trim();
+}
+
+function summarizeRows(rows, scope) {
+  const groupedRows = new Map();
 
   rows.forEach((row) => {
-    const name = String(row.Name || '').trim();
-    if (!name) return;
+    const groupKey = buildReportKey(row, scope);
+    const displayName = buildReportDisplayName(row, scope);
+    if (!groupKey || !displayName) return;
 
-    if (!byEmployee.has(name)) {
-      byEmployee.set(name, {
-        Name: name,
+    if (!groupedRows.has(groupKey)) {
+      groupedRows.set(groupKey, {
+        GroupKey: groupKey,
+        Name: displayName,
         PresentCount: 0,
         LicenseCount: 0,
         AbsentCount: 0,
         LeaveCount: 0,
         MedicalCount: 0,
+        DelayCount: 0,
+        AssignmentCount: 0,
+        OtherCount: 0,
+        TotalCount: 0,
         Percent: 0,
         Evaluation: '',
+        PerformanceReason: '',
+        PreviousYearPercent: null,
         Rank: 0
       });
     }
 
-    const item = byEmployee.get(name);
-    const bucketText = [row.Status, row.Type, row.Note].filter(Boolean).join(' ');
+    const item = groupedRows.get(groupKey);
+    const classification = classifyDailyEntry(row);
+    item.TotalCount += 1;
 
-    if (isMedicalEntry(bucketText)) {
+    if (classification === 'medical') {
       item.MedicalCount += 1;
       return;
     }
 
-    if (isLeaveEntry(bucketText)) {
+    if (classification === 'leave') {
       item.LeaveCount += 1;
       return;
     }
 
-    if (isLicenseEntry(bucketText)) {
+    if (classification === 'license') {
       item.LicenseCount += 1;
       return;
     }
 
-    if (isPresentEntry(bucketText)) {
+    if (classification === 'present') {
       item.PresentCount += 1;
       return;
     }
 
-    if (isAbsentEntry(bucketText)) {
+    if (classification === 'absent') {
       item.AbsentCount += 1;
+      return;
     }
+
+    if (classification === 'delay') {
+      item.DelayCount += 1;
+      return;
+    }
+
+    if (classification === 'assignment') {
+      item.AssignmentCount += 1;
+      return;
+    }
+
+    item.OtherCount += 1;
   });
 
-  const result = Array.from(byEmployee.values()).map((item) => {
-    const percent = calculatePercent(
-      item.PresentCount,
-      item.AbsentCount,
-      item.LeaveCount,
-      item.LicenseCount,
-      item.MedicalCount
-    );
-
-    const evaluationProfile = getEvaluationProfile(percent, item.PresentCount, item.AbsentCount);
+  const result = Array.from(groupedRows.values()).map((item) => {
+    const percent = calculatePercent(item);
+    const evaluationProfile = getEvaluationProfile(percent, item);
+    const performanceReason = buildPerformanceReason(item);
 
     return {
       ...item,
       Percent: percent,
-      Evaluation: evaluationProfile.label
+      Evaluation: evaluationProfile.label,
+      Notes: performanceReason
     };
   });
 
@@ -193,21 +321,49 @@ function buildDailyFilterQuery({ department, section, period, name, fromDate, to
   };
 }
 
+function buildDailySourceQuery() {
+  return `
+    SELECT EmpID, Name, Status, Type, Note, Today, Department, Section, Period, ID FROM Daily1
+    UNION ALL
+    SELECT EmpID, Name, Status, Type, Note, Today, Department, Section, Period, ID FROM Daily2
+    UNION ALL
+    SELECT EmpID, Name, Status, Type, Note, Today, Department, Section, Period, ID FROM Daily3
+    UNION ALL
+    SELECT EmpID, Name, Status, Type, Note, Today, Department, Section, Period, ID FROM Daily4
+  `;
+}
+
+function shiftDateYear(dateText, targetYear) {
+  const normalized = normalizeDateInput(dateText);
+  if (!normalized || !targetYear) return '';
+
+  const parts = normalized.split('-');
+  if (parts.length !== 3) return '';
+
+  return `${String(targetYear).trim()}-${parts[1]}-${parts[2]}`;
+}
+
 router.get('/filters', (req, res) => {
   try {
+    const currentYear = String(new Date().getFullYear());
+
     const periods = db.prepare(`
       SELECT DISTINCT TRIM(Period) AS value
-      FROM DailyAll
+      FROM (
+        ${buildDailySourceQuery()}
+      ) AS DailyUnion
       WHERE Period IS NOT NULL AND TRIM(Period) <> ''
       ORDER BY value ASC
     `).all().map((row) => row.value);
 
     const years = db.prepare(`
       SELECT DISTINCT strftime('%Y', date(REPLACE(Today, '/', '-'))) AS value
-      FROM DailyAll
-      WHERE Today IS NOT NULL AND TRIM(Today) <> ''
+      FROM (
+        ${buildDailySourceQuery()}
+      ) AS DailyUnion
+      WHERE Today IS NOT NULL AND TRIM(Today) <> '' AND strftime('%Y', date(REPLACE(Today, '/', '-'))) < ?
       ORDER BY value DESC
-    `).all().map((row) => row.value).filter(Boolean);
+    `).all(currentYear).map((row) => row.value).filter(Boolean);
 
     res.json({ periods, years });
   } catch (error) {
@@ -225,6 +381,7 @@ router.get('/report', (req, res) => {
     const fromDate = normalizeDateInput(req.query.fromDate);
     const toDate = normalizeDateInput(req.query.toDate);
     const compareYear = String(req.query.compareYear || '').trim();
+    const reportScope = resolveReportScope(department, section, name);
 
     const { whereClause, params } = buildDailyFilterQuery({
       department,
@@ -237,17 +394,50 @@ router.get('/report', (req, res) => {
     });
 
     const rows = db.prepare(`
-      SELECT Name, Status, Type, Note, Today, Department, Section, Period
-      FROM DailyAll
+      SELECT EmpID, Name, Status, Type, Note, Today, Department, Section, Period, ID
+      FROM (
+        ${buildDailySourceQuery()}
+      ) AS DailyUnion
       ${whereClause}
       ORDER BY Name ASC, date(REPLACE(Today, '/', '-')) DESC, ID DESC
       LIMIT 10000
     `).all(...params);
 
-    const reportRows = summarizeRows(rows);
+    const reportRows = summarizeRows(rows, reportScope);
 
     if (compareYear) {
-      // Preserve compare-year filtering behavior in report inputs without notes output.
+      const previousFromDate = shiftDateYear(fromDate, compareYear);
+      const previousToDate = shiftDateYear(toDate, compareYear);
+
+      if (previousFromDate && previousToDate) {
+        const previousQuery = buildDailyFilterQuery({
+          department,
+          section,
+          period,
+          name,
+          fromDate: previousFromDate,
+          toDate: previousToDate,
+          compareYear: ''
+        });
+
+        const previousRows = db.prepare(`
+          SELECT EmpID, Name, Status, Type, Note, Today, Department, Section, Period, ID
+          FROM (
+            ${buildDailySourceQuery()}
+          ) AS DailyUnion
+          ${previousQuery.whereClause}
+          ORDER BY Name ASC, date(REPLACE(Today, '/', '-')) DESC, ID DESC
+          LIMIT 10000
+        `).all(...previousQuery.params);
+
+        const previousReportRows = summarizeRows(previousRows, reportScope);
+        const previousByKey = new Map(previousReportRows.map((item) => [item.GroupKey, item]));
+
+        reportRows.forEach((item) => {
+          const previousItem = previousByKey.get(item.GroupKey);
+          item.PreviousYearPercent = previousItem ? previousItem.Percent : null;
+        });
+      }
     }
 
     res.json({ rows: reportRows });

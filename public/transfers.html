@@ -296,8 +296,9 @@
         <div class="grid">
           <div class="field">
             <label for="name">اسم الموظف</label>
-            <input id="name" list="employeeNames" autocomplete="off" />
-            <datalist id="employeeNames"></datalist>
+            <select id="name">
+              <option value="">-- اختر --</option>
+            </select>
           </div>
 
           <div class="field">
@@ -440,7 +441,6 @@
     const form = document.getElementById('transferForm');
     const transferIdInput = document.getElementById('transferId');
     const nameInput = document.getElementById('name');
-    const employeeNames = document.getElementById('employeeNames');
     const statusInput = document.getElementById('status');
     const transferDateDisplayInput = document.getElementById('transferDateDisplay');
     const transferDateInput = document.getElementById('transferDate');
@@ -571,18 +571,24 @@
     }
 
     function populateNameOptions() {
-      employeeNames.innerHTML = '';
       const uniqueNames = Array.from(new Set(
         allEmployees
           .map((item) => String(item.Name || '').trim())
           .filter(Boolean)
       ));
 
+      const current = String(nameInput.value || '').trim();
+      nameInput.innerHTML = '<option value="">-- اختر --</option>';
       uniqueNames.forEach((name) => {
         const option = document.createElement('option');
         option.value = name;
-        employeeNames.appendChild(option);
+        option.textContent = name;
+        nameInput.appendChild(option);
       });
+
+      if (current && uniqueNames.includes(current)) {
+        nameInput.value = current;
+      }
     }
 
     function normalizeDepartment(value) {
@@ -826,9 +832,7 @@
       });
 
       if (!data) return;
-      allEmployees = (Array.isArray(data) ? data : []).filter(
-        (item) => String(item?.Status || '').trim() === 'نشط'
-      );
+      allEmployees = (Array.isArray(data) ? data : []).filter((item) => String(item?.Status || '').trim() === 'نشط');
       populateNameOptions();
       setSelectedEmployeeByName(nameInput.value);
     }
@@ -1111,8 +1115,7 @@
     }
 
     function printCurrentRecord() {
-      const selected = allTransfers.find((item) => String(item.ID) === String(selectedId));
-      const html = buildPrintHtml(selected);
+      const html = buildPrintHtml();
 
       const frame = document.createElement('iframe');
       frame.style.position = 'fixed';
@@ -1168,17 +1171,14 @@
       });
     });
 
-    function handleEmployeeNameSelection() {
+    nameInput.addEventListener('change', () => {
       if (!String(nameInput.value || '').trim()) {
         clearForm();
         return;
       }
 
       setSelectedEmployeeByName(nameInput.value);
-    }
-
-    nameInput.addEventListener('input', handleEmployeeNameSelection);
-    nameInput.addEventListener('change', handleEmployeeNameSelection);
+    });
 
     nameFilterInput.addEventListener('input', applyNameFilter);
 
@@ -1284,7 +1284,7 @@
     printBtn.addEventListener('click', () => {
       clearStatus();
       if (!selectedId && !String(nameInput.value || '').trim()) {
-        showStatus('اختر سجلاً من صندوق البيانات أولاً قبل الطباعة.', true);
+        showStatus('اكتب اسم الموظف في الحقول أولاً قبل الطباعة.', true);
         return;
       }
       printCurrentRecord();

@@ -200,6 +200,33 @@
     #lookupTable th:nth-child(7),
     #lookupTable td:nth-child(7) { width: 14%; }
 
+    #templateConfigTable {
+      table-layout: fixed;
+      min-width: 0;
+      width: 100%;
+    }
+
+    #templateConfigTable th,
+    #templateConfigTable td {
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      vertical-align: middle;
+      white-space: normal;
+    }
+
+    #templateConfigTable th:nth-child(1),
+    #templateConfigTable td:nth-child(1) { width: 8%; }
+    #templateConfigTable th:nth-child(2),
+    #templateConfigTable td:nth-child(2) { width: 20%; }
+    #templateConfigTable th:nth-child(3),
+    #templateConfigTable td:nth-child(3) { width: 30%; }
+    #templateConfigTable th:nth-child(4),
+    #templateConfigTable td:nth-child(4) { width: 24%; }
+    #templateConfigTable th:nth-child(5),
+    #templateConfigTable td:nth-child(5) { width: 9%; }
+    #templateConfigTable th:nth-child(6),
+    #templateConfigTable td:nth-child(6) { width: 9%; }
+
     @media print {
       .actions,
       .toolbar,
@@ -410,6 +437,66 @@
         </table>
       </div>
     </section>
+
+    <section class="panel">
+      <h2>تعبئة / إظهار بيانات</h2>
+      <form id="templateConfigForm" autocomplete="off">
+        <div class="row">
+          <div class="field">
+            <label for="templateUploadFile">رفع قالب جديد (DOCX)</label>
+            <input id="templateUploadFile" type="file" accept=".docx" />
+          </div>
+        </div>
+
+        <select id="templateFileName" style="display:none;">
+          <option value="">-- اختر ملف القالب --</option>
+        </select>
+
+        <div class="row">
+          <div class="field">
+            <label for="templateNameInput">اسم النموذج</label>
+            <input id="templateNameInput" type="text" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label for="templateCoordsInput">ملاحظات</label>
+            <textarea id="templateCoordsInput" placeholder="ملاحظات"></textarea>
+          </div>
+        </div>
+
+        <div class="toolbar">
+          <button class="btn success" type="button" id="templateAddBtn">إضافة نموذج</button>
+          <button class="btn warning" type="button" id="templateEditBtn">تعديل نموذج</button>
+          <button class="btn danger" type="button" id="templateDeleteBtn">حذف نموذج</button>
+        </div>
+
+        <div class="status-line" id="templateStatusMsg"></div>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h2>صندوق عرض البيانات</h2>
+      <div class="table-tools">
+        <p id="templateCountLabel">عدد السجلات: 0</p>
+        <button class="btn primary" type="button" id="templateRefreshBtn">تحديث العرض</button>
+      </div>
+
+      <div class="table-wrap">
+        <table id="templateConfigTable">
+          <thead>
+            <tr>
+              <th>م</th>
+              <th>اسم النموذج</th>
+              <th>رابط النموذج</th>
+              <th>ملاحظات</th>
+            </tr>
+          </thead>
+          <tbody id="templateConfigRows"></tbody>
+        </table>
+      </div>
+    </section>
   </div>
 
   <script>
@@ -434,6 +521,13 @@
     const lookupRows = document.getElementById('lookupRows');
     const lookupStatusMsg = document.getElementById('lookupStatusMsg');
     const lookupSearchInput = document.getElementById('lookupSearchInput');
+    const templateUploadFileInput = document.getElementById('templateUploadFile');
+    const templateFileNameSelect = document.getElementById('templateFileName');
+    const templateNameInput = document.getElementById('templateNameInput');
+    const templateCoordsInput = document.getElementById('templateCoordsInput');
+    const templateStatusMsg = document.getElementById('templateStatusMsg');
+    const templateConfigRows = document.getElementById('templateConfigRows');
+    const templateCountLabel = document.getElementById('templateCountLabel');
 
     const backBtn = document.getElementById('backBtn');
     const refreshBtn = document.getElementById('refreshBtn');
@@ -448,6 +542,10 @@
     const lookupPrintBtn = document.getElementById('lookupPrintBtn');
     const lookupRefreshBtn = document.getElementById('lookupRefreshBtn');
     const lookupCountLabel = document.getElementById('lookupCountLabel');
+    const templateAddBtn = document.getElementById('templateAddBtn');
+    const templateEditBtn = document.getElementById('templateEditBtn');
+    const templateDeleteBtn = document.getElementById('templateDeleteBtn');
+    const templateRefreshBtn = document.getElementById('templateRefreshBtn');
 
     let employees = [];
     let users = [];
@@ -455,6 +553,10 @@
     let departmentSections = [];
     let visibleDepartmentSections = [];
     let selectedLookupId = null;
+    let templateConfigs = [];
+    let templateFiles = [];
+    let selectedTemplateConfigId = null;
+    let pendingTemplateFile = null;
 
     function pad2(value) {
       return String(value).padStart(2, '0');
@@ -507,6 +609,23 @@
       }
     }
 
+    function setTemplateStatus(message, type = '') {
+      templateStatusMsg.textContent = message || '';
+      templateStatusMsg.className = 'status-line';
+
+      if (!message) {
+        return;
+      }
+
+      templateStatusMsg.classList.add('show');
+      if (type === 'success') {
+        templateStatusMsg.classList.add('ok');
+      }
+      if (type === 'error') {
+        templateStatusMsg.classList.add('error');
+      }
+    }
+
     function getPayloadFromForm() {
       return {
         Name: String(fullNameSelect.value || '').trim(),
@@ -552,6 +671,63 @@
       lookupIsActiveInput.value = '';
       selectedLookupId = null;
       highlightSelectedLookupRow();
+    }
+
+    function getTemplateConfigPayload() {
+      return {
+        TemplateName: String(templateNameInput.value || '').trim(),
+        TemplateFileName: String(templateFileNameSelect.value || '').trim(),
+        Coordinates: String(templateCoordsInput.value || '').trim()
+      };
+    }
+
+    function deriveTemplateNameFromFileName(fileName) {
+      const name = repairPossiblyMojibake(fileName);
+      if (!name) return '';
+      return name.replace(/\.[^.]+$/, '').trim();
+    }
+
+    function repairPossiblyMojibake(value) {
+      const raw = String(value || '').trim();
+      if (!raw) return '';
+
+      const hasArabic = /[\u0600-\u06FF]/.test(raw);
+      const hasMojibake = /[ÃØÙÐ]/.test(raw);
+      if (!hasMojibake || hasArabic) {
+        return raw;
+      }
+
+      try {
+        const bytes = Uint8Array.from(raw, (char) => char.charCodeAt(0));
+        return new TextDecoder('utf-8').decode(bytes).trim() || raw;
+      } catch {
+        return raw;
+      }
+    }
+
+    function applyAutoTemplateName(fileName, force = false) {
+      const autoName = deriveTemplateNameFromFileName(fileName);
+      if (!autoName) return;
+
+      const currentName = String(templateNameInput.value || '').trim();
+      if (force || !currentName || !selectedTemplateConfigId) {
+        templateNameInput.value = autoName;
+      }
+    }
+
+    function formatTemplateFileLabel(fileName) {
+      const repaired = repairPossiblyMojibake(fileName);
+      return deriveTemplateNameFromFileName(repaired) || repaired;
+    }
+
+    function resetTemplateConfigForm() {
+      templateNameInput.value = '';
+      templateFileNameSelect.value = '';
+      templateCoordsInput.value = '';
+      templateUploadFileInput.value = '';
+      pendingTemplateFile = null;
+      selectedTemplateConfigId = null;
+      highlightSelectedTemplateConfigRow();
     }
 
     function updateDepartmentSectionFromName() {
@@ -601,6 +777,14 @@
       rows.forEach((row) => {
         const rowId = Number(row.dataset.id || 0);
         row.classList.toggle('selected', selectedLookupId && rowId === selectedLookupId);
+      });
+    }
+
+    function highlightSelectedTemplateConfigRow() {
+      const rows = templateConfigRows.querySelectorAll('tr');
+      rows.forEach((row) => {
+        const rowId = Number(row.dataset.id || 0);
+        row.classList.toggle('selected', selectedTemplateConfigId && rowId === selectedTemplateConfigId);
       });
     }
 
@@ -748,6 +932,66 @@
       highlightSelectedLookupRow();
     }
 
+    function renderTemplateFilesOptions() {
+      const currentValue = templateFileNameSelect.value;
+      templateFileNameSelect.innerHTML = '<option value="">-- اختر ملف القالب --</option>';
+
+      templateFiles.forEach((item) => {
+        const rawFileName = String(item.fileName || '').trim();
+        const option = document.createElement('option');
+        option.value = rawFileName;
+        option.textContent = formatTemplateFileLabel(rawFileName);
+        templateFileNameSelect.appendChild(option);
+      });
+
+      if (currentValue && templateFiles.some((item) => String(item.fileName || '').trim() === currentValue)) {
+        templateFileNameSelect.value = currentValue;
+      }
+    }
+
+    function selectTemplateConfig(item) {
+      selectedTemplateConfigId = Number(item.ID || 0);
+      templateNameInput.value = String(item.TemplateName || '').trim();
+      templateFileNameSelect.value = String(item.TemplateFileName || '').trim();
+      templateCoordsInput.value = String(item.Coordinates || '').trim();
+      pendingTemplateFile = null;
+      templateUploadFileInput.value = '';
+      highlightSelectedTemplateConfigRow();
+      setTemplateStatus('');
+    }
+
+    function renderTemplateConfigsTable() {
+      templateConfigRows.innerHTML = '';
+
+      if (!Array.isArray(templateConfigs) || templateConfigs.length === 0) {
+        templateCountLabel.textContent = 'عدد السجلات: 0';
+        templateConfigRows.innerHTML = '<tr><td colspan="4">لا توجد نماذج إدارية حالياً.</td></tr>';
+        return;
+      }
+
+      templateCountLabel.textContent = `عدد السجلات: ${templateConfigs.length}`;
+
+      templateConfigs.forEach((item, index) => {
+        const fileNameLabel = repairPossiblyMojibake(item.TemplateFilePath || item.TemplateFileName || '');
+        const row = document.createElement('tr');
+        row.dataset.id = String(item.ID || '');
+        row.innerHTML = `
+          <td>${index + 1}</td>
+          <td>${item.TemplateName || ''}</td>
+          <td>${fileNameLabel}</td>
+          <td>${item.Coordinates || ''}</td>
+        `;
+
+        row.addEventListener('click', () => {
+          selectTemplateConfig(item);
+        });
+
+        templateConfigRows.appendChild(row);
+      });
+
+      highlightSelectedTemplateConfigRow();
+    }
+
     async function authorizedFetch(url, options = {}) {
       const response = await fetch(url, {
         ...options,
@@ -804,6 +1048,190 @@
 
       departmentSections = await response.json();
       renderDepartmentSectionRows();
+    }
+
+    async function loadTemplateFiles() {
+      const response = await authorizedFetch('/api/word-templates/templates');
+      if (!response) return;
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.message || 'تعذر تحميل ملفات القوالب المرفوعة.');
+      }
+
+      const payload = await response.json().catch(() => ({}));
+      templateFiles = Array.isArray(payload.templates) ? payload.templates : [];
+      renderTemplateFilesOptions();
+    }
+
+    async function loadTemplateConfigs() {
+      const response = await authorizedFetch('/api/settings/administrative-templates');
+      if (!response) return;
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.message || 'تعذر تحميل إعدادات النماذج الإدارية.');
+      }
+
+      templateConfigs = await response.json();
+      renderTemplateConfigsTable();
+    }
+
+    async function uploadTemplateFile(fileOverride = null) {
+      const selectedFile = fileOverride || pendingTemplateFile || templateUploadFileInput.files?.[0];
+      if (!selectedFile) {
+        setTemplateStatus('اختر ملف DOCX أولاً قبل الرفع.', 'error');
+        return false;
+      }
+
+      const fileName = String(selectedFile.name || '').toLowerCase();
+      if (!fileName.endsWith('.docx')) {
+        setTemplateStatus('صيغة الملف غير مدعومة. المسموح DOCX فقط.', 'error');
+        return false;
+      }
+
+      const formData = new FormData();
+      formData.append('template', selectedFile);
+
+      const response = await fetch('/api/word-templates/templates/upload', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${authToken}`
+        },
+        body: formData
+      });
+
+      if (response.status === 401 || response.status === 403) {
+        localStorage.removeItem('authToken');
+        window.location.href = '/';
+        return false;
+      }
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setTemplateStatus(payload.message || 'تعذر رفع القالب.', 'error');
+        return false;
+      }
+
+      const uploadedFileName = repairPossiblyMojibake(String(payload.fileName || selectedFile.name || ''));
+      templateUploadFileInput.value = '';
+      pendingTemplateFile = null;
+      await loadTemplateFiles();
+      templateFileNameSelect.value = uploadedFileName;
+      applyAutoTemplateName(String(payload.templateName || uploadedFileName || ''), true);
+      setTemplateStatus(`تم رفع القالب بنجاح: ${uploadedFileName}`, 'success');
+      return true;
+    }
+
+    async function addTemplateConfig() {
+      const selectedTemplateFile = pendingTemplateFile || templateUploadFileInput.files?.[0] || null;
+      if (selectedTemplateFile) {
+        const uploaded = await uploadTemplateFile(selectedTemplateFile);
+        if (!uploaded) return;
+      }
+
+      const payload = getTemplateConfigPayload();
+      if (!payload.TemplateFileName && payload.TemplateName) {
+        const match = templateFiles.find((item) => {
+          const fileName = String(item?.fileName || '').trim();
+          return deriveTemplateNameFromFileName(fileName) === payload.TemplateName;
+        });
+        if (match) {
+          payload.TemplateFileName = String(match.fileName || '').trim();
+          templateFileNameSelect.value = payload.TemplateFileName;
+        }
+      }
+      if (!payload.TemplateName && payload.TemplateFileName) {
+        payload.TemplateName = deriveTemplateNameFromFileName(payload.TemplateFileName);
+        templateNameInput.value = payload.TemplateName;
+      }
+      if (!payload.TemplateName) {
+        setTemplateStatus('أدخل اسم النموذج.', 'error');
+        return;
+      }
+      if (!payload.TemplateFileName) {
+        setTemplateStatus('اختر ملف DOCX ثم اضغط إضافة نموذج ليتم رفعه وحفظه.', 'error');
+        return;
+      }
+
+      const response = await authorizedFetch('/api/settings/administrative-templates', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      if (!response) return;
+
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setTemplateStatus(body.message || 'تعذر إضافة النموذج.', 'error');
+        return;
+      }
+
+      setTemplateStatus('تمت إضافة النموذج بنجاح.', 'success');
+      await loadTemplateConfigs();
+      resetTemplateConfigForm();
+    }
+
+    async function updateTemplateConfig() {
+      if (!selectedTemplateConfigId) {
+        setTemplateStatus('اختر نموذجاً من الجدول أولاً قبل التعديل.', 'error');
+        return;
+      }
+
+      if (pendingTemplateFile) {
+        const uploaded = await uploadTemplateFile(pendingTemplateFile);
+        if (!uploaded) return;
+      }
+
+      const payload = getTemplateConfigPayload();
+      if (!payload.TemplateName) {
+        setTemplateStatus('أدخل اسم النموذج.', 'error');
+        return;
+      }
+      if (!payload.TemplateFileName) {
+        setTemplateStatus('ارفع ملف القالب أولاً.', 'error');
+        return;
+      }
+
+      const response = await authorizedFetch(`/api/settings/administrative-templates/${selectedTemplateConfigId}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload)
+      });
+      if (!response) return;
+
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setTemplateStatus(body.message || 'تعذر تعديل النموذج.', 'error');
+        return;
+      }
+
+      setTemplateStatus('تم تعديل النموذج بنجاح.', 'success');
+      await loadTemplateConfigs();
+      resetTemplateConfigForm();
+    }
+
+    async function deleteTemplateConfig() {
+      if (!selectedTemplateConfigId) {
+        setTemplateStatus('اختر نموذجاً من الجدول أولاً قبل الحذف.', 'error');
+        return;
+      }
+
+      const confirmed = window.confirm('هل أنت متأكد من حذف النموذج المحدد؟');
+      if (!confirmed) return;
+
+      const response = await authorizedFetch(`/api/settings/administrative-templates/${selectedTemplateConfigId}`, {
+        method: 'DELETE'
+      });
+      if (!response) return;
+
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setTemplateStatus(body.message || 'تعذر حذف النموذج.', 'error');
+        return;
+      }
+
+      setTemplateStatus('تم حذف النموذج بنجاح.', 'success');
+      await loadTemplateConfigs();
+      resetTemplateConfigForm();
     }
 
     async function addUser() {
@@ -1018,26 +1446,31 @@
 
     async function initializePage() {
       try {
-        await Promise.all([loadEmployees(), loadUsers(), loadDepartmentSections()]);
+        await Promise.all([
+          loadEmployees(),
+          loadUsers(),
+          loadDepartmentSections(),
+          loadTemplateFiles(),
+          loadTemplateConfigs()
+        ]);
       } catch (error) {
         setStatus(error.message || 'تعذر تحميل بيانات الصفحة.', 'error');
       }
     }
 
     function printUsersTable() {
-      const rowsHtml = users.map((item, index) => `
-        <tr>
-          <td>${index + 1}</td>
-          <td>${item.Username || ''}</td>
-          <td>${item.Password || ''}</td>
-          <td>${item.Permission || ''}</td>
-          <td>${item.Name || ''}</td>
-          <td>${Number(item.IsActive) === 0 ? 'موقوف' : 'نشط'}</td>
-          <td>${formatDateTime(item.CreatedAt || '')}</td>
-          <td>${formatDateTime(item.UpdatedAt || '')}</td>
-          <td>${formatDateTime(item.LastLogin || '')}</td>
-        </tr>
-      `).join('');
+      const payload = getPayloadFromForm();
+      const activeValue = String(userIsActiveInput.value || '').trim();
+      const activeText = activeValue === '0' ? 'موقوف' : (activeValue === '1' ? 'نشط' : '---');
+      const valueOrDash = (value) => {
+        const text = String(value || '').trim();
+        return text || '---';
+      };
+
+      if (!valueOrDash(payload.Name).replace(/-/g, '') && !valueOrDash(payload.Username).replace(/-/g, '')) {
+        setStatus('أدخل بيانات المستخدم في الحقول أولاً قبل الطباعة.', 'error');
+        return;
+      }
 
       const printWindow = window.open('', '_blank', 'width=1280,height=900');
       if (!printWindow) {
@@ -1050,7 +1483,7 @@
         <html lang="ar" dir="rtl">
         <head>
           <meta charset="UTF-8" />
-          <title>طباعة بيانات المستخدمين</title>
+          <title>طباعة بيانات المستخدم</title>
           <style>
             body { font-family: Tahoma, Arial, sans-serif; margin: 24px; color: #0f172a; }
             h1 { margin: 0 0 16px; font-size: 26px; }
@@ -1060,23 +1493,24 @@
             th { background: #f8fafc; }
         </head>
         <body>
-          <h1>بيانات المستخدمين</h1>
-          <div class="meta">عدد السجلات: ${users.length}</div>
+          <h1>بيانات المستخدم</h1>
+          <div class="meta">بيانات من حقول الإدخال الحالية</div>
           <table>
             <thead>
               <tr>
-                <th>م</th>
-                <th>اسم المستخدم</th>
-                <th>كلمة السر</th>
-                <th>الصلاحية</th>
-                <th>الاسم</th>
-                <th>الحالة</th>
-                <th>تاريخ الإضافة</th>
-                <th>آخر تحديث</th>
-                <th>آخر دخول</th>
+                <th>الحقل</th>
+                <th>القيمة</th>
               </tr>
             </thead>
-            <tbody>${rowsHtml || '<tr><td colspan="9">لا توجد بيانات.</td></tr>'}</tbody>
+            <tbody>
+              <tr><td>اسم الموظف</td><td>${valueOrDash(payload.Name)}</td></tr>
+              <tr><td>القسم</td><td>${valueOrDash(payload.Department)}</td></tr>
+              <tr><td>النوبة</td><td>${valueOrDash(payload.Section)}</td></tr>
+              <tr><td>اسم المستخدم</td><td>${valueOrDash(payload.Username)}</td></tr>
+              <tr><td>كلمة السر</td><td>${valueOrDash(payload.Password)}</td></tr>
+              <tr><td>الصلاحية</td><td>${valueOrDash(payload.Permission)}</td></tr>
+              <tr><td>الحالة</td><td>${activeText}</td></tr>
+            </tbody>
           </table>
         </body>
         </html>
@@ -1084,10 +1518,12 @@
       printWindow.document.close();
       printWindow.focus();
       printWindow.print();
+      setStatus('');
     }
 
     function printLookupTable() {
-      const rowsHtml = departmentSections.map((item, index) => `
+      const rowsToPrint = Array.isArray(visibleDepartmentSections) ? visibleDepartmentSections : [];
+      const rowsHtml = rowsToPrint.map((item, index) => `
         <tr>
           <td>${index + 1}</td>
           <td>${item.Department || ''}</td>
@@ -1122,6 +1558,7 @@
         </head>
         <body>
           <h1>بيانات الأقسام والنوبات والشعب</h1>
+          <p style="margin:0 0 12px;color:#475569;font-weight:700;">عدد السجلات: ${rowsToPrint.length}</p>
           <table>
             <thead>
               <tr>
@@ -1172,6 +1609,24 @@
       renderDepartmentSectionRows();
     });
     printBtn.addEventListener('click', printUsersTable);
+    templateUploadFileInput.addEventListener('change', () => {
+      const selectedFile = templateUploadFileInput.files?.[0];
+      if (!selectedFile) return;
+      pendingTemplateFile = selectedFile;
+      applyAutoTemplateName(String(selectedFile.name || ''));
+    });
+    templateFileNameSelect.addEventListener('change', () => {
+      const selectedFileName = String(templateFileNameSelect.value || '').trim();
+      if (!selectedFileName) return;
+      applyAutoTemplateName(selectedFileName);
+    });
+    templateAddBtn.addEventListener('click', addTemplateConfig);
+    templateEditBtn.addEventListener('click', updateTemplateConfig);
+    templateDeleteBtn.addEventListener('click', deleteTemplateConfig);
+    templateRefreshBtn.addEventListener('click', async () => {
+      await Promise.all([loadTemplateFiles(), loadTemplateConfigs()]);
+      setTemplateStatus('تم تحديث بيانات النماذج الإدارية.');
+    });
 
     initializePage();
   </script>

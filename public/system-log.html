@@ -64,6 +64,13 @@
       max-width: 460px;
     }
 
+    .page-message {
+      margin: 8px 0 0;
+      color: #334155;
+      font-weight: 700;
+      min-height: 22px;
+    }
+
     .bottom-actions {
       display: flex;
       gap: 8px;
@@ -198,6 +205,7 @@
           <button type="button" class="btn primary" id="refreshBtn">تحديث العرض</button>
         </div>
       </div>
+      <p id="pageMessage" class="page-message"></p>
 
       <div class="table-wrap">
         <table class="system-log-table">
@@ -233,11 +241,16 @@
     const toDateDisplay = document.getElementById('toDateDisplay');
     const rowsBody = document.getElementById('rows');
     const countLabel = document.getElementById('countLabel');
+    const pageMessage = document.getElementById('pageMessage');
     const tableSearch = document.getElementById('tableSearch');
     const refreshBtn = document.getElementById('refreshBtn');
     const printBtn = document.getElementById('printBtn');
     const backBtn = document.getElementById('backBtn');
     let allRecords = [];
+
+    function setPageMessage(message) {
+      pageMessage.textContent = String(message || '').trim();
+    }
 
     function parseJwtPayload(token) {
       try {
@@ -350,6 +363,79 @@
       });
     }
 
+    function printCurrentTable() {
+      const rows = getFilteredRecords();
+      if (!rows.length) {
+        setPageMessage('لا توجد بيانات في الجدول للطباعة ضمن التواريخ المختارة.');
+        return;
+      }
+
+      const fromLabel = fromDateInput.value ? toSlashDate(fromDateInput.value) : '---';
+      const toLabel = toDateInput.value ? toSlashDate(toDateInput.value) : '---';
+      const tableRows = rows.map((item) => {
+        const status = getActivityStatus(item);
+        return `
+          <tr>
+            <td>${escapeHtml(item.Action || '')}</td>
+            <td>${escapeHtml(item.Target || '')}</td>
+            <td>${escapeHtml(item.UserName || '')}</td>
+            <td>${escapeHtml(formatDateTime(item.Timestamp || ''))}</td>
+            <td>${escapeHtml(status)}</td>
+            <td>${escapeHtml(item.Details || '')}</td>
+          </tr>
+        `;
+      }).join('');
+
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        setPageMessage('تعذر فتح نافذة الطباعة. تحقق من مانع النوافذ المنبثقة.');
+        return;
+      }
+
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html lang="ar" dir="rtl">
+        <head>
+          <meta charset="UTF-8" />
+          <title>طباعة سجل النظام</title>
+          <style>
+            body { font-family: Tahoma, Arial, sans-serif; margin: 16px; color: #0f172a; }
+            h1 { margin: 0 0 10px; font-size: 20px; }
+            .meta { margin: 0 0 10px; font-size: 13px; }
+            table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 12px; }
+            th, td { border: 1px solid #94a3b8; padding: 6px; text-align: center; vertical-align: top; word-break: break-word; }
+            th { background: #e2e8f0; }
+            @page { size: A4 landscape; margin: 10mm; }
+          </style>
+        </head>
+        <body>
+          <h1>سجل النظام</h1>
+          <p class="meta">من التاريخ: ${escapeHtml(fromLabel)} | إلى التاريخ: ${escapeHtml(toLabel)}</p>
+          <p class="meta">عدد السجلات: ${rows.length}</p>
+          <table>
+            <thead>
+              <tr>
+                <th>العملية</th>
+                <th>الصفحة</th>
+                <th>المستخدم</th>
+                <th>التوقيت</th>
+                <th>الحالة</th>
+                <th>التفاصيل</th>
+              </tr>
+            </thead>
+            <tbody>${tableRows}</tbody>
+          </table>
+        </body>
+        </html>
+      `);
+
+      printWindow.document.close();
+      printWindow.focus();
+      printWindow.print();
+      printWindow.close();
+      setPageMessage('');
+    }
+
     async function requestJson(url, options = {}) {
       const response = await fetch(url, {
         ...options,
@@ -383,6 +469,7 @@
       if (!records) return;
       allRecords = Array.isArray(records) ? records : [];
       renderRows(getFilteredRecords());
+      setPageMessage('');
     }
 
     document.querySelectorAll('.date-picker-trigger').forEach((button) => {
@@ -403,20 +490,20 @@
     fromDateInput.addEventListener('change', () => {
       syncDateDisplays();
       loadSystemLog().catch((error) => {
-        countLabel.textContent = error.message || 'تعذر تحميل سجل النظام.';
+        setPageMessage(error.message || 'تعذر تحميل سجل النظام.');
       });
     });
 
     toDateInput.addEventListener('change', () => {
       syncDateDisplays();
       loadSystemLog().catch((error) => {
-        countLabel.textContent = error.message || 'تعذر تحميل سجل النظام.';
+        setPageMessage(error.message || 'تعذر تحميل سجل النظام.');
       });
     });
 
     refreshBtn.addEventListener('click', () => {
       loadSystemLog().catch((error) => {
-        countLabel.textContent = error.message || 'تعذر تحديث عرض البيانات.';
+        setPageMessage(error.message || 'تعذر تحديث عرض البيانات.');
       });
     });
 
@@ -425,7 +512,7 @@
     });
 
     printBtn.addEventListener('click', () => {
-      window.print();
+      printCurrentTable();
     });
 
     backBtn.addEventListener('click', () => {
@@ -435,7 +522,7 @@
     syncDateDisplays();
 
     loadSystemLog().catch((error) => {
-      countLabel.textContent = error.message || 'تعذر تحميل بيانات سجل النظام.';
+      setPageMessage(error.message || 'تعذر تحميل بيانات سجل النظام.');
     });
   </script>
 </body>

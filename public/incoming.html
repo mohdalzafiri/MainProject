@@ -793,7 +793,69 @@
     }
 
     function printRecord() {
-      window.print();
+      const row = {
+        DocNumber: String(docNumberInput.value || '').trim(),
+        DocDate: String(docDateDisplayInput.value || '').trim() || formatDateYmdSlash(docDateInput.value),
+        BookNumber: String(bookNumberInput.value || '').trim(),
+        BookDate: String(bookDateDisplayInput.value || '').trim() || formatDateYmdSlash(bookDateInput.value),
+        Subject: String(subjectInput.value || '').trim(),
+        SourceDepartment: String(sourceDepartmentInput.value || '').trim(),
+        SpecialDepartment: String(specialDepartmentInput.value || '').trim(),
+        Notes: String(notesInput.value || '').trim(),
+        UserName: String(userNameInput.value || '').trim()
+      };
+
+      if (!row.DocNumber && !row.Subject && !row.BookNumber) {
+        showStatus('أدخل بيانات الوارد في الحقول أولاً قبل الطباعة.', true);
+        return;
+      }
+
+      const valueOrDash = (value) => {
+        const text = String(value || '').trim();
+        return text || '---';
+      };
+
+      const printWindow = window.open('', '_blank', 'width=1000,height=800');
+      if (!printWindow) {
+        showStatus('تعذر فتح نافذة الطباعة.', true);
+        return;
+      }
+
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html lang="ar" dir="rtl">
+        <head>
+          <meta charset="UTF-8" />
+          <title>طباعة بيانات الوارد</title>
+          <style>
+            body { font-family: Tahoma, Arial, sans-serif; margin: 20px; color: #0f172a; }
+            h1 { margin: 0 0 14px; font-size: 24px; }
+            table { width: 100%; border-collapse: collapse; }
+            th, td { border: 1px solid #cbd5e1; padding: 10px; text-align: right; font-size: 14px; }
+            th { width: 28%; background: #f8fafc; color: #334155; }
+          </style>
+        </head>
+        <body>
+          <h1>بيانات الوارد</h1>
+          <table>
+            <tr><th>رقم الوارد</th><td>${valueOrDash(row.DocNumber)}</td></tr>
+            <tr><th>تاريخ الوارد</th><td>${valueOrDash(row.DocDate)}</td></tr>
+            <tr><th>رقم الكتاب الوارد</th><td>${valueOrDash(row.BookNumber)}</td></tr>
+            <tr><th>تاريخ الكتاب الوارد</th><td>${valueOrDash(row.BookDate)}</td></tr>
+            <tr><th>الموضوع</th><td>${valueOrDash(row.Subject)}</td></tr>
+            <tr><th>الجهة الوارد منها</th><td>${valueOrDash(row.SourceDepartment)}</td></tr>
+            <tr><th>القسم المختص</th><td>${valueOrDash(row.SpecialDepartment)}</td></tr>
+            <tr><th>ملاحظات</th><td>${valueOrDash(row.Notes)}</td></tr>
+            <tr><th>اسم المستخدم</th><td>${valueOrDash(row.UserName)}</td></tr>
+          </table>
+        </body>
+        </html>
+      `);
+
+      printWindow.document.close();
+      printWindow.focus();
+      printWindow.print();
+      showStatus('');
     }
 
     dateOpenButtons.forEach((button) => {

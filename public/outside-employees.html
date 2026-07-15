@@ -40,6 +40,28 @@
       color: #991b1b;
     }
 
+    .table-tools {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: nowrap;
+      margin-bottom: 10px;
+    }
+
+    .table-tools p {
+      margin: 0;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .table-search {
+      flex: 1;
+      min-width: 0;
+      max-width: none;
+      width: auto;
+    }
+
     .employees-table th:nth-child(6),
     .employees-table th:nth-child(7),
     .employees-table td:nth-child(6),
@@ -342,6 +364,7 @@
       <h2>صندوق عرض البيانات</h2>
       <div class="table-tools">
         <p id="countLabel">عدد السجلات: 0</p>
+        <input id="tableFilterInput" class="table-search" type="search" placeholder="فلترة بالاسم أثناء الكتابة" />
         <button type="button" class="btn primary" id="refreshBtn">تحديث العرض</button>
       </div>
 
@@ -424,6 +447,7 @@
     const deleteBtn = document.getElementById('deleteBtn');
     const printBtn = document.getElementById('printBtn');
     const refreshBtn = document.getElementById('refreshBtn');
+    const tableFilterInput = document.getElementById('tableFilterInput');
     const backBtn = document.getElementById('backBtn');
     const dateOpenButtons = document.querySelectorAll('.date-picker-trigger');
 
@@ -558,16 +582,16 @@
 
     function renderSectionOptions(selectedDepartment = '', preferredSection = '') {
       const normalizedDepartmentValue = normalizeDepartment(selectedDepartment);
-      const sectionValues = departmentSectionRows
+      const sectionValues = [...new Set(departmentSectionRows
         .filter((item) => normalizeDepartment(item.Department) === normalizedDepartmentValue)
         .map((item) => String(item.Section || '').trim())
-        .filter(Boolean);
+        .filter(Boolean))];
 
       sectionInput.innerHTML = '<option value="">-- اختر --</option>';
       sectionValues.forEach((section) => {
         const option = document.createElement('option');
         option.value = section;
-        option.textContent = section;
+        option.textContent = section === 'بدون نوبة' ? ' ' : section;
         sectionInput.appendChild(option);
       });
 
@@ -961,16 +985,16 @@
     function printSelectedEmployeeCv() {
       clearStatus();
 
-      if (!selectedId) {
-        showStatus('اختر موظفاً من صندوق البيانات أولاً قبل الطباعة.', true);
+      const formSnapshot = collectPayload();
+      if (!formSnapshot.Name) {
+        showStatus('أدخل اسم الموظف في الحقول أولاً قبل الطباعة.', true);
         return;
       }
 
-      const employee = allEmployees.find((item) => String(item.ID) === String(selectedId));
-      if (!employee) {
-        showStatus('تعذر العثور على بيانات الموظف المحدد للطباعة. جرّب تحديث عرض البيانات.', true);
-        return;
-      }
+      const employee = {
+        ...formSnapshot,
+        ID: selectedId || employeeIdInput.value || ''
+      };
 
       const html = buildEmployeeCvPrintHtml(employee);
       const printFrame = document.createElement('iframe');
@@ -1046,7 +1070,7 @@
 
       if (!Array.isArray(items) || items.length === 0) {
         rowsBody.innerHTML = '<tr><td colspan="13">لا توجد بيانات موظفين خارج الادارة حالياً.</td></tr>';
-        const hasFilter = Boolean(nameInput.value.trim());
+        const hasFilter = Boolean(tableFilterInput.value.trim());
         countLabel.textContent = hasFilter
           ? `عدد السجلات: 0 من ${outsideTotal}`
           : 'عدد السجلات: 0';
@@ -1082,7 +1106,7 @@
         rowsBody.appendChild(tr);
       });
 
-      const hasFilter = Boolean(nameInput.value.trim());
+      const hasFilter = Boolean(tableFilterInput.value.trim());
       countLabel.textContent = hasFilter
         ? `عدد السجلات: ${items.length} من ${outsideTotal}`
         : `عدد السجلات: ${items.length}`;
@@ -1100,7 +1124,7 @@
         String(item.Status || '').trim() !== 'نشط'
       );
 
-      const keyword = nameInput.value.trim().toLowerCase();
+      const keyword = tableFilterInput.value.trim().toLowerCase();
       if (!keyword) {
         renderRows(outsideEmployees);
         return;
@@ -1278,8 +1302,10 @@
     nameInput.addEventListener('input', () => {
       if (!nameInput.value.trim()) {
         resetAfterNameClear();
-        return;
       }
+    });
+
+    tableFilterInput.addEventListener('input', () => {
       applyNameFilter();
     });
 

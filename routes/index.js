@@ -13,6 +13,7 @@ const outsideEmployeesRoutes = require('./outsideEmployees');
 const dashboardRoutes = require('./dashboard');
 const systemLogRoutes = require('./systemLog');
 const settingsRoutes = require('./settings');
+const wordTemplatesRoutes = require('./wordTemplates');
 const authMiddleware = require('../auth/auth');
 
 const router = express.Router();
@@ -33,5 +34,6 @@ router.use('/outside-employees', outsideEmployeesRoutes);
 router.use('/dashboard', dashboardRoutes);
 router.use('/system-log', systemLogRoutes);
 router.use('/settings', settingsRoutes);
+router.use('/word-templates', wordTemplatesRoutes);
 
 module.exports = router;

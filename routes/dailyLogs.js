@@ -438,9 +438,18 @@ router.get('/search', (req, res) => {
     }
 
     const whereClause = filters.length ? `WHERE ${filters.join(' AND ')}` : '';
+    const sourceSql = `
+      SELECT ID, EmpID, Day, Today, Name, Department, Section, Status, Period, InTime, OutTime, Startdate, Enddate, Type, Note FROM Daily1
+      UNION ALL
+      SELECT ID, EmpID, Day, Today, Name, Department, Section, Status, Period, InTime, OutTime, Startdate, Enddate, Type, Note FROM Daily2
+      UNION ALL
+      SELECT ID, EmpID, Day, Today, Name, Department, Section, Status, Period, InTime, OutTime, Startdate, Enddate, Type, Note FROM Daily3
+      UNION ALL
+      SELECT ID, EmpID, Day, Today, Name, Department, Section, Status, Period, InTime, OutTime, Startdate, Enddate, Type, Note FROM Daily4
+    `;
     const sql = `
       SELECT ID, EmpID, Day, Today, Name, Department, Section, Status, Period, InTime, OutTime, Startdate, Enddate, Type, Note
-      FROM DailyAll
+      FROM (${sourceSql}) AS logs
       ${whereClause}
       ORDER BY date(REPLACE(Today, '/', '-')) DESC, Name ASC, ID DESC
       LIMIT 5000

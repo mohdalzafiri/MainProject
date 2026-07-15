@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>معاينة الطباعة</title>
+  <link rel="stylesheet" href="/layout-defaults.css" />
+  <style>
+    body.app-shell {
+      background: linear-gradient(180deg, #dfeaff 0%, #f8fbff 100%);
+    }
+
+    .preview-wrap {
+      display: grid;
+      grid-template-rows: auto auto 1fr;
+      gap: 14px;
+      width: min(1600px, calc(100vw - 20px));
+      min-height: 100vh;
+      margin: 0 auto;
+      padding: 16px 0;
+    }
+
+    .preview-header,
+    .preview-panel {
+      background: #fff;
+      border-radius: 20px;
+      box-shadow: 0 18px 44px rgba(15, 23, 42, 0.10);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+    }
+
+    .preview-header {
+      padding: 18px 22px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .preview-header h1 {
+      margin: 0;
+      font-size: 28px;
+      color: #0f172a;
+    }
+
+    .preview-header p {
+      margin: 4px 0 0;
+      color: #475569;
+      font-weight: 700;
+    }
+
+    .preview-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .preview-meta {
+      padding: 16px 22px;
+      display: grid;
+      gap: 6px;
+      background: rgba(224, 237, 255, 0.55);
+      border-radius: 18px;
+    }
+
+    .preview-meta .line {
+      font-weight: 700;
+      color: #1e293b;
+      word-break: break-word;
+    }
+
+    .preview-panel {
+      overflow: hidden;
+      min-height: 72vh;
+    }
+
+    .preview-frame {
+      width: 100%;
+      height: 100%;
+      min-height: 72vh;
+      border: 0;
+      background: #fff;
+    }
+
+    .empty-state {
+      padding: 24px;
+      color: #334155;
+      font-weight: 700;
+      display: grid;
+      gap: 12px;
+      align-content: center;
+      justify-items: start;
+    }
+
+    .empty-state a {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      padding: 0 16px;
+      border-radius: 12px;
+      background: #e0edff;
+      color: #0f172a;
+      text-decoration: none;
+      font-weight: 800;
+    }
+
+    @media (max-width: 720px) {
+      .preview-header h1 {
+        font-size: 22px;
+      }
+
+      .preview-frame,
+      .preview-panel {
+        min-height: 68vh;
+      }
+    }
+  </style>
+</head>
+<body class="app-shell">
+  <div class="preview-wrap">
+    <section class="preview-header">
+      <div>
+        <h1>معاينة الطباعة</h1>
+        <p>فتح الملف الحقيقي الناتج من القالب المرفوع.</p>
+      </div>
+      <div class="preview-actions">
+        <button type="button" class="btn dark" id="backBtn">العودة</button>
+        <button type="button" class="btn primary" id="openFileBtn">فتح الملف</button>
+      </div>
+    </section>
+
+    <section class="preview-meta" id="metaBox">
+      <div class="line" id="titleLine">تحميل المعاينة...</div>
+      <div class="line" id="fileLine"></div>
+      <div class="line" id="statusLine"></div>
+    </section>
+
+    <section class="preview-panel" id="panelBox">
+      <div class="empty-state" id="emptyState">
+        <div>لم يتم تحديد ملف للمعاينة.</div>
+        <a href="/administrative.html">العودة إلى النماذج الإدارية</a>
+      </div>
+      <iframe id="previewFrame" class="preview-frame" title="معاينة الطباعة" style="display:none;"></iframe>
+    </section>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const file = String(params.get('file') || '').trim();
+    const type = String(params.get('type') || 'pdf').trim().toLowerCase();
+    const name = String(params.get('name') || 'ملف الطباعة').trim();
+
+    const backBtn = document.getElementById('backBtn');
+    const openFileBtn = document.getElementById('openFileBtn');
+    const titleLine = document.getElementById('titleLine');
+    const fileLine = document.getElementById('fileLine');
+    const statusLine = document.getElementById('statusLine');
+    const emptyState = document.getElementById('emptyState');
+    const previewFrame = document.getElementById('previewFrame');
+
+    function resolvePreviewUrl(rawFile) {
+      if (!rawFile) return '';
+      if (/^https?:\/\//i.test(rawFile)) return rawFile;
+      if (rawFile.startsWith('/')) return rawFile;
+      return rawFile;
+    }
+
+    const fileUrl = resolvePreviewUrl(file);
+
+    titleLine.textContent = name;
+    fileLine.textContent = fileUrl ? `الملف: ${fileUrl}` : 'لم يتم تحديد ملف.';
+    statusLine.textContent = type === 'pdf' ? 'نوع الملف: PDF' : 'نوع الملف: DOCX';
+
+    function openTarget() {
+      if (!fileUrl) return;
+      window.open(fileUrl, '_blank');
+    }
+
+    backBtn.addEventListener('click', () => {
+      window.location.href = '/administrative.html';
+    });
+
+    openFileBtn.addEventListener('click', openTarget);
+
+    if (fileUrl) {
+      emptyState.style.display = 'none';
+      previewFrame.style.display = 'block';
+      previewFrame.src = fileUrl;
+      openTarget();
+    }
+  </script>
+</body>
+</html>

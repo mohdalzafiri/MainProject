@@ -1,5 +1,7 @@
 const express = require('express');
-const { db, dailyTables, logSystem } = require('../database');
+const path = require('path');
+const { db, dailyTables, logSystem, getCurrentTimestamp } = require('../database');
+const { templatesRoot } = require('../services/wordTemplateService');
 
 const router = express.Router();
 
@@ -18,6 +20,12 @@ function denyIfNotAdmin(req, res) {
 
 function normalize(value) {
   return String(value || '').trim();
+}
+
+function deriveTemplateNameFromFileName(fileName) {
+  const raw = normalize(fileName);
+  if (!raw) return '';
+  return raw.replace(/\.[^.]+$/, '').trim();
 }
 
 function tableExists(name) {
@@ -69,7 +77,7 @@ router.post('/department-sections', (req, res) => {
   }
 
   try {
-    const timestamp = new Date().toISOString().replace('T', ' ').slice(0, 19);
+    const timestamp = getCurrentTimestamp();
     const nextSortOrder = db.prepare('SELECT COALESCE(MAX(SortOrder), 0) + 1 AS value FROM DepartmentSectionLookup').get().value;
     const result = db.prepare(`
       INSERT INTO DepartmentSectionLookup (Department, Section, SubSection, SortOrder, IsActive, CreatedAt, UpdatedAt)
@@ -123,7 +131,7 @@ router.put('/department-sections/:id', (req, res) => {
   }
 
   try {
-    const timestamp = new Date().toISOString().replace('T', ' ').slice(0, 19);
+    const timestamp = getCurrentTimestamp();
     const result = db.prepare(`
       UPDATE DepartmentSectionLookup
       SET Department = ?, Section = ?, SubSection = ?, IsActive = ?, UpdatedAt = ?
@@ -291,7 +299,7 @@ router.post('/users', (req, res) => {
     return res.status(409).json({ message: 'اسم المستخدم مستخدم مسبقًا.' });
   }
 
-  const timestamp = new Date().toISOString().replace('T', ' ').slice(0, 19);
+  const timestamp = getCurrentTimestamp();
 
   try {
     const result = db.prepare(`
@@ -341,7 +349,7 @@ router.put('/users/:id', (req, res) => {
       return res.status(400).json({ message: 'لا يمكن تعديل حساب admin إلا كلمة السر.' });
     }
 
-    const timestamp = new Date().toISOString().replace('T', ' ').slice(0, 19);
+    const timestamp = getCurrentTimestamp();
 
     try {
       const result = db.prepare(`
@@ -392,7 +400,7 @@ router.put('/users/:id', (req, res) => {
     return res.status(409).json({ message: 'اسم المستخدم مستخدم مسبقًا من حساب آخر.' });
   }
 
-  const timestamp = new Date().toISOString().replace('T', ' ').slice(0, 19);
+  const timestamp = getCurrentTimestamp();
 
   try {
     const result = db.prepare(`
@@ -455,6 +463,157 @@ router.delete('/users/:id', (req, res) => {
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: 'تعذر حذف المستخدم.' });
+  }
+});
+
+router.get('/administrative-templates', (req, res) => {
+  if (denyIfNotAdmin(req, res)) return;
+
+  try {
+    const rows = db.prepare(`
+      SELECT ID, TemplateName, TemplateFileName, Coordinates, CreatedAt, UpdatedAt
+      FROM AdministrativeTemplateConfigs
+      ORDER BY TemplateName ASC
+    `).all();
+
+    const payload = rows.map((row) => {
+      const templateFileName = normalize(row.TemplateFileName);
+      const templateBaseName = path.basename(templateFileName);
+      const templateFilePath = templateBaseName ? path.join(templatesRoot, templateBaseName) : '';
+
+      return {
+        ...row,
+        TemplateFilePath: templateFilePath
+      };
+    });
+
+    return res.json(payload);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'تعذر تحميل إعدادات النماذج الإدارية.' });
+  }
+});
+
+router.post('/administrative-templates', (req, res) => {
+  if (denyIfNotAdmin(req, res)) return;
+
+  const templateFileName = normalize(req.body.TemplateFileName);
+  const templateName = normalize(req.body.TemplateName) || deriveTemplateNameFromFileName(templateFileName);
+  const coordinates = normalize(req.body.Coordinates);
+
+  if (!templateName) {
+    return res.status(400).json({ message: 'اسم النموذج مطلوب أو ارفع ملفًا باسم صالح.' });
+  }
+
+  if (!templateFileName) {
+    return res.status(400).json({ message: 'رابط/ملف النموذج مطلوب.' });
+  }
+
+  const exists = db.prepare('SELECT ID FROM AdministrativeTemplateConfigs WHERE TemplateName = ? COLLATE NOCASE LIMIT 1').get(templateName);
+  if (exists) {
+    return res.status(409).json({ message: 'اسم النموذج موجود مسبقاً.' });
+  }
+
+  try {
+    const timestamp = getCurrentTimestamp();
+    const result = db.prepare(`
+      INSERT INTO AdministrativeTemplateConfigs (TemplateName, TemplateFileName, Coordinates, CreatedAt, UpdatedAt)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(templateName, templateFileName, coordinates, timestamp, timestamp);
+
+    logSystem({
+      userName: req.user?.username || 'system',
+      role: req.user?.role || '',
+      action: 'Add',
+      page: 'Settings',
+      details: `Added administrative template config ID=${result.lastInsertRowid}`
+    });
+
+    return res.json({ id: result.lastInsertRowid });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'تعذر إضافة إعداد النموذج.' });
+  }
+});
+
+router.put('/administrative-templates/:id', (req, res) => {
+  if (denyIfNotAdmin(req, res)) return;
+
+  const id = Number(req.params.id);
+  if (!id) {
+    return res.status(400).json({ message: 'معرّف النموذج غير صالح.' });
+  }
+
+  const templateFileName = normalize(req.body.TemplateFileName);
+  const templateName = normalize(req.body.TemplateName) || deriveTemplateNameFromFileName(templateFileName);
+  const coordinates = normalize(req.body.Coordinates);
+
+  if (!templateName) {
+    return res.status(400).json({ message: 'اسم النموذج مطلوب أو ارفع ملفًا باسم صالح.' });
+  }
+
+  if (!templateFileName) {
+    return res.status(400).json({ message: 'رابط/ملف النموذج مطلوب.' });
+  }
+
+  const exists = db.prepare('SELECT ID FROM AdministrativeTemplateConfigs WHERE TemplateName = ? COLLATE NOCASE AND ID <> ? LIMIT 1').get(templateName, id);
+  if (exists) {
+    return res.status(409).json({ message: 'اسم النموذج مستخدم من سجل آخر.' });
+  }
+
+  try {
+    const timestamp = getCurrentTimestamp();
+    const result = db.prepare(`
+      UPDATE AdministrativeTemplateConfigs
+      SET TemplateName = ?, TemplateFileName = ?, Coordinates = ?, UpdatedAt = ?
+      WHERE ID = ?
+    `).run(templateName, templateFileName, coordinates, timestamp, id);
+
+    if (result.changes === 0) {
+      return res.status(404).json({ message: 'السجل غير موجود للتعديل.' });
+    }
+
+    logSystem({
+      userName: req.user?.username || 'system',
+      role: req.user?.role || '',
+      action: 'Update',
+      page: 'Settings',
+      details: `Updated administrative template config ID=${id}`
+    });
+
+    return res.json({ changes: result.changes });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'تعذر تعديل إعداد النموذج.' });
+  }
+});
+
+router.delete('/administrative-templates/:id', (req, res) => {
+  if (denyIfNotAdmin(req, res)) return;
+
+  const id = Number(req.params.id);
+  if (!id) {
+    return res.status(400).json({ message: 'معرّف النموذج غير صالح.' });
+  }
+
+  try {
+    const result = db.prepare('DELETE FROM AdministrativeTemplateConfigs WHERE ID = ?').run(id);
+    if (result.changes === 0) {
+      return res.status(404).json({ message: 'السجل غير موجود للحذف.' });
+    }
+
+    logSystem({
+      userName: req.user?.username || 'system',
+      role: req.user?.role || '',
+      action: 'Delete',
+      page: 'Settings',
+      details: `Deleted administrative template config ID=${id}`
+    });
+
+    return res.json({ changes: result.changes });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'تعذر حذف إعداد النموذج.' });
   }
 });
 

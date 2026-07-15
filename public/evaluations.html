@@ -39,6 +39,13 @@
       align-items: center;
     }
 
+    .search-message {
+      margin: 8px 0 0;
+      color: #334155;
+      font-weight: 700;
+      min-height: 22px;
+    }
+
     .form-actions .btn {
       min-width: 160px;
     }
@@ -95,6 +102,10 @@
     .evaluation-table td:nth-child(8) { width: 12%; }
     .evaluation-table th:nth-child(9),
     .evaluation-table td:nth-child(9) { width: 10%; }
+    .evaluation-table th:nth-child(10),
+    .evaluation-table td:nth-child(10) { width: 12%; }
+    .evaluation-table th:nth-child(11),
+    .evaluation-table td:nth-child(11) { width: 12%; }
 
     .table-wrap table {
       min-width: 1100px;
@@ -106,6 +117,21 @@
       text-align: center;
       font-variant-numeric: tabular-nums;
       white-space: nowrap;
+    }
+
+    .performance-low .performance-value {
+      color: #b91c1c;
+      font-weight: 700;
+    }
+
+    .performance-high .performance-value {
+      color: #15803d;
+      font-weight: 700;
+    }
+
+    .performance-low .performance-value,
+    .performance-high .performance-value {
+      text-shadow: none;
     }
 
     @media (max-width: 1100px) {
@@ -210,6 +236,7 @@
               <button type="button" class="btn success" id="searchBtn">بحث</button>
               <button type="button" class="btn primary" id="printBtn">طباعة بيانات</button>
             </div>
+            <p id="searchMessage" class="search-message"></p>
           </div>
         </div>
       </form>
@@ -236,12 +263,14 @@
               <th>عدد الطبيات</th>
               <th>النسبة المئوية</th>
               <th>التقييم</th>
+              <th>ملاحظات</th>
               <th>الترتيب</th>
+              <th>العام السابق</th>
             </tr>
           </thead>
           <tbody id="rows">
             <tr>
-              <td colspan="9">لا توجد بيانات متاحة للمعايير الحالية.</td>
+              <td colspan="11">لا توجد بيانات متاحة للمعايير الحالية.</td>
             </tr>
           </tbody>
         </table>
@@ -266,6 +295,7 @@
     const compareYearInput = document.getElementById('compareYear');
     const rowsBody = document.getElementById('rows');
     const countLabel = document.getElementById('countLabel');
+    const searchMessage = document.getElementById('searchMessage');
     const searchBtn = document.getElementById('searchBtn');
     const printBtn = document.getElementById('printBtn');
     const refreshBtn = document.getElementById('refreshBtn');
@@ -273,6 +303,12 @@
     const dateButtons = document.querySelectorAll('.date-picker-trigger');
 
     let departmentSectionRows = [];
+    let currentReportRows = [];
+    let activeEmployees = [];
+
+    function setSearchMessage(message) {
+      searchMessage.textContent = String(message || '').trim();
+    }
 
     function pad2(value) {
       return String(value).padStart(2, '0');
@@ -321,6 +357,88 @@
       }
     }
 
+    function populatePeriodOptions() {
+      const periodOptions = [
+        { value: 'today', label: 'يومي' },
+        { value: 'week', label: 'اسبوعي' },
+        { value: 'month', label: 'شهري' },
+        { value: 'quarter', label: 'ربع سنوي' },
+        { value: 'halfyear', label: 'نصف سنوي' },
+        { value: 'year', label: 'سنوي' }
+      ];
+
+      const current = periodInput.value;
+      periodInput.innerHTML = '<option value="">-- اختر --</option>';
+      periodOptions.forEach((item) => {
+        const option = document.createElement('option');
+        option.value = item.value;
+        option.textContent = item.label;
+        periodInput.appendChild(option);
+      });
+
+      if (current && periodOptions.some((item) => item.value === current)) {
+        periodInput.value = current;
+      }
+    }
+
+    function formatInputDate(date) {
+      return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+    }
+
+    function getPeriodDateRange(period) {
+      const today = new Date();
+      const start = new Date(today);
+      const end = new Date(today);
+
+      switch (period) {
+        case 'today':
+          break;
+        case 'week': {
+          const day = today.getDay();
+          const offset = day === 0 ? -6 : 1 - day;
+          start.setDate(today.getDate() + offset);
+          end.setDate(start.getDate() + 6);
+          break;
+        }
+        case 'month':
+          start.setDate(1);
+          end.setMonth(today.getMonth() + 1, 0);
+          break;
+        case 'quarter': {
+          const quarterStartMonth = Math.floor(today.getMonth() / 3) * 3;
+          start.setMonth(quarterStartMonth, 1);
+          end.setMonth(quarterStartMonth + 3, 0);
+          break;
+        }
+        case 'halfyear': {
+          const halfStartMonth = today.getMonth() < 6 ? 0 : 6;
+          start.setMonth(halfStartMonth, 1);
+          end.setMonth(halfStartMonth + 6, 0);
+          break;
+        }
+        case 'year':
+          start.setMonth(0, 1);
+          end.setMonth(11, 31);
+          break;
+        default:
+          return null;
+      }
+
+      return {
+        from: formatInputDate(start),
+        to: formatInputDate(end)
+      };
+    }
+
+    function applyPeriodRange(period) {
+      const range = getPeriodDateRange(period);
+      if (!range) return;
+
+      fromDateInput.value = range.from;
+      toDateInput.value = range.to;
+      syncDateDisplays();
+    }
+
     function populateSectionOptions() {
       const selectedDepartment = normalizeDepartment(departmentInput.value);
       const sections = departmentSectionRows
@@ -331,27 +449,54 @@
       populateSelect(sectionInput, sections);
     }
 
+    function populateEmployeeOptions() {
+      const selected = String(employeeNameInput.value || '').trim();
+      populateSelect(employeeNameInput, activeEmployees.map((item) => String(item.Name || '').trim()).filter(Boolean), selected);
+    }
+
+    function clearEmployeeSelection() {
+      if (employeeNameInput.value) {
+        employeeNameInput.value = '';
+      }
+    }
+
+    function clearDepartmentSectionSelection() {
+      if (departmentInput.value) departmentInput.value = '';
+      if (sectionInput.value) sectionInput.value = '';
+      populateSectionOptions();
+    }
+
     function renderRows(items) {
       rowsBody.innerHTML = '';
 
       if (!Array.isArray(items) || items.length === 0) {
-        rowsBody.innerHTML = '<tr><td colspan="9">لا توجد بيانات متاحة للمعايير الحالية.</td></tr>';
+        rowsBody.innerHTML = '<tr><td colspan="11">لا توجد بيانات متاحة للمعايير الحالية.</td></tr>';
         countLabel.textContent = 'عدد السجلات: 0';
         return;
       }
 
+      const compareYear = String(compareYearInput.value || '').trim();
+
       items.forEach((item) => {
+        const isLowPerformance = Number(item.Percent ?? 0) < 50;
+        const previousYearValue = compareYear && item.PreviousYearPercent !== null && item.PreviousYearPercent !== undefined
+          ? `${escapeHtml(item.PreviousYearPercent)}%`
+          : '—';
+
         const row = document.createElement('tr');
+        row.className = isLowPerformance ? 'performance-low' : 'performance-high';
         row.innerHTML = `
           <td>${escapeHtml(item.Name || '')}</td>
-          <td class="mono">${escapeHtml(item.PresentCount ?? 0)}</td>
-          <td class="mono">${escapeHtml(item.LicenseCount ?? 0)}</td>
-          <td class="mono">${escapeHtml(item.AbsentCount ?? 0)}</td>
-          <td class="mono">${escapeHtml(item.LeaveCount ?? 0)}</td>
-          <td class="mono">${escapeHtml(item.MedicalCount ?? 0)}</td>
-          <td class="mono">${escapeHtml(item.Percent ?? 0)}%</td>
+          <td class="mono performance-value">${escapeHtml(item.PresentCount ?? 0)}</td>
+          <td class="mono performance-value">${escapeHtml(item.LicenseCount ?? 0)}</td>
+          <td class="mono performance-value">${escapeHtml(item.AbsentCount ?? 0)}</td>
+          <td class="mono performance-value">${escapeHtml(item.LeaveCount ?? 0)}</td>
+          <td class="mono performance-value">${escapeHtml(item.MedicalCount ?? 0)}</td>
+          <td class="mono performance-value">${escapeHtml(item.Percent ?? 0)}%</td>
           <td>${escapeHtml(item.Evaluation || '')}</td>
-          <td class="mono">${escapeHtml(item.Rank ?? '')}</td>
+          <td>${escapeHtml(item.Notes || '')}</td>
+          <td class="mono performance-value">${escapeHtml(item.Rank ?? '')}</td>
+          <td class="performance-value">${escapeHtml(previousYearValue)}</td>
         `;
         rowsBody.appendChild(row);
       });
@@ -396,12 +541,9 @@
       });
       if (!employees) return;
 
-      const activeNames = (Array.isArray(employees) ? employees : [])
-        .filter((item) => String(item?.Status || '').trim() === 'نشط')
-        .map((item) => String(item.Name || '').trim())
-        .filter(Boolean);
-
-      populateSelect(employeeNameInput, activeNames);
+      activeEmployees = (Array.isArray(employees) ? employees : [])
+        .filter((item) => String(item?.Status || '').trim() === 'نشط');
+      populateEmployeeOptions();
     }
 
     async function loadEvaluationFilters() {
@@ -410,7 +552,10 @@
       });
       if (!data) return;
 
-      populateSelect(periodInput, Array.isArray(data.periods) ? data.periods : []);
+      populatePeriodOptions();
+      if (periodInput.value) {
+        applyPeriodRange(periodInput.value);
+      }
 
       compareYearInput.innerHTML = '<option value="">بدون مقارنة</option>';
       (Array.isArray(data.years) ? data.years : []).forEach((year) => {
@@ -422,12 +567,21 @@
     }
 
     async function loadEvaluationReport() {
+      const hasDepartment = Boolean(departmentInput.value);
+      const hasSection = Boolean(sectionInput.value);
+      const hasEmployee = Boolean(employeeNameInput.value);
+      if (!hasDepartment && !hasSection && !hasEmployee) {
+        currentReportRows = [];
+        renderRows([]);
+        setSearchMessage('اختر القسم أو النوبة أو اسم الموظف ثم اضغط بحث.');
+        return;
+      }
+
       const params = new URLSearchParams();
 
       if (departmentInput.value) params.set('department', departmentInput.value);
       if (sectionInput.value) params.set('section', sectionInput.value);
       if (employeeNameInput.value) params.set('name', employeeNameInput.value);
-      if (periodInput.value) params.set('period', periodInput.value);
       if (compareYearInput.value) params.set('compareYear', compareYearInput.value);
       if (fromDateInput.value) params.set('fromDate', fromDateInput.value);
       if (toDateInput.value) params.set('toDate', toDateInput.value);
@@ -438,7 +592,91 @@
         headers: { Authorization: `Bearer ${authToken}` }
       });
 
-      renderRows(Array.isArray(data?.rows) ? data.rows : []);
+      currentReportRows = Array.isArray(data?.rows) ? data.rows : [];
+      renderRows(currentReportRows);
+      setSearchMessage('');
+    }
+
+    function printCurrentTable() {
+      const rows = Array.isArray(currentReportRows) ? currentReportRows : [];
+      if (!rows.length) {
+        setSearchMessage('لا توجد بيانات في الجدول للطباعة.');
+        return;
+      }
+
+      const fromLabel = fromDateInput.value ? toSlashDate(fromDateInput.value) : '---';
+      const toLabel = toDateInput.value ? toSlashDate(toDateInput.value) : '---';
+
+      const tableRows = rows.map((item) => `
+        <tr class="${Number(item.Percent ?? 0) < 50 ? 'performance-low' : 'performance-high'}">
+          <td>${escapeHtml(item.Name || '')}</td>
+          <td class="performance-value">${escapeHtml(item.PresentCount ?? 0)}</td>
+          <td class="performance-value">${escapeHtml(item.LicenseCount ?? 0)}</td>
+          <td class="performance-value">${escapeHtml(item.AbsentCount ?? 0)}</td>
+          <td class="performance-value">${escapeHtml(item.LeaveCount ?? 0)}</td>
+          <td class="performance-value">${escapeHtml(item.MedicalCount ?? 0)}</td>
+          <td class="performance-value">${escapeHtml(item.Percent ?? 0)}%</td>
+          <td>${escapeHtml(item.Evaluation || '')}</td>
+          <td>${escapeHtml(item.Notes || '')}</td>
+          <td class="performance-value">${escapeHtml(item.Rank ?? '')}</td>
+          <td class="performance-value">${compareYearInput.value && item.PreviousYearPercent !== null && item.PreviousYearPercent !== undefined ? `${escapeHtml(item.PreviousYearPercent)}%` : '—'}</td>
+        </tr>
+      `).join('');
+
+      const printWindow = window.open('', '_blank', 'width=1280,height=900');
+      if (!printWindow) {
+        setSearchMessage('تعذر فتح نافذة الطباعة. تحقق من مانع النوافذ المنبثقة.');
+        return;
+      }
+
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html lang="ar" dir="rtl">
+        <head>
+          <meta charset="UTF-8" />
+          <title>طباعة تقرير تقييم الأداء</title>
+          <style>
+            body { font-family: Tahoma, Arial, sans-serif; margin: 20px; color: #0f172a; }
+            h1 { margin: 0 0 12px; font-size: 24px; }
+            .meta { margin: 0 0 10px; color: #475569; font-weight: 700; }
+            table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 13px; }
+            th, td { border: 1px solid #cbd5e1; padding: 8px; text-align: center; vertical-align: top; word-break: break-word; }
+            th { background: #f8fafc; }
+            .performance-low .performance-value { color: #b91c1c; font-weight: 700; }
+            .performance-high .performance-value { color: #15803d; font-weight: 700; }
+            @page { size: A4 landscape; margin: 10mm; }
+          </style>
+        </head>
+        <body>
+          <h1>تقرير تقييم الأداء</h1>
+          <p class="meta">من التاريخ: ${escapeHtml(fromLabel)} | إلى التاريخ: ${escapeHtml(toLabel)}</p>
+          <p class="meta">عدد السجلات: ${rows.length}</p>
+          <table>
+            <thead>
+              <tr>
+                <th>الاسم</th>
+                <th>عدد الحضور</th>
+                <th>عدد الرخص</th>
+                <th>عدد الغياب</th>
+                <th>عدد الاجازات</th>
+                <th>عدد الطبيات</th>
+                <th>النسبة المئوية</th>
+                <th>التقييم</th>
+                <th>ملاحظات</th>
+                <th>الترتيب</th>
+                <th>العام السابق</th>
+              </tr>
+            </thead>
+            <tbody>${tableRows}</tbody>
+          </table>
+        </body>
+        </html>
+      `);
+
+      printWindow.document.close();
+      printWindow.focus();
+      printWindow.print();
+      setSearchMessage('');
     }
 
     dateButtons.forEach((button) => {
@@ -461,24 +699,45 @@
 
     departmentInput.addEventListener('change', () => {
       populateSectionOptions();
+      clearEmployeeSelection();
+    });
+
+    sectionInput.addEventListener('change', () => {
+      clearEmployeeSelection();
+    });
+
+    employeeNameInput.addEventListener('change', () => {
+      if (employeeNameInput.value) {
+        clearDepartmentSectionSelection();
+      }
+    });
+
+    periodInput.addEventListener('change', () => {
+      if (periodInput.value) {
+        applyPeriodRange(periodInput.value);
+      }
     });
 
     searchBtn.addEventListener('click', () => {
       loadEvaluationReport().catch((error) => {
-        countLabel.textContent = error.message || 'تعذر تحميل تقرير تقييم الأداء.';
+        setSearchMessage(error.message || 'تعذر تحميل تقرير تقييم الأداء.');
       });
     });
 
     refreshBtn.addEventListener('click', () => {
       Promise.all([loadLookupOptions(), loadEmployeeOptions(), loadEvaluationFilters()])
-        .then(loadEvaluationReport)
+        .then(() => {
+          currentReportRows = [];
+          renderRows([]);
+          setSearchMessage('');
+        })
         .catch((error) => {
-          countLabel.textContent = error.message || 'تعذر تحديث عرض البيانات.';
+          setSearchMessage(error.message || 'تعذر تحديث عرض البيانات.');
         });
     });
 
     printBtn.addEventListener('click', () => {
-      window.print();
+      printCurrentTable();
     });
 
     backBtn.addEventListener('click', () => {
@@ -487,14 +746,19 @@
 
     const now = new Date();
     const today = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`;
-    fromDateInput.value = today;
+    const firstDayOfMonth = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-01`;
+    fromDateInput.value = firstDayOfMonth;
     toDateInput.value = today;
     syncDateDisplays();
 
     Promise.all([loadLookupOptions(), loadEmployeeOptions(), loadEvaluationFilters()])
-      .then(loadEvaluationReport)
+      .then(() => {
+        currentReportRows = [];
+        renderRows([]);
+        setSearchMessage('');
+      })
       .catch((error) => {
-        countLabel.textContent = error.message || 'تعذر تحميل بيانات واجهة تقييم الأداء.';
+        setSearchMessage(error.message || 'تعذر تحميل بيانات واجهة تقييم الأداء.');
       });
   </script>
 </body>

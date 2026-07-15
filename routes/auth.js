@@ -1,6 +1,6 @@
 ﻿const express = require('express');
 const jwt = require('jsonwebtoken');
-const { db, logSystem } = require('../database');
+const { db, logSystem, getCurrentTimestamp } = require('../database');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'change_this_secret';
 const ROUTER_TOKEN_EXPIRY = '8h';
@@ -39,7 +39,7 @@ router.post('/login', (req, res) => {
       return sendError(res, 403, 'تم إيقاف هذا المستخدم من قبل الإدارة');
     }
 
-    db.prepare('UPDATE Login SET LastLogin = ? WHERE ID = ?').run(new Date().toISOString(), user.ID);
+    db.prepare('UPDATE Login SET LastLogin = ? WHERE ID = ?').run(getCurrentTimestamp(), user.ID);
     logSystem({ userName: user.Username, role: user.Permission || '', action: 'Login Success', page: 'Login', details: 'User logged in', machine: userAgent });
 
     const token = jwt.sign(

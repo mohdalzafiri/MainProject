@@ -1,5 +1,5 @@
 const express = require('express');
-const { db, logSystem } = require('../database');
+const { db, logSystem, getCurrentTimestamp } = require('../database');
 
 const router = express.Router();
 const tableName = 'OutgoingDocuments';
@@ -32,7 +32,7 @@ function formatDateOnly(dateValue) {
 }
 
 function getTimestamp() {
-  return new Date().toISOString().replace('T', ' ').slice(0, 19);
+  return getCurrentTimestamp();
 }
 
 function buildInsertStatement(payload) {

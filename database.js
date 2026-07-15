@@ -20,10 +20,14 @@ function resolveDatabasePath() {
   const mappedPath = 'Z:\\database.db';
   const localPath = path.resolve(__dirname, 'database.db');
 
+  const normalizedConfiguredPath = configuredPath ? path.normalize(configuredPath).toLowerCase() : '';
+  const normalizedUncPath = path.normalize(uncPath).toLowerCase();
+  const preferMappedForNetworkDatabase = normalizedConfiguredPath === normalizedUncPath && canOpenDatabase(mappedPath);
+
   const candidates = [
-    configuredPath,
+    preferMappedForNetworkDatabase ? mappedPath : configuredPath,
+    preferMappedForNetworkDatabase ? configuredPath : mappedPath,
     uncPath,
-    mappedPath,
     localPath
   ].filter(Boolean);
 
@@ -46,7 +50,14 @@ function isValidDailyTable(table) {
 }
 
 function getCurrentTimestamp() {
-  return new Date().toISOString().replace('T', ' ').slice(0, 19);
+  const now = new Date();
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const dd = String(now.getDate()).padStart(2, '0');
+  const hh = String(now.getHours()).padStart(2, '0');
+  const mi = String(now.getMinutes()).padStart(2, '0');
+  const ss = String(now.getSeconds()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`;
 }
 
 function ensureSystemLogTable() {
@@ -269,17 +280,49 @@ function ensureAdministrativeFormsTable() {
     CREATE TABLE IF NOT EXISTS AdministrativeForms (
       ID INTEGER PRIMARY KEY AUTOINCREMENT,
       FormDate TEXT NOT NULL,
+      PermitDate TEXT,
       DayName TEXT NOT NULL,
       FormName TEXT NOT NULL,
       EmpID TEXT,
       EmployeeName TEXT NOT NULL,
       Department TEXT NOT NULL,
+      SubSection TEXT,
       Section TEXT NOT NULL,
+      FromTime TEXT,
+      ToTime TEXT,
+      PermitReason TEXT,
+      LeaveStartDate TEXT,
+      LeaveEndDate TEXT,
+      LeaveType TEXT,
       Notes TEXT,
       CreatedAt TEXT NOT NULL,
       CreatedBy TEXT
     )
   `).run();
+
+  ensureColumn('AdministrativeForms', 'FromTime', 'TEXT');
+  ensureColumn('AdministrativeForms', 'ToTime', 'TEXT');
+  ensureColumn('AdministrativeForms', 'PermitDate', 'TEXT');
+  ensureColumn('AdministrativeForms', 'SubSection', 'TEXT');
+  ensureColumn('AdministrativeForms', 'PermitReason', 'TEXT');
+  ensureColumn('AdministrativeForms', 'LeaveStartDate', 'TEXT');
+  ensureColumn('AdministrativeForms', 'LeaveEndDate', 'TEXT');
+  ensureColumn('AdministrativeForms', 'LeaveType', 'TEXT');
+}
+
+function ensureAdministrativeTemplateConfigsTable() {
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS AdministrativeTemplateConfigs (
+      ID INTEGER PRIMARY KEY AUTOINCREMENT,
+      TemplateName TEXT NOT NULL UNIQUE,
+      TemplateFileName TEXT NOT NULL,
+      Coordinates TEXT,
+      CreatedAt TEXT NOT NULL,
+      UpdatedAt TEXT NOT NULL
+    )
+  `).run();
+
+  ensureColumn('AdministrativeTemplateConfigs', 'Coordinates', 'TEXT');
 }
 
 function ensureOutgoingDocumentsTable() {
@@ -424,6 +467,7 @@ ensureLoginTable();
 ensureDepartmentSectionLookupTable();
 ensureWorkflowSubSectionColumns();
 ensureAdministrativeFormsTable();
+ensureAdministrativeTemplateConfigsTable();
 ensureOutgoingDocumentsTable();
 ensureIncomingDocumentsTable();
 ensureHolidayTable();
@@ -437,5 +481,6 @@ module.exports = {
   db,
   dailyTables,
   isValidDailyTable,
+  getCurrentTimestamp,
   logSystem,
 };
