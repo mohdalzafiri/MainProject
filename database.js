@@ -85,6 +85,11 @@ function ensureLoginTable() {
       Permission TEXT,
       Department TEXT,
       Section TEXT,
+      SubSection TEXT,
+      AllowedPages TEXT,
+      AllowedDepartments TEXT,
+      AllowedSections TEXT,
+      AllowedSubSections TEXT,
       Name TEXT,
       IsActive INTEGER NOT NULL DEFAULT 1,
       CreatedAt TEXT,
@@ -96,21 +101,30 @@ function ensureLoginTable() {
   ensureColumn('Login', 'IsActive', 'INTEGER', '1');
   ensureColumn('Login', 'CreatedAt', 'TEXT');
   ensureColumn('Login', 'UpdatedAt', 'TEXT');
+  ensureColumn('Login', 'SubSection', 'TEXT');
+  ensureColumn('Login', 'AllowedPages', 'TEXT', "'[]'");
+  ensureColumn('Login', 'AllowedDepartments', 'TEXT', "'[]'");
+  ensureColumn('Login', 'AllowedSections', 'TEXT', "'[]'");
+  ensureColumn('Login', 'AllowedSubSections', 'TEXT', "'[]'");
 
   const timestamp = getCurrentTimestamp();
   db.prepare(`
     UPDATE Login
     SET CreatedAt = COALESCE(NULLIF(TRIM(CreatedAt), ''), ?),
         UpdatedAt = COALESCE(NULLIF(TRIM(UpdatedAt), ''), ?),
-        IsActive = COALESCE(IsActive, 1)
+      IsActive = COALESCE(IsActive, 1),
+          AllowedPages = COALESCE(NULLIF(TRIM(AllowedPages), ''), '[]'),
+          AllowedDepartments = COALESCE(NULLIF(TRIM(AllowedDepartments), ''), '[]'),
+          AllowedSections = COALESCE(NULLIF(TRIM(AllowedSections), ''), '[]'),
+          AllowedSubSections = COALESCE(NULLIF(TRIM(AllowedSubSections), ''), '[]')
   `).run(timestamp, timestamp);
 
   const usersCount = db.prepare('SELECT COUNT(*) AS count FROM Login').get().count;
   if (usersCount === 0) {
     db.prepare(`
-      INSERT INTO Login (Username, Password, Permission, Department, Section, Name, IsActive, CreatedAt, UpdatedAt)
-      VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)
-    `).run('admin', 'admin', 'Admin', '', '', 'System Administrator', timestamp, timestamp);
+      INSERT INTO Login (Username, Password, Permission, Department, Section, SubSection, AllowedPages, AllowedDepartments, AllowedSections, AllowedSubSections, Name, IsActive, CreatedAt, UpdatedAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+    `).run('admin', 'admin', 'Admin', '', '', '', '[]', '[]', '[]', '[]', 'System Administrator', timestamp, timestamp);
   }
 }
 
@@ -172,23 +186,63 @@ function ensureDepartmentSectionLookupTable() {
     ['البلاغات', 'ب - فريق عمل البلاغات', ''],
     ['البلاغات', 'ج - فريق عمل البلاغات', ''],
     ['البلاغات', 'د - فريق عمل البلاغات', ''],
-    ['البلاغات', 'فريق عمل البلاغات صباحاً', ''],
+    ['البلاغات', 'هـ - فريق عمل البلاغات', ''],
     ['البلاغات', 'سكرتارية البلاغات', ''],
+    ['البلاغات', 'صباحاً', ''],
     ['العمليات', 'أ - العمليات', ''],
     ['العمليات', 'ب - العمليات', ''],
     ['العمليات', 'ج - العمليات', ''],
     ['العمليات', 'د - العمليات', ''],
     ['العمليات', 'هـ - العمليات', ''],
     ['العمليات', 'سكرتارية العمليات', ''],
+    ['العمليات', 'صباحاً', ''],
     ['الخدمات المساندة', 'أ - الخدمات', ''],
     ['الخدمات المساندة', 'ب - الخدمات', ''],
     ['الخدمات المساندة', 'ج - الخدمات', ''],
     ['الخدمات المساندة', 'د - الخدمات', ''],
     ['الخدمات المساندة', 'هـ - الخدمات', ''],
+    ['الخدمات المساندة', 'سكرتارية الخدمات', ''],
+    ['الخدمات المساندة', 'صباحاً', ''],
     ['الموارد البشرية', 'صباحاً', ''],
     ['المعلومات', 'صباحاً', ''],
     ['الاحصاء', 'صباحاً', '']
   ];
+
+  const canonicalDepartmentSections = {
+    'البلاغات': [
+      'أ - البلاغات',
+      'ب - البلاغات',
+      'ج - البلاغات',
+      'د - البلاغات',
+      'هـ - البلاغات',
+      'ثابت صبح',
+      'أ - فريق عمل البلاغات',
+      'ب - فريق عمل البلاغات',
+      'ج - فريق عمل البلاغات',
+      'د - فريق عمل البلاغات',
+      'هـ - فريق عمل البلاغات',
+      'سكرتارية البلاغات',
+      'صباحاً'
+    ],
+    'العمليات': [
+      'أ - العمليات',
+      'ب - العمليات',
+      'ج - العمليات',
+      'د - العمليات',
+      'هـ - العمليات',
+      'سكرتارية العمليات',
+      'صباحاً'
+    ],
+    'الخدمات المساندة': [
+      'أ - الخدمات',
+      'ب - الخدمات',
+      'ج - الخدمات',
+      'د - الخدمات',
+      'هـ - الخدمات',
+      'سكرتارية الخدمات',
+      'صباحاً'
+    ]
+  };
 
   const timestamp = getCurrentTimestamp();
   const totalRows = db.prepare('SELECT COUNT(*) AS count FROM DepartmentSectionLookup').get().count;
@@ -224,6 +278,43 @@ function ensureDepartmentSectionLookupTable() {
       updateSort.run(maxSortOrder + index + 1, timestamp, row.ID);
     });
   }
+
+  const upsertCanonical = db.prepare(`
+    INSERT INTO DepartmentSectionLookup (Department, Section, SubSection, SortOrder, IsActive, CreatedAt, UpdatedAt)
+    VALUES (?, ?, '', ?, 1, ?, ?)
+    ON CONFLICT(Department, Section, SubSection)
+    DO UPDATE SET
+      SortOrder = excluded.SortOrder,
+      IsActive = 1,
+      UpdatedAt = excluded.UpdatedAt
+  `);
+
+  const deactivateById = db.prepare('UPDATE DepartmentSectionLookup SET IsActive = 0, UpdatedAt = ? WHERE ID = ?');
+
+  let canonicalSort = 1;
+  Object.entries(canonicalDepartmentSections).forEach(([department, sections]) => {
+    const canonicalSet = new Set(sections.map((value) => String(value || '').trim()));
+
+    sections.forEach((section) => {
+      upsertCanonical.run(department, section, canonicalSort, timestamp, timestamp);
+      canonicalSort += 1;
+    });
+
+    const existingRows = db.prepare(`
+      SELECT ID, TRIM(Section) AS Section, TRIM(IFNULL(SubSection, '')) AS SubSection
+      FROM DepartmentSectionLookup
+      WHERE TRIM(Department) = ?
+    `).all(department);
+
+    existingRows.forEach((row) => {
+      if (!row) return;
+      const subSection = String(row.SubSection || '').trim();
+      const section = String(row.Section || '').trim();
+      if (subSection) return;
+      if (canonicalSet.has(section)) return;
+      deactivateById.run(timestamp, row.ID);
+    });
+  });
 }
 
 function ensureColumn(tableName, columnName, columnType, defaultSql = '') {

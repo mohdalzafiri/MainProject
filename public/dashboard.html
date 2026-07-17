@@ -208,7 +208,7 @@
       white-space: normal;
     }
     .user-name-column {
-      display: table-cell;
+      display: none;
     }
     .activity-table th:nth-child(1),
     .activity-table td:nth-child(1) { width: 16%; }
@@ -481,6 +481,8 @@
     const adminFormsBtn = document.getElementById('adminFormsBtn');
     const systemLogBtn = document.getElementById('systemLogBtn');
     const settingsBtn = document.getElementById('settingsBtn');
+    const outgoingBtn = document.getElementById('newPage1Btn');
+    const incomingBtn = document.getElementById('newPage2Btn');
     const todaySummaryRows = document.getElementById('todaySummaryRows');
     const leaveDailySummaryRows = document.getElementById('leaveDailySummaryRows');
     const authToken = localStorage.getItem('authToken');
@@ -510,15 +512,45 @@
       window.location.href = '/';
     }
 
-    const username = currentUser?.username || '';
-    const isAdminUser = String(username || '').trim().toLowerCase() === 'admin';
+    const currentRole = String(currentUser?.role || '').trim().toLowerCase();
+    const isAdminUser = currentRole === 'admin';
+    const defaultAllowedPages = ['employees', 'daily', 'statistics', 'holidays', 'courses', 'transfers', 'outsideEmployees', 'outgoing', 'incoming'];
+    const allowedPages = Array.isArray(currentUser?.allowedPages) && currentUser.allowedPages.length
+      ? currentUser.allowedPages
+      : [];
+    const allowedPagesSet = new Set(allowedPages);
+
+    const interfaceButtons = {
+      employees: employeesBtn,
+      daily: document.getElementById('dailyBtn'),
+      statistics: statisticsBtn,
+      holidays: holidaysBtn,
+      courses: coursesBtn,
+      transfers: transfersBtn,
+      outsideEmployees: outsideAdminBtn,
+      outgoing: outgoingBtn,
+      incoming: incomingBtn,
+      evaluations: evaluationsBtn,
+      administrative: adminFormsBtn,
+      systemLog: systemLogBtn,
+      settings: settingsBtn
+    };
 
     if (!isAdminUser) {
-      [evaluationsBtn, adminFormsBtn, systemLogBtn, settingsBtn].forEach((item) => {
-        if (item) {
-          item.style.display = 'none';
+      ['evaluations', 'administrative', 'systemLog', 'settings'].forEach((key) => {
+        const button = interfaceButtons[key];
+        if (button) {
+          button.style.display = 'none';
         }
       });
+
+      defaultAllowedPages.forEach((key) => {
+        const button = interfaceButtons[key];
+        if (button && !allowedPagesSet.has(key)) {
+          button.style.display = 'none';
+        }
+      });
+
       if (recentActivitiesPanel) {
         recentActivitiesPanel.style.display = 'none';
       }

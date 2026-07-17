@@ -86,7 +86,7 @@
     }
 
     .user-name-column {
-      display: table-cell;
+      display: none;
     }
 
     label {
@@ -202,6 +202,69 @@
     .status-line.error {
       background: var(--err-bg);
       color: var(--err);
+    }
+
+    .doc-images-box {
+      margin-top: 12px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px;
+      background: #f8fafc;
+    }
+
+    .doc-images-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      font-weight: 700;
+      color: #334155;
+    }
+
+    .doc-images-view {
+      display: grid;
+      grid-template-columns: 44px 1fr 44px;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .doc-images-frame {
+      min-height: 220px;
+      border: 1px dashed #cbd5e1;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      background: #fff;
+      color: #64748b;
+      text-align: center;
+      padding: 8px;
+    }
+
+    .doc-images-frame img {
+      width: 100%;
+      height: 100%;
+      max-height: 280px;
+      object-fit: contain;
+      display: none;
+    }
+
+    .doc-images-nav {
+      padding: 10px 8px;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      background: #fff;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .doc-images-actions {
+      margin-top: 10px;
+      display: flex;
+      justify-content: flex-start;
+      gap: 8px;
+      flex-wrap: wrap;
     }
 
     .table-tools {
@@ -382,6 +445,25 @@
       </form>
 
       <div id="statusLine" class="status-line"></div>
+
+      <div class="doc-images-box">
+        <div class="doc-images-head">
+          <span>صور المستندات الرسمية</span>
+          <span id="docImageCount">0 / 0</span>
+        </div>
+        <div class="doc-images-view">
+          <button type="button" class="doc-images-nav" id="docImagePrevBtn">◀</button>
+          <div class="doc-images-frame">
+            <img id="docImagePreview" alt="صورة مستند" />
+            <div id="docImageEmpty">اختر سجلًا أولًا لعرض صور المستندات.</div>
+          </div>
+          <button type="button" class="doc-images-nav" id="docImageNextBtn">▶</button>
+        </div>
+        <div class="doc-images-actions">
+          <button type="button" class="btn primary" id="docImageUploadBtn">تصوير/رفع مستند</button>
+          <input id="docImageInput" type="file" accept="image/*" capture="environment" hidden />
+        </div>
+      </div>
     </section>
 
     <section class="panel">
@@ -414,6 +496,7 @@
     </section>
   </div>
 
+  <script src="/record-photos.js"></script>
   <script>
     const authToken = localStorage.getItem('authToken');
     if (!authToken) {
@@ -477,6 +560,12 @@
     let allHolidays = [];
     let allEmployees = [];
     let selectedEmployee = null;
+    const recordPhotos = initRecordPhotos({
+      moduleKey: 'holidays',
+      authToken,
+      getRecordId: () => selectedId,
+      onStatus: showStatus
+    });
 
     if (userNameField) {
       userNameField.style.display = isAdminUser ? 'grid' : 'none';
@@ -804,6 +893,7 @@
       syncUserNameColumnVisibility();
       Array.from(rowsBody.querySelectorAll('tr')).forEach((row) => row.classList.remove('selected'));
       applyNameFilter();
+      recordPhotos.clear();
     }
 
     function fillForm(item) {
@@ -833,6 +923,7 @@
       if (userNameInput) {
         userNameInput.value = item.UserName || currentUser?.username || 'system';
       }
+      recordPhotos.load();
     }
 
     function renderRows(items) {

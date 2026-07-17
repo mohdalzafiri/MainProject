@@ -2,6 +2,12 @@ const express = require('express');
 const path = require('path');
 const { db, dailyTables, logSystem, getCurrentTimestamp } = require('../database');
 const { templatesRoot } = require('../services/wordTemplateService');
+const {
+  ROLE_VIEW_ONLY,
+  normalizeRole,
+  serializeAllowedPages,
+  getEffectiveAllowedPages
+} = require('../auth/permissions');
 
 const router = express.Router();
 
@@ -20,6 +26,45 @@ function denyIfNotAdmin(req, res) {
 
 function normalize(value) {
   return String(value || '').trim();
+}
+
+function normalizePermission(value) {
+  const role = normalizeRole(value);
+  if (role === 'admin') return 'Admin';
+  if (role === ROLE_VIEW_ONLY) return 'View';
+  return 'User';
+}
+
+function normalizeAllowedPagesInput(value) {
+  return serializeAllowedPages(Array.isArray(value) ? value : []);
+}
+
+function normalizeJsonArrayInput(value) {
+  if (!Array.isArray(value)) {
+    return '[]';
+  }
+
+  const clean = value
+    .map((item) => normalize(item))
+    .filter(Boolean);
+
+  return JSON.stringify([...new Set(clean)]);
+}
+
+function parseJsonArray(value) {
+  const raw = normalize(value);
+  if (!raw) return [];
+
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      return parsed.map((item) => normalize(item)).filter(Boolean);
+    }
+  } catch {
+    return [];
+  }
+
+  return [];
 }
 
 function deriveTemplateNameFromFileName(fileName) {
@@ -239,7 +284,7 @@ router.get('/employees-active', (req, res) => {
 
   try {
     const rows = db.prepare(`
-      SELECT ID, Name, Department, Section
+      SELECT ID, Name, Department, Section, IFNULL(SubSection, '') AS SubSection
       FROM Main
       WHERE TRIM(Status) = 'نشط' AND TRIM(Name) <> ''
       ORDER BY Name ASC
@@ -257,12 +302,24 @@ router.get('/users', (req, res) => {
 
   try {
     const rows = db.prepare(`
-      SELECT ID, Username, Password, Permission, Name, Department, Section, IsActive, CreatedAt, UpdatedAt, LastLogin
+      SELECT ID, Username, Password, Permission, Name, Department, Section, IFNULL(SubSection, '') AS SubSection, IFNULL(AllowedPages, '[]') AS AllowedPages, IFNULL(AllowedDepartments, '[]') AS AllowedDepartments, IFNULL(AllowedSections, '[]') AS AllowedSections, IFNULL(AllowedSubSections, '[]') AS AllowedSubSections, IsActive, CreatedAt, UpdatedAt, LastLogin
       FROM Login
       ORDER BY ID ASC
     `).all();
+    const users = rows.map((row) => {
+      const normalizedRole = normalizeRole(row.Permission);
+      const isAdmin = normalizedRole === 'admin';
+      return {
+        ...row,
+        Permission: normalizePermission(row.Permission),
+        AllowedPages: getEffectiveAllowedPages(isAdmin, row.AllowedPages),
+        AllowedDepartments: parseJsonArray(row.AllowedDepartments),
+        AllowedSections: parseJsonArray(row.AllowedSections),
+        AllowedSubSections: parseJsonArray(row.AllowedSubSections)
+      };
+    });
 
-    res.json(rows);
+    res.json(users);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'تعذر تحميل بيانات المستخدمين.' });
@@ -272,13 +329,19 @@ router.get('/users', (req, res) => {
 router.post('/users', (req, res) => {
   if (denyIfNotAdmin(req, res)) return;
 
+  const rawPermission = normalize(req.body.Permission);
   const payload = {
     Username: normalize(req.body.Username),
     Password: normalize(req.body.Password),
-    Permission: normalize(req.body.Permission),
+    Permission: normalizePermission(rawPermission),
     Name: normalize(req.body.Name),
     Department: normalize(req.body.Department),
+    SubSection: normalize(req.body.SubSection),
     Section: normalize(req.body.Section),
+    AllowedPages: normalizeAllowedPagesInput(req.body.AllowedPages),
+    AllowedDepartments: normalizeJsonArrayInput(req.body.AllowedDepartments),
+    AllowedSections: normalizeJsonArrayInput(req.body.AllowedSections),
+    AllowedSubSections: normalizeJsonArrayInput(req.body.AllowedSubSections),
     IsActive: Number(req.body.IsActive) === 0 ? 0 : 1
   };
 
@@ -290,7 +353,7 @@ router.post('/users', (req, res) => {
     return res.status(400).json({ message: 'كلمة السر مطلوبة.' });
   }
 
-  if (!payload.Permission) {
+  if (!rawPermission) {
     return res.status(400).json({ message: 'الصلاحية مطلوبة.' });
   }
 
@@ -303,9 +366,9 @@ router.post('/users', (req, res) => {
 
   try {
     const result = db.prepare(`
-      INSERT INTO Login (Username, Password, Permission, Department, Section, Name, IsActive, CreatedAt, UpdatedAt)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(payload.Username, payload.Password, payload.Permission, payload.Department, payload.Section, payload.Name, payload.IsActive, timestamp, timestamp);
+      INSERT INTO Login (Username, Password, Permission, Department, Section, SubSection, AllowedPages, AllowedDepartments, AllowedSections, AllowedSubSections, Name, IsActive, CreatedAt, UpdatedAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(payload.Username, payload.Password, payload.Permission, payload.Department, payload.Section, payload.SubSection, payload.AllowedPages, payload.AllowedDepartments, payload.AllowedSections, payload.AllowedSubSections, payload.Name, payload.IsActive, timestamp, timestamp);
 
     logSystem({
       userName: req.user?.username || 'system',
@@ -331,7 +394,7 @@ router.put('/users/:id', (req, res) => {
   }
 
   const targetUser = db.prepare(`
-    SELECT ID, Username, Password, Permission, Name, Department, Section, IsActive
+    SELECT ID, Username, Password, Permission, Name, Department, Section, IFNULL(SubSection, '') AS SubSection, IFNULL(AllowedPages, '[]') AS AllowedPages, IFNULL(AllowedDepartments, '[]') AS AllowedDepartments, IFNULL(AllowedSections, '[]') AS AllowedSections, IFNULL(AllowedSubSections, '[]') AS AllowedSubSections, IsActive
     FROM Login
     WHERE ID = ?
     LIMIT 1
@@ -373,13 +436,19 @@ router.put('/users/:id', (req, res) => {
     }
   }
 
+  const rawPermission = normalize(req.body.Permission);
   const payload = {
     Username: normalize(req.body.Username),
     Password: normalize(req.body.Password),
-    Permission: normalize(req.body.Permission),
+    Permission: normalizePermission(rawPermission),
     Name: normalize(req.body.Name),
     Department: normalize(req.body.Department),
+    SubSection: normalize(req.body.SubSection),
     Section: normalize(req.body.Section),
+    AllowedPages: normalizeAllowedPagesInput(req.body.AllowedPages),
+    AllowedDepartments: normalizeJsonArrayInput(req.body.AllowedDepartments),
+    AllowedSections: normalizeJsonArrayInput(req.body.AllowedSections),
+    AllowedSubSections: normalizeJsonArrayInput(req.body.AllowedSubSections),
     IsActive: Number(req.body.IsActive) === 0 ? 0 : 1
   };
 
@@ -391,7 +460,7 @@ router.put('/users/:id', (req, res) => {
     return res.status(400).json({ message: 'كلمة السر مطلوبة.' });
   }
 
-  if (!payload.Permission) {
+  if (!rawPermission) {
     return res.status(400).json({ message: 'الصلاحية مطلوبة.' });
   }
 
@@ -405,9 +474,9 @@ router.put('/users/:id', (req, res) => {
   try {
     const result = db.prepare(`
       UPDATE Login
-      SET Username = ?, Password = ?, Permission = ?, Department = ?, Section = ?, Name = ?, IsActive = ?, UpdatedAt = ?
+      SET Username = ?, Password = ?, Permission = ?, Department = ?, Section = ?, SubSection = ?, AllowedPages = ?, AllowedDepartments = ?, AllowedSections = ?, AllowedSubSections = ?, Name = ?, IsActive = ?, UpdatedAt = ?
       WHERE ID = ?
-    `).run(payload.Username, payload.Password, payload.Permission, payload.Department, payload.Section, payload.Name, payload.IsActive, timestamp, id);
+    `).run(payload.Username, payload.Password, payload.Permission, payload.Department, payload.Section, payload.SubSection, payload.AllowedPages, payload.AllowedDepartments, payload.AllowedSections, payload.AllowedSubSections, payload.Name, payload.IsActive, timestamp, id);
 
     if (result.changes === 0) {
       return res.status(404).json({ message: 'المستخدم غير موجود للتعديل.' });

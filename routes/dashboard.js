@@ -273,11 +273,38 @@ router.get('/summary', (req, res) => {
               ('د - البلاغات', 4),
               ('هـ - البلاغات', 5),
               ('ثابت صبح', 6),
-              ('أ - العمليات', 7),
-              ('ب - العمليات', 8),
-              ('ج - العمليات', 9),
-              ('د - العمليات', 10),
-              ('هـ - العمليات', 11)
+              ('سكرتارية البلاغات', 7),
+              ('صباحاً', 8),
+              ('أ - العمليات', 9),
+              ('ب - العمليات', 10),
+              ('ج - العمليات', 11),
+              ('د - العمليات', 12),
+              ('هـ - العمليات', 13),
+              ('سكرتارية العمليات', 14),
+              ('أ - الخدمات', 15),
+              ('ب - الخدمات', 16),
+              ('ج - الخدمات', 17),
+              ('د - الخدمات', 18),
+              ('هـ - الخدمات', 19),
+              ('سكرتارية الخدمات', 20)
+          ),
+          section_labels(label) AS (
+            VALUES
+              ('أ - فريق عمل البلاغات'),
+              ('ب - فريق عمل البلاغات'),
+              ('ج - فريق عمل البلاغات'),
+              ('د - فريق عمل البلاغات'),
+              ('هـ - فريق عمل البلاغات'),
+              ('سكرتارية البلاغات'),
+              ('سكرتارية العمليات'),
+              ('سكرتارية الخدمات'),
+              ('صباحاً')
+          ),
+          filtered_shift_labels AS (
+            SELECT shift_labels.label, shift_labels.sort_order
+            FROM shift_labels
+            LEFT JOIN section_labels ON section_labels.label = shift_labels.label
+            WHERE section_labels.label IS NULL
           ),
           source AS (
             SELECT DISTINCT EmpID, TRIM(Section) AS section_label
@@ -285,12 +312,12 @@ router.get('/summary', (req, res) => {
             WHERE Section IS NOT NULL AND TRIM(Section) <> ''
           )
           SELECT
-            shift_labels.label AS label,
+            filtered_shift_labels.label AS label,
             COUNT(source.EmpID) AS value
-          FROM shift_labels
-          LEFT JOIN source ON source.section_label = shift_labels.label
-          GROUP BY shift_labels.label, shift_labels.sort_order
-          ORDER BY shift_labels.sort_order
+          FROM filtered_shift_labels
+          LEFT JOIN source ON source.section_label = filtered_shift_labels.label
+          GROUP BY filtered_shift_labels.label, filtered_shift_labels.sort_order
+          ORDER BY filtered_shift_labels.sort_order
         `).all()
       : [];
 
@@ -302,13 +329,11 @@ router.get('/summary', (req, res) => {
               ('ب - فريق عمل البلاغات', 2),
               ('ج - فريق عمل البلاغات', 3),
               ('د - فريق عمل البلاغات', 4),
-              ('فريق عمل البلاغات صباحاً', 5),
-              ('أ - الخدمات', 6),
-              ('ب - الخدمات', 7),
-              ('ج - الخدمات', 8),
-              ('د - الخدمات', 9),
-              ('سكرتارية البلاغات', 10),
-              ('سكرتارية العمليات', 11)
+              ('هـ - فريق عمل البلاغات', 5),
+              ('سكرتارية البلاغات', 6),
+              ('سكرتارية العمليات', 7),
+              ('سكرتارية الخدمات', 8),
+              ('صباحاً', 9)
           ),
           source AS (
             SELECT DISTINCT EmpID, TRIM(Section) AS section_label

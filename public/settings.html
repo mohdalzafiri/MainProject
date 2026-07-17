@@ -70,6 +70,75 @@
       margin-top: 12px;
     }
 
+    .permissions-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .scope-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 10px;
+      width: 100%;
+    }
+
+    .scope-column {
+      border: 1px solid #dbe4f0;
+      border-radius: 12px;
+      background: #fff;
+      padding: 10px;
+      min-height: 220px;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 8px;
+    }
+
+    .scope-column h3 {
+      margin: 0;
+      font-size: 13px;
+      color: #334155;
+      text-align: right;
+    }
+
+    .scope-list {
+      display: grid;
+      gap: 8px;
+      align-content: start;
+      max-height: 320px;
+      overflow: auto;
+    }
+
+    .permission-chip {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      flex-direction: row-reverse;
+      gap: 0;
+      background: #f8fafc;
+      border: 1px solid #dbe4f0;
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-size: 13px;
+      font-weight: 700;
+      direction: rtl;
+      text-align: right;
+    }
+
+    .permission-chip input[type="checkbox"] {
+      margin: 0;
+      flex: 0 0 auto;
+    }
+
+    .permission-chip span {
+      flex: 0 1 auto;
+      text-align: right;
+      line-height: 1.35;
+      margin: 0;
+    }
+
     .table-wrap {
       overflow: auto;
       border: 1px solid var(--ui-border);
@@ -249,6 +318,14 @@
         grid-template-columns: 1fr;
       }
 
+      .permissions-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .scope-grid {
+        grid-template-columns: 1fr;
+      }
+
       .table-tools {
         align-items: stretch;
       }
@@ -302,6 +379,13 @@
           </div>
         </div>
 
+        <div class="single-row">
+          <div class="field">
+            <label for="subSection">الشعبة</label>
+            <input id="subSection" type="text" readonly />
+          </div>
+        </div>
+
         <div class="row">
           <div class="field">
             <label for="username">اسم المستخدم</label>
@@ -320,6 +404,7 @@
               <option value="">--اختر --</option>
               <option value="Admin">مدير</option>
               <option value="User">مستخدم</option>
+              <option value="View">عرض فقط</option>
             </select>
           </div>
         </div>
@@ -332,6 +417,30 @@
               <option value="1">نشط</option>
               <option value="0">موقوف</option>
             </select>
+          </div>
+        </div>
+
+        <div class="single-row" id="pagePermissionsSection">
+          <div class="field">
+            <label>صلاحيات الوصول المخصصة</label>
+            <div class="scope-grid">
+              <div class="scope-column">
+                <h3>الواجهات</h3>
+                <div id="pagePermissions" class="scope-list"></div>
+              </div>
+              <div class="scope-column">
+                <h3>الأقسام</h3>
+                <div id="departmentPermissions" class="scope-list"></div>
+              </div>
+              <div class="scope-column">
+                <h3>النوبات</h3>
+                <div id="sectionPermissions" class="scope-list"></div>
+              </div>
+              <div class="scope-column">
+                <h3>الشعب</h3>
+                <div id="subSectionPermissions" class="scope-list"></div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -361,6 +470,9 @@
               <th>كلمة السر</th>
               <th>الصلاحية</th>
               <th>الاسم</th>
+              <th>القسم</th>
+              <th>النوبة</th>
+              <th>الشعبة</th>
               <th>الحالة</th>
               <th>تاريخ الإضافة</th>
               <th>آخر تحديث</th>
@@ -508,9 +620,15 @@
     const fullNameSelect = document.getElementById('fullName');
     const departmentInput = document.getElementById('department');
     const sectionInput = document.getElementById('section');
+    const subSectionInput = document.getElementById('subSection');
     const usernameInput = document.getElementById('username');
     const passwordInput = document.getElementById('password');
     const permissionSelect = document.getElementById('permission');
+    const pagePermissionsContainer = document.getElementById('pagePermissions');
+    const departmentPermissionsContainer = document.getElementById('departmentPermissions');
+    const sectionPermissionsContainer = document.getElementById('sectionPermissions');
+    const subSectionPermissionsContainer = document.getElementById('subSectionPermissions');
+    const pagePermissionsSection = document.getElementById('pagePermissionsSection');
     const usersRows = document.getElementById('usersRows');
     const statusMsg = document.getElementById('statusMsg');
     const userIsActiveInput = document.getElementById('userIsActive');
@@ -557,6 +675,22 @@
     let templateFiles = [];
     let selectedTemplateConfigId = null;
     let pendingTemplateFile = null;
+
+    const pagePermissionOptions = [
+      { key: 'employees', label: 'الموظفين' },
+      { key: 'daily', label: 'اليوميات' },
+      { key: 'statistics', label: 'الاحصائيات' },
+      { key: 'holidays', label: 'الاجازات' },
+      { key: 'courses', label: 'الدورات' },
+      { key: 'transfers', label: 'التنقلات' },
+      { key: 'outsideEmployees', label: 'خارج الإدارة' },
+      { key: 'outgoing', label: 'الصادر' },
+      { key: 'incoming', label: 'الوارد' }
+    ];
+
+    function uniqueValues(items) {
+      return [...new Set(items.map((item) => String(item || '').trim()).filter(Boolean))];
+    }
 
     function pad2(value) {
       return String(value).padStart(2, '0');
@@ -626,14 +760,103 @@
       }
     }
 
+    function renderCheckboxOptions(container, options, groupKey) {
+      container.innerHTML = '';
+
+      options.forEach((item) => {
+        const label = document.createElement('label');
+        label.className = 'permission-chip';
+        label.innerHTML = `
+          <input type="checkbox" value="${item.key}" data-group="${groupKey}" />
+          <span>${item.label}</span>
+        `;
+        container.appendChild(label);
+      });
+    }
+
+    function renderScopeColumns() {
+      const departments = uniqueValues(departmentSections.map((item) => item.Department));
+      const sections = uniqueValues(departmentSections.map((item) => item.Section));
+      const subSections = uniqueValues(departmentSections.map((item) => item.SubSection));
+
+      const selectedPages = getSelectedGroupValues('pages');
+      const selectedDepartments = getSelectedGroupValues('departments');
+      const selectedSections = getSelectedGroupValues('sections');
+      const selectedSubSections = getSelectedGroupValues('subSections');
+
+      renderCheckboxOptions(pagePermissionsContainer, pagePermissionOptions, 'pages');
+      renderCheckboxOptions(
+        departmentPermissionsContainer,
+        departments.map((item) => ({ key: item, label: item })),
+        'departments'
+      );
+      renderCheckboxOptions(
+        sectionPermissionsContainer,
+        sections.map((item) => ({ key: item, label: item })),
+        'sections'
+      );
+      renderCheckboxOptions(
+        subSectionPermissionsContainer,
+        subSections.map((item) => ({ key: item, label: item })),
+        'subSections'
+      );
+
+      setSelectedGroupValues('pages', selectedPages);
+      setSelectedGroupValues('departments', selectedDepartments);
+      setSelectedGroupValues('sections', selectedSections);
+      setSelectedGroupValues('subSections', selectedSubSections);
+    }
+
+    function getGroupCheckboxes(groupKey) {
+      return [...document.querySelectorAll(`input[data-group="${groupKey}"]`)];
+    }
+
+    function getSelectedGroupValues(groupKey) {
+      return getGroupCheckboxes(groupKey)
+        .filter((item) => item.checked)
+        .map((item) => String(item.value || '').trim())
+        .filter(Boolean);
+    }
+
+    function setSelectedGroupValues(groupKey, values) {
+      const selected = new Set(Array.isArray(values) ? values : []);
+      getGroupCheckboxes(groupKey).forEach((checkbox) => {
+        checkbox.checked = selected.has(String(checkbox.value || '').trim());
+      });
+    }
+
+    function clearScopeSelections() {
+      setSelectedGroupValues('pages', []);
+      setSelectedGroupValues('departments', []);
+      setSelectedGroupValues('sections', []);
+      setSelectedGroupValues('subSections', []);
+    }
+
+    function applyPermissionMode() {
+      const role = String(permissionSelect.value || '').trim().toLowerCase();
+      const isAdminRole = role === 'admin';
+      pagePermissionsSection.style.display = isAdminRole ? 'none' : 'block';
+
+      document.querySelectorAll('input[data-group]').forEach((checkbox) => {
+        checkbox.disabled = isAdminRole;
+      });
+
+    }
+
     function getPayloadFromForm() {
+      const selectedPermission = String(permissionSelect.value || '').trim();
       return {
         Name: String(fullNameSelect.value || '').trim(),
         Department: String(departmentInput.value || '').trim(),
         Section: String(sectionInput.value || '').trim(),
+        SubSection: String(subSectionInput.value || '').trim(),
         Username: String(usernameInput.value || '').trim(),
         Password: String(passwordInput.value || '').trim(),
-        Permission: String(permissionSelect.value || '').trim(),
+        Permission: selectedPermission,
+        AllowedPages: selectedPermission.toLowerCase() === 'admin' ? [] : getSelectedGroupValues('pages'),
+        AllowedDepartments: selectedPermission.toLowerCase() === 'admin' ? [] : getSelectedGroupValues('departments'),
+        AllowedSections: selectedPermission.toLowerCase() === 'admin' ? [] : getSelectedGroupValues('sections'),
+        AllowedSubSections: selectedPermission.toLowerCase() === 'admin' ? [] : getSelectedGroupValues('subSections'),
         IsActive: Number(userIsActiveInput.value || 1)
       };
     }
@@ -642,6 +865,7 @@
       fullNameSelect.value = '';
       departmentInput.value = '';
       sectionInput.value = '';
+      subSectionInput.value = '';
       usernameInput.value = '';
       passwordInput.value = '';
       permissionSelect.value = '';
@@ -657,6 +881,8 @@
       userIsActiveInput.disabled = false;
       deleteBtn.disabled = false;
       userIsActiveInput.style.color = '';
+      clearScopeSelections();
+      applyPermissionMode();
       highlightSelectedRow();
     }
 
@@ -735,6 +961,7 @@
       const employee = employees.find((item) => String(item.Name || '').trim() === selectedName);
       departmentInput.value = employee ? String(employee.Department || '').trim() : '';
       sectionInput.value = employee ? String(employee.Section || '').trim() : '';
+      subSectionInput.value = employee ? String(employee.SubSection || '').trim() : '';
     }
 
     function renderEmployeesOptions() {
@@ -801,9 +1028,17 @@
       if (!sectionInput.value) {
         sectionInput.value = String(target.Section || '').trim();
       }
+      if (!subSectionInput.value) {
+        subSectionInput.value = String(target.SubSection || '').trim();
+      }
       usernameInput.value = String(target.Username || '').trim();
       passwordInput.value = String(target.Password || '');
       permissionSelect.value = String(target.Permission || '').trim();
+      setSelectedGroupValues('pages', Array.isArray(target.AllowedPages) ? target.AllowedPages : []);
+      setSelectedGroupValues('departments', Array.isArray(target.AllowedDepartments) ? target.AllowedDepartments : []);
+      setSelectedGroupValues('sections', Array.isArray(target.AllowedSections) ? target.AllowedSections : []);
+      setSelectedGroupValues('subSections', Array.isArray(target.AllowedSubSections) ? target.AllowedSubSections : []);
+      applyPermissionMode();
       const defaultStatusValue = Number(target.IsActive) === 0 ? '0' : '1';
       userIsActiveInput.value = defaultStatusValue;
 
@@ -828,6 +1063,10 @@
       usernameInput.readOnly = protectedAdmin;
       permissionSelect.disabled = protectedAdmin;
       userIsActiveInput.disabled = protectedAdmin;
+      document.querySelectorAll('input[data-group]').forEach((checkbox) => {
+        checkbox.disabled = protectedAdmin || String(permissionSelect.value || '').trim().toLowerCase() === 'admin';
+      });
+      pagePermissionsSection.style.display = protectedAdmin || String(permissionSelect.value || '').trim().toLowerCase() === 'admin' ? 'none' : 'block';
       deleteBtn.disabled = protectedAdmin;
 
       highlightSelectedRow();
@@ -843,7 +1082,7 @@
 
       if (!Array.isArray(users) || users.length === 0) {
         countLabel.textContent = 'عدد السجلات: 0';
-        usersRows.innerHTML = '<tr><td colspan="8">لا توجد بيانات مستخدمين حالياً.</td></tr>';
+        usersRows.innerHTML = '<tr><td colspan="11">لا توجد بيانات مستخدمين حالياً.</td></tr>';
         return;
       }
 
@@ -860,6 +1099,9 @@
           <td>${item.Password || ''}</td>
           <td>${item.Permission || ''}</td>
           <td>${item.Name || ''}</td>
+          <td>${item.Department || ''}</td>
+          <td>${item.Section || ''}</td>
+          <td>${item.SubSection || ''}</td>
           <td><span class="state-badge ${stateClass}">${stateLabel}</span></td>
           <td class="cell-time">${formatDateTime(item.CreatedAt || '')}</td>
           <td class="cell-time">${formatDateTime(item.UpdatedAt || '')}</td>
@@ -1048,6 +1290,7 @@
 
       departmentSections = await response.json();
       renderDepartmentSectionRows();
+      renderScopeColumns();
     }
 
     async function loadTemplateFiles() {
@@ -1236,10 +1479,6 @@
 
     async function addUser() {
       const payload = getPayloadFromForm();
-      if (!payload.Name) {
-        setStatus('اختر اسم الموظف من القائمة.', 'error');
-        return;
-      }
       if (!payload.Username) {
         setStatus('يرجى إدخال اسم المستخدم.', 'error');
         return;
@@ -1281,10 +1520,6 @@
       }
 
       const payload = getPayloadFromForm();
-      if (!payload.Name) {
-        setStatus('اختر اسم الموظف من القائمة.', 'error');
-        return;
-      }
       if (!payload.Username) {
         setStatus('يرجى إدخال اسم المستخدم.', 'error');
         return;
@@ -1506,9 +1741,11 @@
               <tr><td>اسم الموظف</td><td>${valueOrDash(payload.Name)}</td></tr>
               <tr><td>القسم</td><td>${valueOrDash(payload.Department)}</td></tr>
               <tr><td>النوبة</td><td>${valueOrDash(payload.Section)}</td></tr>
+              <tr><td>الشعبة</td><td>${valueOrDash(payload.SubSection)}</td></tr>
               <tr><td>اسم المستخدم</td><td>${valueOrDash(payload.Username)}</td></tr>
               <tr><td>كلمة السر</td><td>${valueOrDash(payload.Password)}</td></tr>
               <tr><td>الصلاحية</td><td>${valueOrDash(payload.Permission)}</td></tr>
+              <tr><td>الواجهات</td><td>${valueOrDash((payload.AllowedPages || []).join('، '))}</td></tr>
               <tr><td>الحالة</td><td>${activeText}</td></tr>
             </tbody>
           </table>
@@ -1585,6 +1822,10 @@
       updateDepartmentSectionFromName();
     });
 
+    permissionSelect.addEventListener('change', () => {
+      applyPermissionMode();
+    });
+
     backBtn.addEventListener('click', () => {
       window.location.href = '/dashboard.html';
     });
@@ -1628,6 +1869,9 @@
       setTemplateStatus('تم تحديث بيانات النماذج الإدارية.');
     });
 
+    renderScopeColumns();
+    clearScopeSelections();
+    applyPermissionMode();
     initializePage();
   </script>
 </body>

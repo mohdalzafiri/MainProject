@@ -84,7 +84,7 @@
     }
 
     .user-name-column {
-      display: table-cell;
+      display: none;
     }
 
     .transfer-columns {
@@ -200,6 +200,69 @@
     .status-line.show { display: block; }
     .status-line.ok { background: var(--ok-bg); color: var(--ok); }
     .status-line.error { background: var(--err-bg); color: var(--err); }
+
+    .doc-images-box {
+      margin-top: 12px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px;
+      background: #f8fafc;
+    }
+
+    .doc-images-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      font-weight: 700;
+      color: #334155;
+    }
+
+    .doc-images-view {
+      display: grid;
+      grid-template-columns: 44px 1fr 44px;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .doc-images-frame {
+      min-height: 220px;
+      border: 1px dashed #cbd5e1;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      background: #fff;
+      color: #64748b;
+      text-align: center;
+      padding: 8px;
+    }
+
+    .doc-images-frame img {
+      width: 100%;
+      height: 100%;
+      max-height: 280px;
+      object-fit: contain;
+      display: none;
+    }
+
+    .doc-images-nav {
+      padding: 10px 8px;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      background: #fff;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .doc-images-actions {
+      margin-top: 10px;
+      display: flex;
+      justify-content: flex-start;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
 
     .table-tools {
       display: flex;
@@ -326,11 +389,6 @@
                 <label for="fromSection">من النوبة</label>
                 <input id="fromSection" readonly />
               </div>
-
-              <div class="field">
-                <label for="fromSubSection">من الشعبة</label>
-                <input id="fromSubSection" readonly />
-              </div>
             </div>
 
             <div class="transfer-stack">
@@ -344,13 +402,6 @@
               <div class="field">
                 <label for="toSection">إلى النوبة</label>
                 <select id="toSection">
-                  <option value="">-- اختر --</option>
-                </select>
-              </div>
-
-              <div class="field">
-                <label for="toSubSection">إلى الشعبة</label>
-                <select id="toSubSection">
                   <option value="">-- اختر --</option>
                 </select>
               </div>
@@ -377,6 +428,25 @@
       </form>
 
       <div id="statusLine" class="status-line"></div>
+
+      <div class="doc-images-box">
+        <div class="doc-images-head">
+          <span>صور المستندات الرسمية</span>
+          <span id="docImageCount">0 / 0</span>
+        </div>
+        <div class="doc-images-view">
+          <button type="button" class="doc-images-nav" id="docImagePrevBtn">◀</button>
+          <div class="doc-images-frame">
+            <img id="docImagePreview" alt="صورة مستند" />
+            <div id="docImageEmpty">اختر سجلًا أولًا لعرض صور المستندات.</div>
+          </div>
+          <button type="button" class="doc-images-nav" id="docImageNextBtn">▶</button>
+        </div>
+        <div class="doc-images-actions">
+          <button type="button" class="btn primary" id="docImageUploadBtn">تصوير/رفع مستند</button>
+          <input id="docImageInput" type="file" accept="image/*" capture="environment" hidden />
+        </div>
+      </div>
     </section>
 
     <section class="panel">
@@ -398,8 +468,6 @@
               <th>إلى القسم</th>
               <th>من النوبة</th>
               <th>إلى النوبة</th>
-              <th>من الشعبة</th>
-              <th>إلى الشعبة</th>
               <th>ملاحظات</th>
               <th class="user-name-column">اسم المستخدم</th>
             </tr>
@@ -410,6 +478,7 @@
     </section>
   </div>
 
+  <script src="/record-photos.js"></script>
   <script>
     const authToken = localStorage.getItem('authToken');
     if (!authToken) {
@@ -448,8 +517,6 @@
     const toDepartmentInput = document.getElementById('toDepartment');
     const fromSectionInput = document.getElementById('fromSection');
     const toSectionInput = document.getElementById('toSection');
-    const fromSubSectionInput = document.getElementById('fromSubSection');
-    const toSubSectionInput = document.getElementById('toSubSection');
     const noteInput = document.getElementById('note');
     const userNameInput = document.getElementById('userName');
     const userNameField = document.getElementById('userNameField');
@@ -473,6 +540,12 @@
     let allEmployees = [];
     let selectedEmployee = null;
     let departmentSectionRows = [];
+    const recordPhotos = initRecordPhotos({
+      moduleKey: 'transfers',
+      authToken,
+      getRecordId: () => selectedId,
+      onStatus: showStatus
+    });
 
     if (userNameField) {
       userNameField.style.display = isAdminUser ? 'grid' : 'none';
@@ -634,24 +707,6 @@
       toSectionInput.value = sectionValues.includes(preferredValue) ? preferredValue : '';
     }
 
-    function populateSubSectionOptions(selectedDepartment = '', selectedSection = '', preferredValue = '') {
-      toSubSectionInput.innerHTML = '<option value="">-- اختر --</option>';
-
-      const subSectionValues = departmentSectionRows
-        .filter((item) => normalizeDepartment(item.Department) === normalizeDepartment(selectedDepartment) && String(item.Section || '').trim() === String(selectedSection || '').trim())
-        .map((item) => String(item.SubSection || '').trim())
-        .filter(Boolean);
-
-      subSectionValues.forEach((value) => {
-        const option = document.createElement('option');
-        option.value = value;
-        option.textContent = value;
-        toSubSectionInput.appendChild(option);
-      });
-
-      toSubSectionInput.value = subSectionValues.includes(preferredValue) ? preferredValue : '';
-    }
-
     function setSelectedEmployeeByName(name) {
       const normalized = String(name || '').trim();
       selectedEmployee = allEmployees.find((item) => String(item.Name || '').trim() === normalized) || null;
@@ -659,11 +714,9 @@
       if (selectedEmployee) {
         fromDepartmentInput.value = selectedEmployee.Department || '';
         fromSectionInput.value = selectedEmployee.Section || '';
-        fromSubSectionInput.value = selectedEmployee.SubSection || '';
       } else {
         fromDepartmentInput.value = '';
         fromSectionInput.value = '';
-        fromSubSectionInput.value = '';
       }
     }
 
@@ -677,11 +730,11 @@
         Name: String(nameInput.value || '').trim(),
         Department: String(fromDepartmentInput.value || '').trim(),
         Section: String(fromSectionInput.value || '').trim(),
-        SubSection: String(fromSubSectionInput.value || '').trim(),
+        SubSection: '',
         Status: 'نقل',
         Department1: String(toDepartmentInput.value || '').trim(),
         Section1: String(toSectionInput.value || '').trim(),
-        SubSection1: String(toSubSectionInput.value || '').trim(),
+        SubSection1: '',
         Enddate: formatDateYmdSlash(transferDateInput.value),
         Note: String(noteInput.value || '').trim(),
         UserName: userNameValue,
@@ -719,16 +772,15 @@
       transferDateDisplayInput.value = '';
       fromDepartmentInput.value = '';
       fromSectionInput.value = '';
-      fromSubSectionInput.value = '';
       populateDepartmentOptions();
       populateSectionOptions();
-      populateSubSectionOptions();
       if (userNameInput) {
         userNameInput.value = String(currentUser?.username || 'system');
       }
       syncUserNameColumnVisibility();
       Array.from(rowsBody.querySelectorAll('tr')).forEach((row) => row.classList.remove('selected'));
       applyNameFilter();
+      recordPhotos.clear();
     }
 
     function fillForm(item) {
@@ -739,25 +791,24 @@
       if (!selectedEmployee) {
         fromDepartmentInput.value = item.Department || '';
         fromSectionInput.value = item.Section || '';
-        fromSubSectionInput.value = item.SubSection || '';
       }
       statusInput.value = item.Status || 'نقل';
       populateDepartmentOptions(normalizeDepartment(item.Department1 || ''));
       populateSectionOptions(normalizeDepartment(item.Department1 || ''), item.Section1 || '');
-      populateSubSectionOptions(normalizeDepartment(item.Department1 || ''), item.Section1 || '', item.SubSection1 || '');
       transferDateInput.value = toDateInputValue(item.Enddate);
       syncDateDisplays();
       noteInput.value = item.Note || '';
       if (userNameInput) {
         userNameInput.value = item.UserName || currentUser?.username || 'system';
       }
+      recordPhotos.load();
     }
 
     function renderRows(items) {
       rowsBody.innerHTML = '';
 
       if (!Array.isArray(items) || items.length === 0) {
-        rowsBody.innerHTML = `<tr><td colspan="${isAdminUser ? 12 : 11}">لا توجد بيانات تنقلات حالياً.</td></tr>`;
+        rowsBody.innerHTML = `<tr><td colspan="${isAdminUser ? 10 : 9}">لا توجد بيانات تنقلات حالياً.</td></tr>`;
         countLabel.textContent = 'عدد السجلات: 0';
         syncUserNameColumnVisibility();
         return;
@@ -775,8 +826,6 @@
           <td>${item.Department1 ?? ''}</td>
           <td>${item.Section ?? ''}</td>
           <td>${item.Section1 ?? ''}</td>
-          <td>${item.SubSection ?? ''}</td>
-          <td>${item.SubSection1 ?? ''}</td>
           <td>${item.Note ?? ''}</td>
           <td class="user-name-column">${item.UserName ?? ''}</td>
         `;
@@ -846,7 +895,6 @@
       departmentSectionRows = Array.isArray(data) ? data : [];
       populateDepartmentOptions(normalizeDepartment(toDepartmentInput.value));
       populateSectionOptions(normalizeDepartment(toDepartmentInput.value), toSectionInput.value);
-      populateSubSectionOptions(normalizeDepartment(toDepartmentInput.value), toSectionInput.value, toSubSectionInput.value);
     }
 
     async function loadTransfers() {
@@ -868,8 +916,6 @@
         Department1: toDepartmentInput.value,
         Section: fromSectionInput.value,
         Section1: toSectionInput.value,
-        SubSection: fromSubSectionInput.value,
-        SubSection1: toSubSectionInput.value,
         Enddate: transferDateInput.value,
         Note: noteInput.value
       };
@@ -1076,12 +1122,6 @@
             <td class="label">إلى النوبة</td>
             <td class="value">${valueOrDash(row.Section1)}</td>
           </tr>
-          <tr>
-            <td class="label">من الشعبة</td>
-            <td class="value">${valueOrDash(row.SubSection)}</td>
-            <td class="label">إلى الشعبة</td>
-            <td class="value">${valueOrDash(row.SubSection1)}</td>
-          </tr>
         </table>
       </section>
 
@@ -1187,16 +1227,9 @@
     });
     toDepartmentInput.addEventListener('change', () => {
       populateSectionOptions(normalizeDepartment(toDepartmentInput.value));
-      populateSubSectionOptions(normalizeDepartment(toDepartmentInput.value), toSectionInput.value);
     });
     toSectionInput.addEventListener('focus', () => {
       populateSectionOptions(normalizeDepartment(toDepartmentInput.value), toSectionInput.value);
-    });
-    toSectionInput.addEventListener('change', () => {
-      populateSubSectionOptions(normalizeDepartment(toDepartmentInput.value), toSectionInput.value);
-    });
-    toSubSectionInput.addEventListener('focus', () => {
-      populateSubSectionOptions(normalizeDepartment(toDepartmentInput.value), toSectionInput.value, toSubSectionInput.value);
     });
 
     form.addEventListener('submit', async (event) => {

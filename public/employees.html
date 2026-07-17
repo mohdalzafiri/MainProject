@@ -193,8 +193,8 @@
             <input id="civilId" type="text" inputmode="numeric" maxlength="12" pattern="\d{12}" required />
           </div>
           <div class="field">
-            <label for="section" class="required">النوبة</label>
-            <select id="section" required>
+            <label for="section">النوبة</label>
+            <select id="section">
               <option value="">-- اختر --</option>
             </select>
           </div>
@@ -328,7 +328,7 @@
       <h2>صندوق عرض البيانات</h2>
       <div class="table-tools">
         <p id="countLabel">عدد السجلات: 0</p>
-        <input id="tableFilterInput" class="table-search" type="search" placeholder="فلترة باسم الموظف أثناء الكتابة" />
+        <input id="tableFilterInput" class="table-search" type="search" placeholder="فلترة باسم الموظف / القسم / النوبة / مقر العمل / المسمى الوظيفي" />
         <button type="button" class="btn primary" id="refreshBtn">تحديث العرض</button>
       </div>
 
@@ -435,7 +435,6 @@
       if (!nameInput.value.trim()) requiredErrors.push('اسم الموظف');
       if (!departmentInput.value.trim()) requiredErrors.push('القسم');
       if (!civilIdInput.value.trim()) requiredErrors.push('الرقم المدني');
-      if (!sectionInput.value.trim()) requiredErrors.push('النوبة');
 
       if (requiredErrors.length) {
         showStatus(`الحقول الإلزامية ناقصة: ${requiredErrors.join(' - ')}`, true);
@@ -623,7 +622,7 @@
       renderSectionOptions();
       renderSubSectionOptions();
       Array.from(rowsBody.querySelectorAll('tr')).forEach((row) => row.classList.remove('selected'));
-      applyNameFilter();
+      applyTableFilter();
     }
 
     function resetAfterNameClear() {
@@ -1120,7 +1119,7 @@
       }
     }
 
-    function applyNameFilter() {
+    function applyTableFilter() {
       const activeEmployees = allEmployees.filter((item) =>
         String(item.Status || '').trim() === 'نشط'
       );
@@ -1131,9 +1130,21 @@
         return;
       }
 
-      const filtered = activeEmployees.filter((item) =>
-        String(item.Name || '').toLowerCase().includes(keyword)
-      );
+      const terms = keyword.split(/\s+/).filter(Boolean);
+      const filtered = activeEmployees.filter((item) => {
+        const searchableText = [
+          item.Name,
+          item.Department,
+          item.Section,
+          item.Work,
+          item.Rank
+        ]
+          .map((value) => String(value || '').toLowerCase().trim())
+          .join(' ');
+
+        return terms.every((term) => searchableText.includes(term));
+      });
+
       renderRows(filtered);
     }
 
@@ -1145,7 +1156,7 @@
 
         if (data) {
           allEmployees = Array.isArray(data) ? data : [];
-          applyNameFilter();
+          applyTableFilter();
         }
       } catch (error) {
         showStatus(error.message, true);
@@ -1313,7 +1324,7 @@
     });
 
     tableFilterInput.addEventListener('input', () => {
-      applyNameFilter();
+      applyTableFilter();
     });
 
     backBtn.addEventListener('click', () => {
