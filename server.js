@@ -3,6 +3,7 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const os = require('os');
 const path = require('path');
+const fs = require('fs');
 require('dotenv').config();
 
 const app = express();
@@ -50,6 +51,24 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 app.use(express.static(path.join(__dirname, 'public')));
 
+app.get(/^\/mobile\/(.+)$/, (req, res, next) => {
+  const requested = req.params[0];
+  const mobileFile = path.join(__dirname, 'mobile', requested);
+  const publicFile = path.join(__dirname, 'public', requested);
+
+  if (fs.existsSync(mobileFile)) {
+    return res.sendFile(mobileFile);
+  }
+
+  if (fs.existsSync(publicFile)) {
+    return res.sendFile(publicFile);
+  }
+
+  next();
+});
+
+app.use('/mobile', express.static(path.join(__dirname, 'mobile')));
+
 // Routes
 const apiRoutes = require('./routes');
 
@@ -57,6 +76,10 @@ app.use('/api', apiRoutes);
 
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'login.html'));
+});
+
+app.get('/mobile', (req, res) => {
+  res.redirect(302, '/mobile/dashboard.html');
 });
 
 // Start server

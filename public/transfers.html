@@ -336,6 +336,12 @@
       .grid { grid-template-columns: 1fr; }
       table { min-width: 900px; }
     }
+
+    @media (max-width: 900px) {
+      .doc-images-box {
+        display: none;
+      }
+    }
   </style>
   <link rel="stylesheet" href="/layout-defaults.css" />
 </head>
@@ -429,24 +435,6 @@
 
       <div id="statusLine" class="status-line"></div>
 
-      <div class="doc-images-box">
-        <div class="doc-images-head">
-          <span>صور المستندات الرسمية</span>
-          <span id="docImageCount">0 / 0</span>
-        </div>
-        <div class="doc-images-view">
-          <button type="button" class="doc-images-nav" id="docImagePrevBtn">◀</button>
-          <div class="doc-images-frame">
-            <img id="docImagePreview" alt="صورة مستند" />
-            <div id="docImageEmpty">اختر سجلًا أولًا لعرض صور المستندات.</div>
-          </div>
-          <button type="button" class="doc-images-nav" id="docImageNextBtn">▶</button>
-        </div>
-        <div class="doc-images-actions">
-          <button type="button" class="btn primary" id="docImageUploadBtn">تصوير/رفع مستند</button>
-          <input id="docImageInput" type="file" accept="image/*" capture="environment" hidden />
-        </div>
-      </div>
     </section>
 
     <section class="panel">
@@ -484,6 +472,7 @@
     if (!authToken) {
       window.location.href = '/';
     }
+    const homeRoute = localStorage.getItem('uiMode') === 'mobile' ? '/mobile-dashboard.html' : '/dashboard.html';
 
     localStorage.removeItem('loggedInUser');
 
@@ -540,12 +529,6 @@
     let allEmployees = [];
     let selectedEmployee = null;
     let departmentSectionRows = [];
-    const recordPhotos = initRecordPhotos({
-      moduleKey: 'transfers',
-      authToken,
-      getRecordId: () => selectedId,
-      onStatus: showStatus
-    });
 
     if (userNameField) {
       userNameField.style.display = isAdminUser ? 'grid' : 'none';
@@ -788,10 +771,9 @@
       transferIdInput.value = item.ID;
       nameInput.value = item.Name || '';
       setSelectedEmployeeByName(item.Name || '');
-      if (!selectedEmployee) {
-        fromDepartmentInput.value = item.Department || '';
-        fromSectionInput.value = item.Section || '';
-      }
+      // always use the transfer record's own department/section, not the employee's current data
+      fromDepartmentInput.value = item.Department || '';
+      fromSectionInput.value = item.Section || '';
       statusInput.value = item.Status || 'نقل';
       populateDepartmentOptions(normalizeDepartment(item.Department1 || ''));
       populateSectionOptions(normalizeDepartment(item.Department1 || ''), item.Section1 || '');
@@ -1199,14 +1181,22 @@
     });
 
     dateOpenButtons.forEach((button) => {
-      button.addEventListener('click', () => {
+      button.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
         const pickerId = button.dataset.pickerId;
         const pickerInput = document.getElementById(pickerId);
         if (!pickerInput) return;
         if (typeof pickerInput.showPicker === 'function') {
-          pickerInput.showPicker();
+          try {
+            pickerInput.showPicker();
+          } catch (error) {
+            pickerInput.focus();
+            pickerInput.click();
+          }
           return;
         }
+        pickerInput.focus();
         pickerInput.click();
       });
     });
@@ -1332,7 +1322,7 @@
     });
 
     backBtn.addEventListener('click', () => {
-      window.location.href = '/dashboard.html';
+      window.location.href = homeRoute;
     });
 
     (async () => {

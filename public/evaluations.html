@@ -134,6 +134,11 @@
       text-shadow: none;
     }
 
+    .rank-first .performance-value { color: #15803d; font-weight: 700; }
+    .rank-second .performance-value { color: #a16207; font-weight: 700; }
+    .rank-third .performance-value { color: #c2410c; font-weight: 700; }
+    .rank-last .performance-value { color: #b91c1c; font-weight: 700; }
+
     @media (max-width: 1100px) {
       .top-panel .form-row {
         grid-template-columns: 1fr;
@@ -302,6 +307,9 @@
     const backBtn = document.getElementById('backBtn');
     const dateButtons = document.querySelectorAll('.date-picker-trigger');
 
+    const ALL_DEPARTMENTS_VALUE = '__ALL_DEPARTMENTS__';
+    const ALL_SECTIONS_VALUE = '__ALL_SECTIONS__';
+
     let departmentSectionRows = [];
     let currentReportRows = [];
     let activeEmployees = [];
@@ -355,6 +363,13 @@
       if (current && Array.from(select.options).some((item) => item.value === current)) {
         select.value = current;
       }
+    }
+
+    function appendAllOptionToEnd(select, optionValue, optionLabel) {
+      const option = document.createElement('option');
+      option.value = optionValue;
+      option.textContent = optionLabel;
+      select.appendChild(option);
     }
 
     function populatePeriodOptions() {
@@ -441,12 +456,19 @@
 
     function populateSectionOptions() {
       const selectedDepartment = normalizeDepartment(departmentInput.value);
+      const includeAllDepartments = !selectedDepartment || selectedDepartment === ALL_DEPARTMENTS_VALUE;
       const sections = departmentSectionRows
-        .filter((item) => normalizeDepartment(item.Department) === selectedDepartment)
+        .filter((item) => includeAllDepartments || normalizeDepartment(item.Department) === selectedDepartment)
         .map((item) => String(item.Section || '').trim())
         .filter(Boolean);
 
-      populateSelect(sectionInput, sections);
+      const preferred = sectionInput.value;
+      populateSelect(sectionInput, sections, preferred);
+      appendAllOptionToEnd(sectionInput, ALL_SECTIONS_VALUE, 'جميع النوبات');
+
+      if (preferred === ALL_SECTIONS_VALUE) {
+        sectionInput.value = ALL_SECTIONS_VALUE;
+      }
     }
 
     function populateEmployeeOptions() {
@@ -476,15 +498,25 @@
       }
 
       const compareYear = String(compareYearInput.value || '').trim();
+      const numericRanks = items
+        .map((item) => Number(item.Rank || 0))
+        .filter((rank) => Number.isFinite(rank) && rank > 0);
+      const lastRank = numericRanks.length ? Math.max(...numericRanks) : 0;
 
       items.forEach((item) => {
-        const isLowPerformance = Number(item.Percent ?? 0) < 50;
+        const rankValue = Number(item.Rank || 0);
         const previousYearValue = compareYear && item.PreviousYearPercent !== null && item.PreviousYearPercent !== undefined
           ? `${escapeHtml(item.PreviousYearPercent)}%`
           : '—';
 
+        let rankClass = '';
+        if (rankValue === 1) rankClass = 'rank-first';
+        else if (rankValue === 2) rankClass = 'rank-second';
+        else if (rankValue === 3) rankClass = 'rank-third';
+        else if (rankValue > 0 && rankValue === lastRank) rankClass = 'rank-last';
+
         const row = document.createElement('tr');
-        row.className = isLowPerformance ? 'performance-low' : 'performance-high';
+        row.className = rankClass;
         row.innerHTML = `
           <td>${escapeHtml(item.Name || '')}</td>
           <td class="mono performance-value">${escapeHtml(item.PresentCount ?? 0)}</td>
@@ -531,7 +563,13 @@
         .map((item) => normalizeDepartment(item.Department))
         .filter(Boolean);
 
-      populateSelect(departmentInput, departments);
+      const preferredDepartment = departmentInput.value;
+      populateSelect(departmentInput, departments, preferredDepartment);
+      appendAllOptionToEnd(departmentInput, ALL_DEPARTMENTS_VALUE, 'جميع الاقسام');
+      if (preferredDepartment === ALL_DEPARTMENTS_VALUE) {
+        departmentInput.value = ALL_DEPARTMENTS_VALUE;
+      }
+
       populateSectionOptions();
     }
 
@@ -567,8 +605,12 @@
     }
 
     async function loadEvaluationReport() {
-      const hasDepartment = Boolean(departmentInput.value);
-      const hasSection = Boolean(sectionInput.value);
+      const selectedDepartment = String(departmentInput.value || '').trim();
+      const selectedSection = String(sectionInput.value || '').trim();
+      const isAllDepartments = selectedDepartment === ALL_DEPARTMENTS_VALUE;
+      const isAllSections = selectedSection === ALL_SECTIONS_VALUE;
+      const hasDepartment = Boolean(selectedDepartment);
+      const hasSection = Boolean(selectedSection);
       const hasEmployee = Boolean(employeeNameInput.value);
       if (!hasDepartment && !hasSection && !hasEmployee) {
         currentReportRows = [];
@@ -579,8 +621,24 @@
 
       const params = new URLSearchParams();
 
-      if (departmentInput.value) params.set('department', departmentInput.value);
-      if (sectionInput.value) params.set('section', sectionInput.value);
+      if (!hasEmployee) {
+        if (isAllSections) {
+          params.set('scope', 'section');
+          params.set('mode', 'allSections');
+        } else if (isAllDepartments) {
+          params.set('scope', 'department');
+          params.set('mode', 'allDepartments');
+        } else if (selectedDepartment || selectedSection) {
+          params.set('scope', 'employee');
+        }
+      }
+
+      if (selectedDepartment && selectedDepartment !== ALL_DEPARTMENTS_VALUE) {
+        params.set('department', selectedDepartment);
+      }
+      if (selectedSection && selectedSection !== ALL_SECTIONS_VALUE) {
+        params.set('section', selectedSection);
+      }
       if (employeeNameInput.value) params.set('name', employeeNameInput.value);
       if (compareYearInput.value) params.set('compareYear', compareYearInput.value);
       if (fromDateInput.value) params.set('fromDate', fromDateInput.value);
@@ -741,7 +799,7 @@
     });
 
     backBtn.addEventListener('click', () => {
-      window.location.href = '/dashboard.html';
+      window.location.href = localStorage.getItem('uiMode') === 'mobile' ? '/mobile/dashboard.html' : '/dashboard.html';
     });
 
     const now = new Date();

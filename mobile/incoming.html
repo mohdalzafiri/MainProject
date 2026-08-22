@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>الصادر</title>
+  <title>الوارد</title>
   <style>
     :root {
       --bg: #eef4ff;
@@ -72,10 +72,10 @@
       gap: 12px;
     }
 
-    .subject-wrap {
+    .inline-grid {
       display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 12px;
-      grid-template-columns: 1fr;
     }
 
     .field {
@@ -287,7 +287,7 @@
     table {
       width: 100%;
       border-collapse: collapse;
-      min-width: 1100px;
+      min-width: 1250px;
       background: #fff;
     }
 
@@ -381,7 +381,7 @@
 
     @media (max-width: 1100px) {
       .grid { grid-template-columns: 1fr; }
-      table { min-width: 960px; }
+      table { min-width: 1080px; }
     }
 
     @media (max-width: 680px) {
@@ -389,7 +389,7 @@
         font-size: 24px;
       }
 
-      table { min-width: 900px; }
+      table { min-width: 980px; }
     }
   </style>
   <link rel="stylesheet" href="/layout-defaults.css" />
@@ -398,8 +398,8 @@
   <div class="page app-page">
     <header class="header">
       <div>
-        <h1>الصادر</h1>
-        <p>إدارة بيانات الصادر مع إضافة وتعديل وحذف وطباعة السجلات.</p>
+        <h1>الوارد</h1>
+        <p>إدارة بيانات الوارد مع إضافة وتعديل وحذف وطباعة السجلات.</p>
       </div>
       <div class="actions">
         <button type="button" class="btn dark" id="backBtn"><span class="btn-icon" aria-hidden="true">↩️</span><span>العودة للرئيسية</span></button>
@@ -408,20 +408,38 @@
 
     <section class="panel">
       <h2>تعبئة / اظهار البيانات</h2>
-      <form id="outgoingForm" autocomplete="off">
+      <form id="incomingForm" autocomplete="off">
         <input id="recordId" type="hidden" />
         <div class="grid">
           <div class="field">
-            <label for="docNumber">رقم الصادر</label>
+            <label for="docNumber">رقم الوارد</label>
             <input id="docNumber" type="text" inputmode="numeric" />
           </div>
 
           <div class="field">
-            <label for="docDate">تاريخ الصادر</label>
+            <label for="docDate">تاريخ الوارد</label>
             <div class="date-picker-wrap">
               <input id="docDateDisplay" class="date-display-input" type="text" placeholder="yyyy/mm/dd" readonly />
-              <button type="button" class="date-picker-trigger" data-picker-id="docDate" aria-label="اختيار تاريخ الصادر"></button>
+              <button type="button" class="date-picker-trigger" data-picker-id="docDate" aria-label="اختيار تاريخ الوارد"></button>
               <input id="docDate" type="date" class="native-date-input" />
+            </div>
+          </div>
+
+          <div class="field full">
+            <div class="inline-grid">
+              <div class="field">
+                <label for="bookNumber">رقم الكتاب الوارد</label>
+                <input id="bookNumber" type="text" />
+              </div>
+
+              <div class="field">
+                <label for="bookDate">تاريخ الكتاب الوارد</label>
+                <div class="date-picker-wrap">
+                  <input id="bookDateDisplay" class="date-display-input" type="text" placeholder="yyyy/mm/dd" readonly />
+                  <button type="button" class="date-picker-trigger" data-picker-id="bookDate" aria-label="اختيار تاريخ الكتاب الوارد"></button>
+                  <input id="bookDate" type="date" class="native-date-input" />
+                </div>
+              </div>
             </div>
           </div>
 
@@ -431,8 +449,13 @@
           </div>
 
           <div class="field">
-            <label for="recipient">الجهة المرسل لها</label>
-            <input id="recipient" type="text" />
+            <label for="sourceDepartment">الجهة الوارد منها</label>
+            <input id="sourceDepartment" type="text" />
+          </div>
+
+          <div class="field">
+            <label for="specialDepartment">القسم المختص</label>
+            <input id="specialDepartment" type="text" />
           </div>
 
           <div class="field full admin-only-field" id="userNameField">
@@ -489,10 +512,13 @@
           <thead>
             <tr>
               <th>م</th>
-              <th>رقم الصادر</th>
-              <th>تاريخ الصادر</th>
+              <th>رقم الوارد</th>
+              <th>تاريخ الوارد</th>
+              <th>رقم الكتاب الوارد</th>
+              <th>تاريخ الكتاب الوارد</th>
               <th>الموضوع</th>
-              <th>الجهة المرسل لها</th>
+              <th>الجهة الوارد منها</th>
+              <th>القسم المختص</th>
               <th>ملاحظات</th>
               <th class="user-name-column">اسم المستخدم</th>
             </tr>
@@ -509,7 +535,6 @@
     if (!authToken) {
       window.location.href = '/';
     }
-    const homeRoute = localStorage.getItem('uiMode') === 'mobile' ? '/mobile-dashboard.html' : '/dashboard.html';
 
     localStorage.removeItem('loggedInUser');
 
@@ -531,13 +556,17 @@
       window.location.href = '/';
     }
 
-    const form = document.getElementById('outgoingForm');
+    const form = document.getElementById('incomingForm');
     const recordIdInput = document.getElementById('recordId');
     const docNumberInput = document.getElementById('docNumber');
     const docDateDisplayInput = document.getElementById('docDateDisplay');
     const docDateInput = document.getElementById('docDate');
+    const bookNumberInput = document.getElementById('bookNumber');
+    const bookDateDisplayInput = document.getElementById('bookDateDisplay');
+    const bookDateInput = document.getElementById('bookDate');
     const subjectInput = document.getElementById('subject');
-    const recipientInput = document.getElementById('recipient');
+    const sourceDepartmentInput = document.getElementById('sourceDepartment');
+    const specialDepartmentInput = document.getElementById('specialDepartment');
     const notesInput = document.getElementById('notes');
     const userNameField = document.getElementById('userNameField');
     const userNameInput = document.getElementById('userName');
@@ -554,11 +583,11 @@
     const dateOpenButtons = document.querySelectorAll('.date-picker-trigger');
     const userNameColumnCells = () => document.querySelectorAll('.user-name-column');
 
-    const apiBase = '/api/outgoing';
+    const apiBase = '/api/incoming';
     let allRecords = [];
     let selectedRowId = null;
     const recordPhotos = initRecordPhotos({
-      moduleKey: 'outgoing',
+      moduleKey: 'incoming',
       authToken,
       getRecordId: () => selectedRowId,
       onStatus: showStatus
@@ -669,6 +698,7 @@
 
     function syncDateDisplays() {
       docDateDisplayInput.value = formatDateYmdSlash(docDateInput.value);
+      bookDateDisplayInput.value = formatDateYmdSlash(bookDateInput.value);
     }
 
     function clearForm() {
@@ -676,8 +706,11 @@
       selectedRowId = null;
       docNumberInput.value = '';
       docDateInput.value = '';
+      bookNumberInput.value = '';
+      bookDateInput.value = '';
       subjectInput.value = '';
-      recipientInput.value = '';
+      sourceDepartmentInput.value = '';
+      specialDepartmentInput.value = '';
       notesInput.value = '';
       setCurrentUser();
       syncDateDisplays();
@@ -691,8 +724,11 @@
       selectedRowId = Number(record.ID || 0) || null;
       docNumberInput.value = String(record.DocNumber || '');
       docDateInput.value = toDateInputValue(record.DocDate);
+      bookNumberInput.value = String(record.BookNumber || '');
+      bookDateInput.value = toDateInputValue(record.BookDate);
       subjectInput.value = String(record.Subject || '');
-      recipientInput.value = String(record.Recipient || '');
+      sourceDepartmentInput.value = String(record.SourceDepartment || '');
+      specialDepartmentInput.value = String(record.SpecialDepartment || '');
       notesInput.value = String(record.Notes || '');
       userNameInput.value = String(record.UserName || currentUser?.name || currentUser?.username || '');
       syncDateDisplays();
@@ -708,8 +744,11 @@
       return allRecords.filter((record) => [
         record.DocNumber,
         record.DocDate,
+        record.BookNumber,
+        record.BookDate,
         record.Subject,
-        record.Recipient,
+        record.SourceDepartment,
+        record.SpecialDepartment,
         record.Notes,
         record.UserName
       ].some((value) => String(value || '').toLowerCase().includes(query)));
@@ -720,7 +759,7 @@
       countLabel.textContent = `عدد السجلات: ${records.length}`;
 
       if (!records.length) {
-        rowsBody.innerHTML = `<tr><td colspan="${isAdminUser() ? 7 : 6}">لا توجد بيانات متاحة حالياً.</td></tr>`;
+        rowsBody.innerHTML = `<tr><td colspan="${isAdminUser() ? 10 : 9}">لا توجد بيانات متاحة حالياً.</td></tr>`;
         syncUserNameColumnVisibility();
         return;
       }
@@ -730,8 +769,11 @@
           <td class="mono">${index + 1}</td>
           <td class="mono">${record.DocNumber || ''}</td>
           <td class="mono">${record.DocDate || ''}</td>
+          <td class="mono">${record.BookNumber || ''}</td>
+          <td class="mono">${record.BookDate || ''}</td>
           <td>${record.Subject || ''}</td>
-          <td>${record.Recipient || ''}</td>
+          <td>${record.SourceDepartment || ''}</td>
+          <td>${record.SpecialDepartment || ''}</td>
           <td>${record.Notes || ''}</td>
           <td class="user-name-column">${record.UserName || ''}</td>
         </tr>
@@ -770,8 +812,11 @@
       const payload = {
         DocNumber: String(docNumberInput.value || '').trim(),
         DocDate: String(docDateInput.value || '').trim(),
+        BookNumber: String(bookNumberInput.value || '').trim(),
+        BookDate: String(bookDateInput.value || '').trim(),
         Subject: String(subjectInput.value || '').trim(),
-        Recipient: String(recipientInput.value || '').trim(),
+        SourceDepartment: String(sourceDepartmentInput.value || '').trim(),
+        SpecialDepartment: String(specialDepartmentInput.value || '').trim(),
         Notes: String(notesInput.value || '').trim(),
         UserName: String(userNameInput.value || '').trim()
       };
@@ -783,22 +828,25 @@
       });
 
       if (!response) return;
-      showStatus('تمت إضافة بيانات الصادر بنجاح.');
+      showStatus('تمت إضافة بيانات الوارد بنجاح.');
       clearForm();
       await loadRecords();
     }
 
     async function updateRecord() {
       if (!selectedRowId) {
-        showStatus('اختر سجل الصادر المراد تعديله أولاً.', true);
+        showStatus('اختر سجل الوارد المراد تعديله أولاً.', true);
         return;
       }
 
       const payload = {
         DocNumber: String(docNumberInput.value || '').trim(),
         DocDate: String(docDateInput.value || '').trim(),
+        BookNumber: String(bookNumberInput.value || '').trim(),
+        BookDate: String(bookDateInput.value || '').trim(),
         Subject: String(subjectInput.value || '').trim(),
-        Recipient: String(recipientInput.value || '').trim(),
+        SourceDepartment: String(sourceDepartmentInput.value || '').trim(),
+        SpecialDepartment: String(specialDepartmentInput.value || '').trim(),
         Notes: String(notesInput.value || '').trim(),
         UserName: String(userNameInput.value || '').trim()
       };
@@ -810,17 +858,17 @@
       });
 
       if (!response) return;
-      showStatus('تم تعديل بيانات الصادر بنجاح.');
+      showStatus('تم تعديل بيانات الوارد بنجاح.');
       await loadRecords();
     }
 
     async function deleteRecord() {
       if (!selectedRowId) {
-        showStatus('اختر سجل الصادر المراد حذفه أولاً.', true);
+        showStatus('اختر سجل الوارد المراد حذفه أولاً.', true);
         return;
       }
 
-      const confirmed = window.confirm('هل تريد حذف سجل الصادر المحدد؟');
+      const confirmed = window.confirm('هل تريد حذف سجل الوارد المحدد؟');
       if (!confirmed) return;
 
       const response = await requestJson(`${apiBase}/${selectedRowId}`, {
@@ -830,7 +878,7 @@
       });
 
       if (!response) return;
-      showStatus('تم حذف بيانات الصادر بنجاح.');
+      showStatus('تم حذف بيانات الوارد بنجاح.');
       clearForm();
       await loadRecords();
     }
@@ -839,14 +887,17 @@
       const row = {
         DocNumber: String(docNumberInput.value || '').trim(),
         DocDate: String(docDateDisplayInput.value || '').trim() || formatDateYmdSlash(docDateInput.value),
+        BookNumber: String(bookNumberInput.value || '').trim(),
+        BookDate: String(bookDateDisplayInput.value || '').trim() || formatDateYmdSlash(bookDateInput.value),
         Subject: String(subjectInput.value || '').trim(),
-        Recipient: String(recipientInput.value || '').trim(),
+        SourceDepartment: String(sourceDepartmentInput.value || '').trim(),
+        SpecialDepartment: String(specialDepartmentInput.value || '').trim(),
         Notes: String(notesInput.value || '').trim(),
         UserName: String(userNameInput.value || '').trim()
       };
 
-      if (!row.DocNumber && !row.Subject && !row.Recipient) {
-        showStatus('أدخل بيانات الصادر في الحقول أولاً قبل الطباعة.', true);
+      if (!row.DocNumber && !row.Subject && !row.BookNumber) {
+        showStatus('أدخل بيانات الوارد في الحقول أولاً قبل الطباعة.', true);
         return;
       }
 
@@ -866,7 +917,7 @@
         <html lang="ar" dir="rtl">
         <head>
           <meta charset="UTF-8" />
-          <title>طباعة بيانات الصادر</title>
+          <title>طباعة بيانات الوارد</title>
           <style>
             body { font-family: Tahoma, Arial, sans-serif; margin: 20px; color: #0f172a; }
             h1 { margin: 0 0 14px; font-size: 24px; }
@@ -876,12 +927,15 @@
           </style>
         </head>
         <body>
-          <h1>بيانات الصادر</h1>
+          <h1>بيانات الوارد</h1>
           <table>
-            <tr><th>رقم الصادر</th><td>${valueOrDash(row.DocNumber)}</td></tr>
-            <tr><th>تاريخ الصادر</th><td>${valueOrDash(row.DocDate)}</td></tr>
+            <tr><th>رقم الوارد</th><td>${valueOrDash(row.DocNumber)}</td></tr>
+            <tr><th>تاريخ الوارد</th><td>${valueOrDash(row.DocDate)}</td></tr>
+            <tr><th>رقم الكتاب الوارد</th><td>${valueOrDash(row.BookNumber)}</td></tr>
+            <tr><th>تاريخ الكتاب الوارد</th><td>${valueOrDash(row.BookDate)}</td></tr>
             <tr><th>الموضوع</th><td>${valueOrDash(row.Subject)}</td></tr>
-            <tr><th>الجهة المرسل لها</th><td>${valueOrDash(row.Recipient)}</td></tr>
+            <tr><th>الجهة الوارد منها</th><td>${valueOrDash(row.SourceDepartment)}</td></tr>
+            <tr><th>القسم المختص</th><td>${valueOrDash(row.SpecialDepartment)}</td></tr>
             <tr><th>ملاحظات</th><td>${valueOrDash(row.Notes)}</td></tr>
             <tr><th>اسم المستخدم</th><td>${valueOrDash(row.UserName)}</td></tr>
           </table>
@@ -905,6 +959,8 @@
 
     docDateInput.addEventListener('change', syncDateDisplays);
     docDateInput.addEventListener('input', syncDateDisplays);
+    bookDateInput.addEventListener('change', syncDateDisplays);
+    bookDateInput.addEventListener('input', syncDateDisplays);
     tableSearch.addEventListener('input', renderRows);
 
     form.addEventListener('submit', async (event) => {
@@ -917,7 +973,7 @@
     printBtn.addEventListener('click', printRecord);
     refreshBtn.addEventListener('click', loadRecords);
     backBtn.addEventListener('click', () => {
-      window.location.href = homeRoute;
+      window.location.href = localStorage.getItem('uiMode') === 'mobile' ? '/mobile/dashboard.html' : '/dashboard.html';
     });
 
     setCurrentUser();

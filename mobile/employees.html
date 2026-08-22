@@ -108,95 +108,6 @@
     .employees-table th:nth-child(12),
     .employees-table td:nth-child(12) { width: 12%; }
 
-    .mobile-employee-cards {
-      display: none;
-      gap: 12px;
-    }
-
-    .mobile-employee-card {
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      background: #fff;
-      padding: 14px;
-      display: grid;
-      gap: 10px;
-      text-align: right;
-      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
-    }
-
-    .mobile-employee-card.selected {
-      border-color: #60a5fa;
-      box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.16);
-    }
-
-    .mobile-employee-card-head {
-      display: flex;
-      justify-content: space-between;
-      gap: 10px;
-      align-items: flex-start;
-    }
-
-    .mobile-employee-card-head strong {
-      font-size: 15px;
-      line-height: 1.4;
-    }
-
-    .mobile-employee-card-head span {
-      color: var(--muted);
-      font-size: 12px;
-      white-space: nowrap;
-    }
-
-    .mobile-employee-card-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 8px;
-    }
-
-    .mobile-employee-card-item {
-      padding: 8px 10px;
-      border-radius: 12px;
-      background: #f8fafc;
-      border: 1px solid rgba(15, 23, 42, 0.08);
-      display: grid;
-      gap: 3px;
-    }
-
-    .mobile-employee-card-item span:first-child {
-      color: var(--muted);
-      font-size: 11px;
-      font-weight: 700;
-    }
-
-    .mobile-employee-card-item span:last-child {
-      color: var(--text);
-      font-size: 13px;
-      font-weight: 700;
-      line-height: 1.4;
-      overflow-wrap: anywhere;
-    }
-
-    .mobile-employee-card-note {
-      padding: 10px 12px;
-      border-radius: 12px;
-      background: #f8fafc;
-      border: 1px solid rgba(15, 23, 42, 0.08);
-      color: var(--text);
-      font-size: 13px;
-      line-height: 1.6;
-      overflow-wrap: anywhere;
-    }
-
-    @media (max-width: 900px) {
-      .table-wrap {
-        display: none;
-      }
-
-      .mobile-employee-cards {
-        display: grid;
-      }
-    }
-
   </style>
   <link rel="stylesheet" href="/layout-defaults.css" />
 </head>
@@ -432,6 +343,7 @@
               <th>المسمى الوظيفي</th>
               <th>القسم</th>
               <th>النوبة</th>
+              <th>الشعبة</th>
               <th>مقر العمل</th>
               <th>تاريخ التعيين</th>
               <th>تاريخ المباشرة</th>
@@ -442,7 +354,6 @@
           <tbody id="rows"></tbody>
         </table>
       </div>
-      <div id="mobileRows" class="mobile-employee-cards" aria-live="polite"></div>
     </section>
   </div>
 
@@ -475,7 +386,6 @@
 
     const form = document.getElementById('employeeForm');
     const rowsBody = document.getElementById('rows');
-    const mobileRows = document.getElementById('mobileRows');
     const countLabel = document.getElementById('countLabel');
     const statusLine = document.getElementById('statusLine');
 
@@ -505,77 +415,10 @@
     const tableFilterInput = document.getElementById('tableFilterInput');
     const backBtn = document.getElementById('backBtn');
     const dateOpenButtons = document.querySelectorAll('.date-picker-trigger');
-    const homeRoute = localStorage.getItem('uiMode') === 'mobile' ? '/mobile-dashboard.html' : '/dashboard.html';
 
     let selectedId = null;
     let allEmployees = [];
     let departmentSectionRows = [];
-    let dashboardUrlFilterActive = false;
-
-    function normalizeFilterText(value) {
-      return String(value || '')
-        .normalize('NFKC')
-        .toLowerCase()
-        .replace(/[\u200e\u200f\u061c\u202a-\u202e]/g, ' ')
-        .replace(/[\-_/()]/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
-    }
-
-    function exactDashboardFilterMatch(value, target) {
-      const source = normalizeFilterText(value);
-      const needle = normalizeFilterText(target);
-
-      if (!source || !needle) {
-        return false;
-      }
-
-      return source === needle;
-    }
-
-    function applyDashboardFilterFromUrl() {
-      const params = new URLSearchParams(window.location.search);
-      const departmentValue = params.get('department');
-      const sectionValue = params.get('section') || params.get('shift');
-      const workplaceValue = params.get('workplace') || params.get('work');
-
-      const dashboardFilters = [
-        { key: 'department', value: departmentValue },
-        { key: 'section', value: sectionValue },
-        { key: 'workplace', value: workplaceValue }
-      ].filter((item) => item.value && item.value.trim());
-
-      if (!dashboardFilters.length) {
-        dashboardUrlFilterActive = false;
-        return;
-      }
-
-      dashboardUrlFilterActive = true;
-
-      const filtered = allEmployees.filter((item) => {
-        if (normalizeFilterText(item.Status) !== normalizeFilterText('نشط')) {
-          return false;
-        }
-
-        return dashboardFilters.some((filter) => {
-          if (filter.key === 'department') {
-            return exactDashboardFilterMatch(item.Department, filter.value);
-          }
-
-          if (filter.key === 'section') {
-            return exactDashboardFilterMatch(item.Section, filter.value);
-          }
-
-          if (filter.key === 'workplace') {
-            return exactDashboardFilterMatch(item.Work, filter.value);
-          }
-
-          return false;
-        });
-      });
-
-      renderRows(filtered);
-    }
 
     function showStatus(message, isError = false) {
       statusLine.className = `status-line show ${isError ? 'error' : 'ok'}`;
@@ -874,59 +717,6 @@
     function safeValue(value) {
       const text = String(value ?? '').trim();
       return text ? escapeHtml(text) : '---';
-    }
-
-    function isMobileLayout() {
-      return window.matchMedia('(max-width: 900px)').matches || window.matchMedia('(pointer: coarse)').matches;
-    }
-
-    function renderMobileEmployeeCards(items) {
-      if (!mobileRows) {
-        return;
-      }
-
-      mobileRows.innerHTML = '';
-      if (!isMobileLayout()) {
-        return;
-      }
-
-      if (!Array.isArray(items) || items.length === 0) {
-        mobileRows.innerHTML = '<div class="mobile-employee-card"><strong>لا توجد بيانات</strong><span>لا توجد سجلات لعرضها حالياً.</span></div>';
-        return;
-      }
-
-      items.forEach((item) => {
-        const card = document.createElement('button');
-        card.type = 'button';
-        card.className = `mobile-employee-card${String(selectedId) === String(item.ID) ? ' selected' : ''}`;
-        card.innerHTML = `
-          <div class="mobile-employee-card-head">
-            <strong>${safeValue(item.Name)}</strong>
-            <span>${safeValue(item.ID)}</span>
-          </div>
-          <div class="mobile-employee-card-grid">
-            <div class="mobile-employee-card-item"><span>الرتبة</span><span>${safeValue(item.Title)}</span></div>
-            <div class="mobile-employee-card-item"><span>الرقم المدني</span><span>${safeValue(item.CivilID)}</span></div>
-            <div class="mobile-employee-card-item"><span>القسم</span><span>${safeValue(item.Department)}</span></div>
-            <div class="mobile-employee-card-item"><span>النوبة</span><span>${safeValue(item.Section)}</span></div>
-            <div class="mobile-employee-card-item"><span>الشعبة</span><span>${safeValue(item.SubSection)}</span></div>
-            <div class="mobile-employee-card-item"><span>مقر العمل</span><span>${safeValue(item.Work)}</span></div>
-            <div class="mobile-employee-card-item"><span>تاريخ التعيين</span><span>${safeValue(formatKuwaitDate(item.Empdate))}</span></div>
-            <div class="mobile-employee-card-item"><span>تاريخ المباشرة</span><span>${safeValue(formatKuwaitDate(item.Startdate))}</span></div>
-          </div>
-          <div class="mobile-employee-card-item"><span>حالة الملف</span><span>${safeValue(item.Status)}</span></div>
-          <div class="mobile-employee-card-note"><span>ملاحظات</span><div>${safeValue(item.Note)}</div></div>
-        `;
-
-        card.addEventListener('click', () => {
-          Array.from(mobileRows.querySelectorAll('.mobile-employee-card')).forEach((node) => node.classList.remove('selected'));
-          card.classList.add('selected');
-          fillForm(item);
-          clearStatus();
-        });
-
-        mobileRows.appendChild(card);
-      });
     }
 
     function buildEmployeeCvPrintHtml(item) {
@@ -1277,10 +1067,9 @@
     function renderRows(items) {
       rowsBody.innerHTML = '';
       const activeTotal = allEmployees.filter((item) => String(item.Status || '').trim() === 'نشط').length;
-      renderMobileEmployeeCards(items);
 
       if (!Array.isArray(items) || items.length === 0) {
-        rowsBody.innerHTML = '<tr><td colspan="12">لا توجد بيانات موظفين حالياً.</td></tr>';
+        rowsBody.innerHTML = '<tr><td colspan="13">لا توجد بيانات موظفين حالياً.</td></tr>';
         const hasFilter = Boolean(tableFilterInput.value.trim());
         countLabel.textContent = hasFilter
           ? `عدد السجلات: 0 من ${activeTotal}`
@@ -1299,6 +1088,7 @@
           <td>${item.Rank ?? ''}</td>
           <td>${item.Department ?? ''}</td>
           <td>${item.Section ?? ''}</td>
+          <td>${item.SubSection ?? ''}</td>
           <td>${item.Work ?? ''}</td>
           <td>${formatKuwaitDate(item.Empdate)}</td>
           <td>${formatKuwaitDate(item.Startdate)}</td>
@@ -1317,13 +1107,9 @@
       });
 
       const hasFilter = Boolean(tableFilterInput.value.trim());
-      if (dashboardUrlFilterActive) {
-        countLabel.textContent = `عدد السجلات: ${items.length}`;
-      } else {
-        countLabel.textContent = hasFilter
-          ? `عدد السجلات: ${items.length} من ${activeTotal}`
-          : `عدد السجلات: ${items.length}`;
-      }
+      countLabel.textContent = hasFilter
+        ? `عدد السجلات: ${items.length} من ${activeTotal}`
+        : `عدد السجلات: ${items.length}`;
 
       if (selectedId) {
         const selectedRow = rowsBody.querySelector(`tr[data-id="${selectedId}"]`);
@@ -1331,8 +1117,6 @@
           selectedRow.classList.add('selected');
         }
       }
-
-      renderMobileEmployeeCards(items);
     }
 
     function applyTableFilter() {
@@ -1372,10 +1156,7 @@
 
         if (data) {
           allEmployees = Array.isArray(data) ? data : [];
-          applyDashboardFilterFromUrl();
-          if (!dashboardUrlFilterActive && !tableFilterInput.value.trim()) {
-            applyTableFilter();
-          }
+          applyTableFilter();
         }
       } catch (error) {
         showStatus(error.message, true);
@@ -1543,12 +1324,11 @@
     });
 
     tableFilterInput.addEventListener('input', () => {
-      dashboardUrlFilterActive = false;
       applyTableFilter();
     });
 
     backBtn.addEventListener('click', () => {
-      window.location.href = homeRoute;
+      window.location.href = localStorage.getItem('uiMode') === 'mobile' ? '/mobile/dashboard.html' : '/dashboard.html';
     });
 
     loadDepartmentSections();

@@ -185,6 +185,7 @@
       e.preventDefault();
       const formData = new FormData(form);
       const payload = Object.fromEntries(formData.entries());
+      const isMobileLayout = window.matchMedia('(max-width: 900px)').matches || window.matchMedia('(pointer: coarse)').matches;
 
       messageBox.className = 'message';
       messageBox.textContent = 'جاري التحقق...';
@@ -209,7 +210,8 @@
             clearRememberedCredentials();
           }
           localStorage.setItem('authToken', result.token);
-          window.location.href = '/dashboard.html';
+          localStorage.setItem('uiMode', isMobileLayout ? 'mobile' : 'desktop');
+          window.location.href = isMobileLayout ? '/mobile-dashboard.html' : '/dashboard.html';
           return;
         }
       } catch (err) {

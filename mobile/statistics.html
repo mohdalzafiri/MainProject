@@ -167,143 +167,6 @@
       background: #eef2ff;
     }
 
-    .statistics-cards {
-      display: none;
-      gap: 12px;
-    }
-
-    .statistics-card {
-      border: 1px solid var(--ui-border);
-      border-radius: 16px;
-      background: #fff;
-      padding: 14px;
-      display: grid;
-      gap: 10px;
-      text-align: right;
-      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
-    }
-
-    .statistics-card.status-present {
-      border-color: #22c55e;
-    }
-
-    .statistics-card.status-absent {
-      border-color: #ef4444;
-    }
-
-    .statistics-card.status-leave {
-      border-color: #3b82f6;
-    }
-
-    .statistics-card.status-delay {
-      border-color: #f59e0b;
-    }
-
-    .statistics-card.status-course {
-      border-color: #a855f7;
-    }
-
-    .statistics-card-head {
-      display: flex;
-      justify-content: space-between;
-      gap: 10px;
-      align-items: flex-start;
-    }
-
-    .statistics-card-head strong {
-      font-size: 15px;
-      line-height: 1.4;
-    }
-
-    .statistics-card-head span {
-      color: var(--ui-muted);
-      font-size: 12px;
-      white-space: nowrap;
-    }
-
-    .statistics-status-badge {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 72px;
-      padding: 4px 10px;
-      border-radius: 999px;
-      font-size: 12px;
-      font-weight: 700;
-      white-space: nowrap;
-      border: 1px solid transparent;
-    }
-
-    .statistics-status-badge.status-present {
-      background: #dcfce7;
-      color: #166534;
-      border-color: #22c55e;
-    }
-
-    .statistics-status-badge.status-absent {
-      background: #fee2e2;
-      color: #991b1b;
-      border-color: #ef4444;
-    }
-
-    .statistics-status-badge.status-leave {
-      background: #dbeafe;
-      color: #1d4ed8;
-      border-color: #3b82f6;
-    }
-
-    .statistics-status-badge.status-delay {
-      background: #fef3c7;
-      color: #92400e;
-      border-color: #f59e0b;
-    }
-
-    .statistics-status-badge.status-course {
-      background: #f3e8ff;
-      color: #7e22ce;
-      border-color: #a855f7;
-    }
-
-    .statistics-card-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 8px;
-    }
-
-    .statistics-card-item {
-      padding: 8px 10px;
-      border-radius: 12px;
-      background: #f8fafc;
-      border: 1px solid rgba(15, 23, 42, 0.08);
-      display: grid;
-      gap: 3px;
-    }
-
-    .statistics-card-item span:first-child {
-      color: var(--ui-muted);
-      font-size: 11px;
-      font-weight: 700;
-    }
-
-    .statistics-card-item span:last-child {
-      color: var(--ui-text);
-      font-size: 13px;
-      font-weight: 700;
-      line-height: 1.4;
-      overflow-wrap: anywhere;
-    }
-
-    .statistics-card-note {
-      padding: 10px 12px;
-      border-radius: 12px;
-      background: #f8fafc;
-      border: 1px solid rgba(15, 23, 42, 0.08);
-      color: var(--ui-text);
-      font-size: 13px;
-      line-height: 1.6;
-      overflow-wrap: anywhere;
-    }
-
     .statistics-table {
       table-layout: fixed;
     }
@@ -358,89 +221,6 @@
       .top-panel .form-row {
         grid-template-columns: 1fr;
       }
-
-      .status-filter-bar {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        align-items: stretch;
-        justify-content: flex-start;
-        overflow-x: visible;
-        direction: rtl;
-        width: 100%;
-        max-width: 100%;
-        box-sizing: border-box;
-        margin-inline: 0;
-        padding: 10px;
-      }
-
-      .status-filter-item {
-        width: 100%;
-        min-width: 0;
-        flex: 1 1 100%;
-        padding: 8px 10px;
-        border: 1px solid rgba(15, 23, 42, 0.10);
-        border-radius: 12px;
-        background: #ffffff;
-        display: grid;
-        grid-template-columns: 14px minmax(0, 1fr);
-        align-items: center;
-        column-gap: 10px;
-        box-sizing: border-box;
-        overflow: hidden;
-        direction: rtl;
-      }
-
-      .status-filter-item,
-      .status-filter-item span {
-        text-align: right;
-      }
-
-      .status-filter-item input {
-        grid-column: 1;
-        width: 14px;
-        height: 14px;
-        margin: 0;
-        justify-self: center;
-      }
-
-      .status-filter-item span {
-        grid-column: 2;
-        direction: inherit;
-        line-height: 1.2;
-        min-width: 0;
-      }
-
-      .status-return-item {
-        transform: none;
-      }
-
-      .status-return-item span {
-        margin-inline-start: 0;
-      }
-
-      .status-filter-refresh {
-        width: 100%;
-        margin-inline-start: 0;
-        border-radius: 12px;
-      }
-
-      .statistics-table,
-      .table-wrap table {
-        min-width: 0;
-      }
-
-      body.app-shell.mobile-ui .table-wrap {
-        display: none;
-      }
-
-      body.app-shell.mobile-ui .statistics-cards {
-        display: grid;
-      }
-
-      .status-filter-bar > * {
-        min-width: 0;
-      }
     }
 
     @media (max-width: 720px) {
@@ -455,14 +235,6 @@
       .form-actions .btn {
         min-width: 0;
         width: auto;
-      }
-
-      .status-filter-bar {
-        gap: 8px;
-      }
-
-      .statistics-card-grid {
-        grid-template-columns: 1fr;
       }
 
     }
@@ -587,24 +359,14 @@
           </tbody>
         </table>
       </div>
-      <div id="mobileRows" class="statistics-cards" aria-live="polite"></div>
     </section>
   </div>
 
   <script>
     const authToken = localStorage.getItem('authToken');
-    const isMobileUiMode = localStorage.getItem('uiMode') === 'mobile';
-
-    if (isMobileUiMode) {
-      document.body.classList.add('mobile-ui');
-    } else {
-      document.body.classList.remove('mobile-ui');
-    }
-
     if (!authToken) {
       window.location.href = '/';
     }
-    const homeRoute = localStorage.getItem('uiMode') === 'mobile' ? '/mobile-dashboard.html' : '/dashboard.html';
 
     function pad2(value) {
       return String(value).padStart(2, '0');
@@ -625,7 +387,6 @@
     const sectionInput = document.getElementById('section');
     const employeeNameInput = document.getElementById('employeeName');
     const rowsBody = document.getElementById('rows');
-    const mobileRows = document.getElementById('mobileRows');
     const countLabel = document.getElementById('countLabel');
     const searchMessage = document.getElementById('searchMessage');
     const searchBtn = document.getElementById('searchBtn');
@@ -738,21 +499,6 @@
       return mapping.filter((item) => statusCheckboxes[item.key]?.checked);
     }
 
-    function getMobileStatusClass(item) {
-      const status = String(item.Status || '').trim();
-      if (status === 'حضور' || status === 'حضور بعد غياب') return 'status-present';
-      if (status === 'غياب') return 'status-absent';
-      if (status === 'إجازة' || status === 'اجازة' || status === 'رخصة') return 'status-leave';
-      if (['تأخير', 'استئذان'].includes(status)) return 'status-delay';
-      if (status === 'دورة') return 'status-course';
-      return '';
-    }
-
-    function getMobileStatusLabel(item) {
-      const status = String(item.Status || '').trim();
-      return status || '--';
-    }
-
     function getFilteredRows() {
       const selectedStatuses = getSelectedStatusTerms();
       if (!selectedStatuses.length) {
@@ -767,13 +513,9 @@
 
     function renderRows(items) {
       rowsBody.innerHTML = '';
-      if (mobileRows) mobileRows.innerHTML = '';
 
       if (!Array.isArray(items) || items.length === 0) {
         rowsBody.innerHTML = '<tr><td colspan="13">لا توجد بيانات متاحة للمعايير الحالية.</td></tr>';
-        if (mobileRows) {
-          mobileRows.innerHTML = '<div class="statistics-card"><div class="statistics-card-note">لا توجد بيانات متاحة للمعايير الحالية.</div></div>';
-        }
         countLabel.textContent = 'عدد السجلات: 0';
         return;
       }
@@ -796,30 +538,6 @@
           <td>${escapeHtml(item.Note || '')}</td>
         `;
         rowsBody.appendChild(row);
-
-        if (mobileRows) {
-          const card = document.createElement('article');
-          const mobileStatusClass = getMobileStatusClass(item);
-          card.className = `statistics-card ${mobileStatusClass}`.trim();
-          card.innerHTML = `
-            <div class="statistics-card-head">
-              <strong>${index + 1}. ${escapeHtml(item.Name || '')}</strong>
-              <span class="statistics-status-badge ${mobileStatusClass}">${escapeHtml(getMobileStatusLabel(item))}</span>
-            </div>
-            <div class="statistics-card-grid">
-              <div class="statistics-card-item"><span>التاريخ</span><span class="mono">${escapeHtml(item.Today || '')}</span></div>
-              <div class="statistics-card-item"><span>القسم</span><span>${escapeHtml(item.Department || '')}</span></div>
-              <div class="statistics-card-item"><span>النوبة</span><span>${escapeHtml(item.Section || '')}</span></div>
-              <div class="statistics-card-item"><span>الفترة</span><span>${escapeHtml(item.Period || '')}</span></div>
-              <div class="statistics-card-item"><span>الحضور</span><span class="mono">${escapeHtml(item.InTime || '')}</span></div>
-              <div class="statistics-card-item"><span>الانصراف</span><span class="mono">${escapeHtml(item.OutTime || '')}</span></div>
-              <div class="statistics-card-item"><span>بداية</span><span class="mono">${escapeHtml(item.Startdate || '')}</span></div>
-              <div class="statistics-card-item"><span>نهاية</span><span class="mono">${escapeHtml(item.Enddate || '')}</span></div>
-            </div>
-            <div class="statistics-card-note">${escapeHtml(item.Type || item.SubSection || item.Note || 'بدون وصف')}</div>
-          `;
-          mobileRows.appendChild(card);
-        }
       });
 
       countLabel.textContent = `عدد السجلات: ${items.length}`;
@@ -858,7 +576,10 @@
       if (!data) return;
 
       const rows = Array.isArray(data) ? data : [];
-      currentRows = rows;
+      currentRows = rows.filter((item) => {
+        const haystack = normalizeText([item.Status, item.Type, item.Note].filter(Boolean).join(' '));
+        return selectedStatuses.some((entry) => entry.terms.some((term) => haystack.includes(normalizeText(term))));
+      });
       renderRows(getFilteredRows());
       setSearchMessage('');
     }
@@ -1040,7 +761,7 @@
     syncDateDisplays();
 
     document.getElementById('backBtn').addEventListener('click', () => {
-      window.location.href = homeRoute;
+      window.location.href = localStorage.getItem('uiMode') === 'mobile' ? '/mobile/dashboard.html' : '/dashboard.html';
     });
 
     document.getElementById('printBtn').addEventListener('click', () => {

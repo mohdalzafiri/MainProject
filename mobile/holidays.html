@@ -502,7 +502,6 @@
     if (!authToken) {
       window.location.href = '/';
     }
-    const homeRoute = localStorage.getItem('uiMode') === 'mobile' ? '/mobile-dashboard.html' : '/dashboard.html';
 
     localStorage.removeItem('loggedInUser');
 
@@ -1416,9 +1415,7 @@
     });
 
     dateOpenButtons.forEach((button) => {
-      button.addEventListener('click', (event) => {
-        event.preventDefault();
-        event.stopPropagation();
+      button.addEventListener('click', () => {
         const pickerId = button.dataset.pickerId;
         const pickerInput = document.getElementById(pickerId);
         if (!pickerInput) {
@@ -1426,16 +1423,10 @@
         }
 
         if (typeof pickerInput.showPicker === 'function') {
-          try {
-            pickerInput.showPicker();
-          } catch (error) {
-            pickerInput.focus();
-            pickerInput.click();
-          }
+          pickerInput.showPicker();
           return;
         }
 
-        pickerInput.focus();
         pickerInput.click();
       });
     });
@@ -1558,7 +1549,7 @@
     });
 
     backBtn.addEventListener('click', () => {
-      window.location.href = homeRoute;
+      window.location.href = localStorage.getItem('uiMode') === 'mobile' ? '/mobile/dashboard.html' : '/dashboard.html';
     });
 
     (async () => {

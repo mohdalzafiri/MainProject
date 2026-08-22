@@ -535,6 +535,7 @@
     if (!authToken) {
       window.location.href = '/';
     }
+    const homeRoute = localStorage.getItem('uiMode') === 'mobile' ? '/mobile-dashboard.html' : '/dashboard.html';
 
     localStorage.removeItem('loggedInUser');
 
@@ -973,7 +974,7 @@
     printBtn.addEventListener('click', printRecord);
     refreshBtn.addEventListener('click', loadRecords);
     backBtn.addEventListener('click', () => {
-      window.location.href = '/dashboard.html';
+      window.location.href = homeRoute;
     });
 
     setCurrentUser();

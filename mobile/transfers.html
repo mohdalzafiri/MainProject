@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>الاجازات</title>
+  <title>التنقلات</title>
   <style>
     :root {
       --bg: #eef4ff;
@@ -77,9 +77,7 @@
       gap: 6px;
     }
 
-    .field.full {
-      grid-column: 1 / -1;
-    }
+    .field.full { grid-column: 1 / -1; }
 
     .admin-only-field {
       display: none;
@@ -87,6 +85,19 @@
 
     .user-name-column {
       display: none;
+    }
+
+    .transfer-columns {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .transfer-stack {
+      display: grid;
+      gap: 12px;
+      align-content: start;
     }
 
     label {
@@ -120,9 +131,7 @@
       color: #334155;
     }
 
-    .date-picker-wrap {
-      position: relative;
-    }
+    .date-picker-wrap { position: relative; }
 
     .date-display-input {
       padding-left: 44px;
@@ -157,9 +166,7 @@
       line-height: 1;
     }
 
-    .date-picker-trigger:hover {
-      background: #eef2ff;
-    }
+    .date-picker-trigger:hover { background: #eef2ff; }
 
     .native-date-input {
       position: absolute;
@@ -190,19 +197,9 @@
       font-weight: 700;
     }
 
-    .status-line.show {
-      display: block;
-    }
-
-    .status-line.ok {
-      background: var(--ok-bg);
-      color: var(--ok);
-    }
-
-    .status-line.error {
-      background: var(--err-bg);
-      color: var(--err);
-    }
+    .status-line.show { display: block; }
+    .status-line.ok { background: var(--ok-bg); color: var(--ok); }
+    .status-line.error { background: var(--err-bg); color: var(--err); }
 
     .doc-images-box {
       margin-top: 12px;
@@ -296,12 +293,11 @@
     table {
       width: 100%;
       border-collapse: collapse;
-      min-width: 1100px;
+      min-width: 1200px;
       background: #fff;
     }
 
-    th,
-    td {
+    th, td {
       padding: 11px 9px;
       border-bottom: 1px solid #e2e8f0;
       text-align: right;
@@ -321,9 +317,7 @@
       cursor: pointer;
     }
 
-    tbody tr.selected {
-      background: #dbeafe;
-    }
+    tbody tr.selected { background: #dbeafe; }
 
     .mono {
       direction: ltr;
@@ -334,14 +328,18 @@
     }
 
     @media (max-width: 1100px) {
-      .grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
+      .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      table { min-width: 1000px; }
     }
 
     @media (max-width: 680px) {
-      .grid {
-        grid-template-columns: 1fr;
+      .grid { grid-template-columns: 1fr; }
+      table { min-width: 900px; }
+    }
+
+    @media (max-width: 900px) {
+      .doc-images-box {
+        display: none;
       }
     }
   </style>
@@ -351,8 +349,8 @@
   <div class="page app-page">
     <header class="header">
       <div>
-        <h1>الاجازات</h1>
-        <p>إدارة بيانات إجازات الموظفين وعرض كل الموظفين الحاصلين على إجازات.</p>
+        <h1>التنقلات</h1>
+        <p>إدارة بيانات الموظفين المنقولين بين الأقسام والنوبات.</p>
       </div>
       <div class="actions">
         <button type="button" class="btn dark" id="backBtn">رجوع للرئيسية</button>
@@ -361,8 +359,8 @@
 
     <section class="panel">
       <h2>تعبئة / اظهار البيانات</h2>
-      <form id="holidayForm">
-        <input id="holidayId" type="hidden" />
+      <form id="transferForm">
+        <input id="transferId" type="hidden" />
 
         <div class="grid">
           <div class="field">
@@ -374,55 +372,46 @@
 
           <div class="field">
             <label for="status">الحالة</label>
-            <input id="status" value="اجازة" readonly />
+            <input id="status" value="نقل" readonly />
           </div>
 
           <div class="field">
-            <label for="type">نوع الاجازة</label>
-            <select id="type">
-              <option value="">-- اختر --</option>
-              <option value="سنوية">سنوية</option>
-              <option value="مرضية">مرضية</option>
-              <option value="اخرى">اخرى</option>
-            </select>
-          </div>
-
-          <div class="field">
-            <label for="department">القسم</label>
-            <input id="department" readonly />
-          </div>
-
-          <div class="field">
-            <label for="section">النوبة</label>
-            <input id="section" readonly />
-          </div>
-
-          <div class="field">
-            <label for="otherType">اخرى</label>
-            <input id="otherType" placeholder="اكتب النوع عند اختيار اخرى" />
-          </div>
-
-          <div class="field">
-            <label for="startDate">البداية</label>
+            <label for="transferDate">تاريخ النقل</label>
             <div class="date-picker-wrap">
-              <input id="startDateDisplay" class="date-display-input" type="text" placeholder="yyyy/mm/dd" readonly />
-              <button type="button" class="date-picker-trigger" data-picker-id="startDate" aria-label="اختيار تاريخ البداية"></button>
-              <input id="startDate" type="date" class="native-date-input" />
+              <input id="transferDateDisplay" class="date-display-input" type="text" placeholder="yyyy/mm/dd" readonly />
+              <button type="button" class="date-picker-trigger" data-picker-id="transferDate" aria-label="اختيار تاريخ النقل"></button>
+              <input id="transferDate" type="date" class="native-date-input" />
             </div>
           </div>
 
-          <div class="field">
-            <label for="endDate">النهاية</label>
-            <div class="date-picker-wrap">
-              <input id="endDateDisplay" class="date-display-input" type="text" placeholder="yyyy/mm/dd" readonly />
-              <button type="button" class="date-picker-trigger" data-picker-id="endDate" aria-label="اختيار تاريخ النهاية"></button>
-              <input id="endDate" type="date" class="native-date-input" />
-            </div>
-          </div>
+          <div class="transfer-columns">
+            <div class="transfer-stack">
+              <div class="field">
+                <label for="fromDepartment">من القسم</label>
+                <input id="fromDepartment" readonly />
+              </div>
 
-          <div class="field">
-            <label for="days">عدد الايام</label>
-            <input id="days" readonly />
+              <div class="field">
+                <label for="fromSection">من النوبة</label>
+                <input id="fromSection" readonly />
+              </div>
+            </div>
+
+            <div class="transfer-stack">
+              <div class="field">
+                <label for="toDepartment">إلى القسم</label>
+                <select id="toDepartment">
+                  <option value="">-- اختر --</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label for="toSection">إلى النوبة</label>
+                <select id="toSection">
+                  <option value="">-- اختر --</option>
+                </select>
+              </div>
+            </div>
           </div>
 
           <div class="field full">
@@ -446,24 +435,6 @@
 
       <div id="statusLine" class="status-line"></div>
 
-      <div class="doc-images-box">
-        <div class="doc-images-head">
-          <span>صور المستندات الرسمية</span>
-          <span id="docImageCount">0 / 0</span>
-        </div>
-        <div class="doc-images-view">
-          <button type="button" class="doc-images-nav" id="docImagePrevBtn">◀</button>
-          <div class="doc-images-frame">
-            <img id="docImagePreview" alt="صورة مستند" />
-            <div id="docImageEmpty">اختر سجلًا أولًا لعرض صور المستندات.</div>
-          </div>
-          <button type="button" class="doc-images-nav" id="docImageNextBtn">▶</button>
-        </div>
-        <div class="doc-images-actions">
-          <button type="button" class="btn primary" id="docImageUploadBtn">تصوير/رفع مستند</button>
-          <input id="docImageInput" type="file" accept="image/*" capture="environment" hidden />
-        </div>
-      </div>
     </section>
 
     <section class="panel">
@@ -471,21 +442,20 @@
       <div class="table-tools">
         <p id="countLabel">عدد السجلات: 0</p>
         <input id="nameFilterInput" class="table-search" placeholder="فلترة بالاسم أثناء الكتابة" />
-          <button type="button" class="btn primary" id="refreshBtn">تحديث العرض</button>
+        <button type="button" class="btn primary" id="refreshBtn">تحديث العرض</button>
       </div>
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th class="sortable-date-header" data-sort-key="id" style="cursor: pointer;">م</th>
+              <th>م</th>
               <th>اسم الموظف</th>
               <th>الحالة</th>
-              <th>نوع الاجازة</th>
-              <th>القسم</th>
-              <th>النوبة</th>
-              <th class="sortable-date-header" data-sort-key="start" style="cursor: pointer;">البداية</th>
-              <th class="sortable-date-header" data-sort-key="end" style="cursor: pointer;">النهاية</th>
-              <th>عدد الايام</th>
+              <th>تاريخ النقل</th>
+              <th>من القسم</th>
+              <th>إلى القسم</th>
+              <th>من النوبة</th>
+              <th>إلى النوبة</th>
               <th>ملاحظات</th>
               <th class="user-name-column">اسم المستخدم</th>
             </tr>
@@ -499,10 +469,11 @@
   <script src="/record-photos.js"></script>
   <script>
     const authToken = localStorage.getItem('authToken');
+    const uiMode = localStorage.getItem('uiMode') || 'desktop';
     if (!authToken) {
-      window.location.href = '/';
+      window.location.href = uiMode === 'mobile' ? '/mobile/dashboard.html' : '/dashboard.html';
     }
-    const homeRoute = localStorage.getItem('uiMode') === 'mobile' ? '/mobile-dashboard.html' : '/dashboard.html';
+    const homeRoute = uiMode === 'mobile' ? '/mobile/dashboard.html' : '/dashboard.html';
 
     localStorage.removeItem('loggedInUser');
 
@@ -526,19 +497,16 @@
 
     const isAdminUser = String(currentUser?.role || currentUser?.username || '').trim().toLowerCase() === 'admin';
 
-    const form = document.getElementById('holidayForm');
-    const holidayIdInput = document.getElementById('holidayId');
+    const form = document.getElementById('transferForm');
+    const transferIdInput = document.getElementById('transferId');
     const nameInput = document.getElementById('name');
     const statusInput = document.getElementById('status');
-    const typeInput = document.getElementById('type');
-    const departmentInput = document.getElementById('department');
-    const sectionInput = document.getElementById('section');
-    const otherTypeInput = document.getElementById('otherType');
-    const startDateDisplayInput = document.getElementById('startDateDisplay');
-    const startDateInput = document.getElementById('startDate');
-    const endDateDisplayInput = document.getElementById('endDateDisplay');
-    const endDateInput = document.getElementById('endDate');
-    const daysInput = document.getElementById('days');
+    const transferDateDisplayInput = document.getElementById('transferDateDisplay');
+    const transferDateInput = document.getElementById('transferDate');
+    const fromDepartmentInput = document.getElementById('fromDepartment');
+    const toDepartmentInput = document.getElementById('toDepartment');
+    const fromSectionInput = document.getElementById('fromSection');
+    const toSectionInput = document.getElementById('toSection');
     const noteInput = document.getElementById('note');
     const userNameInput = document.getElementById('userName');
     const userNameField = document.getElementById('userNameField');
@@ -558,16 +526,10 @@
     const userNameColumnCells = () => document.querySelectorAll('.user-name-column');
 
     let selectedId = null;
-    let allHolidays = [];
+    let allTransfers = [];
     let allEmployees = [];
     let selectedEmployee = null;
-    let holidaySort = { key: null, direction: 'asc' };
-    const recordPhotos = initRecordPhotos({
-      moduleKey: 'holidays',
-      authToken,
-      getRecordId: () => selectedId,
-      onStatus: showStatus
-    });
+    let departmentSectionRows = [];
 
     if (userNameField) {
       userNameField.style.display = isAdminUser ? 'grid' : 'none';
@@ -622,21 +584,6 @@
       return `${date.getFullYear()}/${pad2(date.getMonth() + 1)}/${pad2(date.getDate())}`;
     }
 
-    function formatDaysValue(value) {
-      if (value == null || value === '') return '';
-
-      const numeric = Number(String(value).trim());
-      if (Number.isNaN(numeric)) {
-        return String(value).trim();
-      }
-
-      if (Number.isInteger(numeric)) {
-        return String(numeric);
-      }
-
-      return String(numeric).replace(/\.0+$/, '');
-    }
-
     function toDateInputValue(value) {
       const date = parseFlexibleDate(value);
       if (!date || Number.isNaN(date.getTime())) return '';
@@ -644,27 +591,7 @@
     }
 
     function syncDateDisplays() {
-      startDateDisplayInput.value = formatDateYmdSlash(startDateInput.value);
-      endDateDisplayInput.value = formatDateYmdSlash(endDateInput.value);
-    }
-
-    function calculateDays() {
-      const start = parseFlexibleDate(startDateInput.value);
-      const end = parseFlexibleDate(endDateInput.value);
-
-      if (!start || !end) {
-        daysInput.value = '';
-        return;
-      }
-
-      const diff = end.getTime() - start.getTime();
-      if (diff < 0) {
-        daysInput.value = '';
-        return;
-      }
-
-      const total = Math.floor(diff / (1000 * 60 * 60 * 24)) + 1;
-      daysInput.value = String(total);
+      transferDateDisplayInput.value = formatDateYmdSlash(transferDateInput.value);
     }
 
     function getHeaders() {
@@ -676,10 +603,7 @@
 
     function getApiErrorMessage(response, data) {
       const serverMessage = String(data?.message || '').trim();
-      if (serverMessage) {
-        return serverMessage;
-      }
-
+      if (serverMessage) return serverMessage;
       if (response.status === 400) return 'البيانات المدخلة غير مكتملة أو غير صحيحة.';
       if (response.status === 404) return 'السجل المطلوب غير موجود.';
       if (response.status === 409) return 'تعذر تنفيذ العملية بسبب تعارض أو تكرار في البيانات.';
@@ -703,19 +627,6 @@
       return data;
     }
 
-    function setSelectedEmployeeByName(name) {
-      const normalized = String(name || '').trim();
-      selectedEmployee = allEmployees.find((item) => String(item.Name || '').trim() === normalized) || null;
-
-      if (selectedEmployee) {
-        departmentInput.value = selectedEmployee.Department || '';
-        sectionInput.value = selectedEmployee.Section || '';
-      } else {
-        departmentInput.value = '';
-        sectionInput.value = '';
-      }
-    }
-
     function populateNameOptions() {
       const uniqueNames = Array.from(new Set(
         allEmployees
@@ -737,96 +648,63 @@
       }
     }
 
-    function normalizeTypeToken(value) {
-      return String(value || '')
-        .trim()
-        .toLowerCase()
-        .replace(/\s+/g, '')
-        .replace(/[أإآ]/g, 'ا');
+    function normalizeDepartment(value) {
+      const normalized = String(value || '').trim();
+      if (normalized === 'الإحصاء') return 'الاحصاء';
+      return normalized;
     }
 
-    function isRemovedHolidayType(value) {
-      const token = normalizeTypeToken(value);
-      if (!token) return false;
+    function populateDepartmentOptions(preferredValue = '') {
+      toDepartmentInput.innerHTML = '<option value="">-- اختر --</option>';
 
-      if (token === 'امومة' || token === 'وضع' || token === 'طارئة' || token === 'حاسبالي' || token === 'سكرتارية') {
-        return true;
-      }
-
-      if (token.includes('تنشيط') || token.includes('حاسبالي') || token.includes('سكرتار')) {
-        return true;
-      }
-
-      return false;
-    }
-
-    function normalizeHolidayTypeLabel(value) {
-      const raw = String(value || '').trim();
-      const token = normalizeTypeToken(raw);
-
-      if (!token) return '';
-      if (token === 'سنوية' || token === 'دورية' || token === 'اجازةسنوية') return 'اجازة سنوية';
-      if (token === 'مرضية' || token === 'اجازةمرضية') return 'اجازة مرضية';
-
-      return raw;
-    }
-
-    function populateTypeOptions(selectedValue = '') {
-      const fixedTypes = ['اجازة سنوية', 'اجازة مرضية'];
-      const dbTypes = Array.from(new Set(
-        allHolidays
-          .map((item) => normalizeHolidayTypeLabel(item.Type))
+      const departments = [...new Set(
+        departmentSectionRows
+          .map((item) => normalizeDepartment(item.Department))
           .filter(Boolean)
-          .filter((value) => value !== 'اخرى' && !isRemovedHolidayType(value))
-      ));
+      )];
 
-      const mergedTypes = Array.from(new Set([...fixedTypes, ...dbTypes]));
-
-      typeInput.innerHTML = '';
-
-      const placeholderOption = document.createElement('option');
-      placeholderOption.value = '';
-      placeholderOption.textContent = '-- اختر --';
-      typeInput.appendChild(placeholderOption);
-
-      mergedTypes.forEach((value) => {
+      departments.forEach((value) => {
         const option = document.createElement('option');
         option.value = value;
         option.textContent = value;
-        typeInput.appendChild(option);
+        toDepartmentInput.appendChild(option);
       });
 
-      const otherOption = document.createElement('option');
-      otherOption.value = 'اخرى';
-      otherOption.textContent = 'اخرى';
-      typeInput.appendChild(otherOption);
-
-      if (selectedValue && Array.from(typeInput.options).some((option) => option.value === selectedValue)) {
-        typeInput.value = selectedValue;
-      }
+      toDepartmentInput.value = departments.includes(preferredValue) ? preferredValue : '';
     }
 
-    function getHolidayTypeForForm(type) {
-      let normalized = normalizeHolidayTypeLabel(type);
-      if (!normalized) {
-        return { selectValue: '', otherValue: '' };
-      }
+    function populateSectionOptions(selectedDepartment = '', preferredValue = '') {
+      toSectionInput.innerHTML = '<option value="">-- اختر --</option>';
 
-      if (isRemovedHolidayType(normalized)) {
-        return { selectValue: 'اخرى', otherValue: normalized };
-      }
+      const sectionValues = departmentSectionRows
+        .filter((item) => normalizeDepartment(item.Department) === normalizeDepartment(selectedDepartment))
+        .map((item) => String(item.Section || '').trim())
+        .filter(Boolean);
 
-      if (Array.from(typeInput.options).some((option) => option.value === normalized)) {
-        return { selectValue: normalized, otherValue: '' };
-      }
+      sectionValues.forEach((value) => {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = value;
+        toSectionInput.appendChild(option);
+      });
 
-      return { selectValue: 'اخرى', otherValue: normalized };
+      toSectionInput.value = sectionValues.includes(preferredValue) ? preferredValue : '';
+    }
+
+    function setSelectedEmployeeByName(name) {
+      const normalized = String(name || '').trim();
+      selectedEmployee = allEmployees.find((item) => String(item.Name || '').trim() === normalized) || null;
+
+      if (selectedEmployee) {
+        fromDepartmentInput.value = selectedEmployee.Department || '';
+        fromSectionInput.value = selectedEmployee.Section || '';
+      } else {
+        fromDepartmentInput.value = '';
+        fromSectionInput.value = '';
+      }
     }
 
     function collectPayload() {
-      const holidayType = String(typeInput.value || '').trim();
-      const otherType = String(otherTypeInput.value || '').trim();
-      const finalType = holidayType === 'اخرى' ? otherType : holidayType;
       const userNameValue = isAdminUser
         ? String(userNameInput.value || currentUser.username || 'system').trim()
         : String(currentUser.username || 'system').trim();
@@ -834,13 +712,14 @@
       return {
         EmpID: selectedEmployee?.ID || null,
         Name: String(nameInput.value || '').trim(),
-        Department: String(departmentInput.value || '').trim(),
-        Section: String(sectionInput.value || '').trim(),
-        Status: 'اجازة',
-        Type: finalType,
-        Startdate: formatDateYmdSlash(startDateInput.value),
-        Enddate: formatDateYmdSlash(endDateInput.value),
-        Days: Number(daysInput.value || 0),
+        Department: String(fromDepartmentInput.value || '').trim(),
+        Section: String(fromSectionInput.value || '').trim(),
+        SubSection: '',
+        Status: 'نقل',
+        Department1: String(toDepartmentInput.value || '').trim(),
+        Section1: String(toSectionInput.value || '').trim(),
+        SubSection1: '',
+        Enddate: formatDateYmdSlash(transferDateInput.value),
         Note: String(noteInput.value || '').trim(),
         UserName: userNameValue,
         userName: userNameValue
@@ -850,28 +729,18 @@
     function validateForm() {
       const requiredErrors = [];
       if (!String(nameInput.value || '').trim()) requiredErrors.push('اسم الموظف');
-      if (!String(typeInput.value || '').trim()) requiredErrors.push('نوع الاجازة');
-      if (!String(startDateInput.value || '').trim()) requiredErrors.push('البداية');
-      if (!String(endDateInput.value || '').trim()) requiredErrors.push('النهاية');
-
-      if (typeInput.value === 'اخرى' && !String(otherTypeInput.value || '').trim()) {
-        requiredErrors.push('اخرى');
-      }
+      if (!String(transferDateInput.value || '').trim()) requiredErrors.push('تاريخ النقل');
+      if (!String(toDepartmentInput.value || '').trim()) requiredErrors.push('إلى القسم');
+      if (!String(toSectionInput.value || '').trim()) requiredErrors.push('إلى النوبة');
 
       if (requiredErrors.length) {
         showStatus(`الحقول الإلزامية ناقصة: ${requiredErrors.join(' - ')}`, true);
         return false;
       }
 
-      const start = parseFlexibleDate(startDateInput.value);
-      const end = parseFlexibleDate(endDateInput.value);
-      if (!start || !end || end.getTime() < start.getTime()) {
-        showStatus('تأكد من صحة تواريخ البداية والنهاية.', true);
-        return false;
-      }
-
-      if (!daysInput.value) {
-        showStatus('تعذر حساب عدد الايام، تحقق من التواريخ.', true);
+      const transferDate = parseFlexibleDate(transferDateInput.value);
+      if (!transferDate || Number.isNaN(transferDate.getTime())) {
+        showStatus('تأكد من صحة تاريخ النقل.', true);
         return false;
       }
 
@@ -880,15 +749,15 @@
 
     function clearForm() {
       selectedId = null;
-      holidayIdInput.value = '';
+      transferIdInput.value = '';
       form.reset();
       selectedEmployee = null;
-      statusInput.value = 'اجازة';
-      daysInput.value = '';
-      startDateDisplayInput.value = '';
-      endDateDisplayInput.value = '';
-      departmentInput.value = '';
-      sectionInput.value = '';
+      statusInput.value = 'نقل';
+      transferDateDisplayInput.value = '';
+      fromDepartmentInput.value = '';
+      fromSectionInput.value = '';
+      populateDepartmentOptions();
+      populateSectionOptions();
       if (userNameInput) {
         userNameInput.value = String(currentUser?.username || 'system');
       }
@@ -900,27 +769,18 @@
 
     function fillForm(item) {
       selectedId = item.ID;
-      holidayIdInput.value = item.ID;
+      transferIdInput.value = item.ID;
       nameInput.value = item.Name || '';
       setSelectedEmployeeByName(item.Name || '');
       if (!selectedEmployee) {
-        departmentInput.value = item.Department || '';
-        sectionInput.value = item.Section || '';
+        fromDepartmentInput.value = item.Department || '';
+        fromSectionInput.value = item.Section || '';
       }
-      statusInput.value = item.Status || 'اجازة';
-
-      const typeState = getHolidayTypeForForm(item.Type);
-      typeInput.value = typeState.selectValue;
-      otherTypeInput.value = typeState.otherValue;
-
-      startDateInput.value = toDateInputValue(item.Startdate);
-      endDateInput.value = toDateInputValue(item.Enddate);
+      statusInput.value = item.Status || 'نقل';
+      populateDepartmentOptions(normalizeDepartment(item.Department1 || ''));
+      populateSectionOptions(normalizeDepartment(item.Department1 || ''), item.Section1 || '');
+      transferDateInput.value = toDateInputValue(item.Enddate);
       syncDateDisplays();
-      calculateDays();
-      if (!daysInput.value && item.Days != null) {
-        daysInput.value = formatDaysValue(item.Days);
-      }
-
       noteInput.value = item.Note || '';
       if (userNameInput) {
         userNameInput.value = item.UserName || currentUser?.username || 'system';
@@ -928,67 +788,28 @@
       recordPhotos.load();
     }
 
-    function applyDateSort(items) {
-      const currentItems = Array.isArray(items) ? [...items] : [];
-      if (!holidaySort.key) {
-        return currentItems;
-      }
-
-      return currentItems.sort((left, right) => {
-        let leftValue = 0;
-        let rightValue = 0;
-
-        if (holidaySort.key === 'id') {
-          leftValue = Number(left.ID) || 0;
-          rightValue = Number(right.ID) || 0;
-        } else {
-          const leftDate = parseFlexibleDate(holidaySort.key === 'start' ? left.Startdate : left.Enddate);
-          const rightDate = parseFlexibleDate(holidaySort.key === 'start' ? right.Startdate : right.Enddate);
-
-          leftValue = leftDate && !Number.isNaN(leftDate.getTime()) ? leftDate.getTime() : Number.NEGATIVE_INFINITY;
-          rightValue = rightDate && !Number.isNaN(rightDate.getTime()) ? rightDate.getTime() : Number.NEGATIVE_INFINITY;
-        }
-
-        const diff = leftValue - rightValue;
-        return holidaySort.direction === 'asc' ? diff : -diff;
-      });
-    }
-
-    function updateSortHeaderIndicators() {
-      document.querySelectorAll('.sortable-date-header').forEach((header) => {
-        const key = header.dataset.sortKey;
-        const isActive = holidaySort.key === key;
-        const marker = isActive ? (holidaySort.direction === 'asc' ? ' ↑' : ' ↓') : '';
-        const label = key === 'id' ? 'م' : key === 'start' ? 'البداية' : 'النهاية';
-        header.dataset.baseLabel = label;
-        header.textContent = isActive ? `${label}${marker}` : label;
-      });
-    }
-
     function renderRows(items) {
       rowsBody.innerHTML = '';
-      const sortedItems = applyDateSort(items);
 
-      if (!Array.isArray(sortedItems) || sortedItems.length === 0) {
-        rowsBody.innerHTML = `<tr><td colspan="${isAdminUser ? 11 : 10}">لا توجد بيانات إجازات حالياً.</td></tr>`;
+      if (!Array.isArray(items) || items.length === 0) {
+        rowsBody.innerHTML = `<tr><td colspan="${isAdminUser ? 10 : 9}">لا توجد بيانات تنقلات حالياً.</td></tr>`;
         countLabel.textContent = 'عدد السجلات: 0';
         syncUserNameColumnVisibility();
         return;
       }
 
-      sortedItems.forEach((item) => {
+      items.forEach((item) => {
         const tr = document.createElement('tr');
         tr.dataset.id = item.ID;
         tr.innerHTML = `
           <td class="mono">${item.ID ?? ''}</td>
           <td>${item.Name ?? ''}</td>
           <td>${item.Status ?? ''}</td>
-          <td>${item.Type ?? ''}</td>
-          <td>${item.Department ?? ''}</td>
-          <td>${item.Section ?? ''}</td>
-          <td class="mono">${formatDateYmdSlash(item.Startdate)}</td>
           <td class="mono">${formatDateYmdSlash(item.Enddate)}</td>
-          <td class="mono">${formatDaysValue(item.Days)}</td>
+          <td>${item.Department ?? ''}</td>
+          <td>${item.Department1 ?? ''}</td>
+          <td>${item.Section ?? ''}</td>
+          <td>${item.Section1 ?? ''}</td>
           <td>${item.Note ?? ''}</td>
           <td class="user-name-column">${item.UserName ?? ''}</td>
         `;
@@ -1020,38 +841,23 @@
         .replace(/\s+/g, ' ')
         .trim();
 
-      const sourceItems = Array.isArray(allHolidays) ? allHolidays : [];
-      const filtered = !keyword
-        ? sourceItems
-        : sourceItems.filter((item) =>
-            String(item.Name || '')
-              .toLowerCase()
-              .replace(/\s+/g, ' ')
-              .trim()
-              .includes(keyword)
-          );
+      if (!keyword) {
+        renderRows(allTransfers);
+        return;
+      }
 
+      const parts = keyword.split(' ').filter(Boolean);
+      const filtered = allTransfers.filter((item) =>
+        parts.every((part) =>
+          String(item.Name || '')
+            .toLowerCase()
+            .replace(/\s+/g, ' ')
+            .trim()
+            .includes(part)
+        )
+      );
       renderRows(filtered);
     }
-
-    document.querySelectorAll('.sortable-date-header').forEach((header) => {
-      header.addEventListener('click', () => {
-        const key = header.dataset.sortKey;
-        if (!key) return;
-
-        if (holidaySort.key === key) {
-          holidaySort.direction = holidaySort.direction === 'asc' ? 'desc' : 'asc';
-        } else {
-          holidaySort.key = key;
-          holidaySort.direction = 'asc';
-        }
-
-        updateSortHeaderIndicators();
-        applyNameFilter();
-      });
-    });
-
-    updateSortHeaderIndicators();
 
     async function loadEmployees() {
       const data = await requestJson('/api/employees', {
@@ -1064,14 +870,24 @@
       setSelectedEmployeeByName(nameInput.value);
     }
 
-    async function loadHolidays() {
-      const data = await requestJson('/api/holidays', {
+    async function loadDepartmentSections() {
+      const data = await requestJson('/api/employees/department-sections', {
         headers: { Authorization: `Bearer ${authToken}` }
       });
 
       if (!data) return;
-      allHolidays = Array.isArray(data) ? data : [];
-      populateTypeOptions(typeInput.value);
+      departmentSectionRows = Array.isArray(data) ? data : [];
+      populateDepartmentOptions(normalizeDepartment(toDepartmentInput.value));
+      populateSectionOptions(normalizeDepartment(toDepartmentInput.value), toSectionInput.value);
+    }
+
+    async function loadTransfers() {
+      const data = await requestJson('/api/administrative/transfers', {
+        headers: { Authorization: `Bearer ${authToken}` }
+      });
+
+      if (!data) return;
+      allTransfers = Array.isArray(data) ? data : [];
       applyNameFilter();
     }
 
@@ -1080,12 +896,11 @@
       const row = item || {
         Name: nameInput.value,
         Status: statusInput.value,
-        Type: typeInput.value === 'اخرى' ? otherTypeInput.value : typeInput.value,
-        Department: departmentInput.value,
-        Section: sectionInput.value,
-        Startdate: startDateInput.value,
-        Enddate: endDateInput.value,
-        Days: daysInput.value,
+        Department: fromDepartmentInput.value,
+        Department1: toDepartmentInput.value,
+        Section: fromSectionInput.value,
+        Section1: toSectionInput.value,
+        Enddate: transferDateInput.value,
         Note: noteInput.value
       };
 
@@ -1096,45 +911,12 @@
         return text ? text : '---';
       };
 
-      function getEmployeeLeaveStatusText(startDateValue, endDateValue) {
-        const startDate = parseFlexibleDate(startDateValue);
-        const endDate = parseFlexibleDate(endDateValue);
-        if (!startDate || !endDate || Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
-          return 'تعذر تحديد حالة الموظف لعدم اكتمال تاريخي البداية أو النهاية.';
-        }
-
-        const today = new Date();
-        const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-        const startOnly = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
-        const endOnly = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
-        const dayMs = 24 * 60 * 60 * 1000;
-
-        if (todayOnly.getTime() < startOnly.getTime()) {
-          const daysUntilStart = Math.floor((startOnly.getTime() - todayOnly.getTime()) / dayMs);
-          return `لم تبدأ إجازة الموظف بعد، والمتبقي على بدايتها: ${daysUntilStart} يوم.`;
-        }
-
-        if (endOnly.getTime() >= todayOnly.getTime()) {
-          const remainingDays = Math.floor((endOnly.getTime() - todayOnly.getTime()) / dayMs);
-          if (remainingDays === 0) {
-            return 'لا يزال الموظف يتمتع بالإجازة، وتنتهي اليوم.';
-          }
-
-          return `لا يزال الموظف يتمتع بالإجازة، والمتبقي حتى نهايتها: ${remainingDays} يوم.`;
-        }
-
-        const passedDays = Math.floor((todayOnly.getTime() - endOnly.getTime()) / dayMs);
-        return `انتهت إجازة الموظف ومن المفترض أنه قد باشر العمل منذ: ${passedDays} يوم.`;
-      }
-
-      const employeeLeaveStatus = getEmployeeLeaveStatusText(row.Startdate, row.Enddate);
-
       return `
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8" />
-  <title>بيانات الاجازة - ${valueOrDash(row.Name)}</title>
+  <title>بيانات النقل - ${valueOrDash(row.Name)}</title>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -1293,7 +1075,7 @@
           شعبة التحضير
         </div>
         <div class="title-wrap">
-          <h1 class="title">بيانات الاجازة</h1>
+          <h1 class="title">بيانات النقل</h1>
         </div>
         <div class="photo">صورة</div>
       </header>
@@ -1313,16 +1095,16 @@
             <td class="value">${valueOrDash(row.Status)}</td>
           </tr>
           <tr>
-            <td class="label">نوع الاجازة</td>
-            <td class="value">${valueOrDash(row.Type)}</td>
-            <td class="label">القسم</td>
+            <td class="label">من القسم</td>
             <td class="value">${valueOrDash(row.Department)}</td>
+            <td class="label">إلى القسم</td>
+            <td class="value">${valueOrDash(row.Department1)}</td>
           </tr>
           <tr>
-            <td class="label">النوبة</td>
+            <td class="label">من النوبة</td>
             <td class="value">${valueOrDash(row.Section)}</td>
-            <td class="label">عدد الايام</td>
-            <td class="value ltr">${valueOrDash(formatDaysValue(row.Days))}</td>
+            <td class="label">إلى النوبة</td>
+            <td class="value">${valueOrDash(row.Section1)}</td>
           </tr>
         </table>
       </section>
@@ -1331,14 +1113,8 @@
         <div class="section-title">البيانات الزمنية</div>
         <table>
           <tr>
-            <td class="label">البداية</td>
-            <td class="value ltr">${valueOrDash(formatDateYmdSlash(row.Startdate))}</td>
-            <td class="label">النهاية</td>
-            <td class="value ltr">${valueOrDash(formatDateYmdSlash(row.Enddate))}</td>
-          </tr>
-          <tr>
-            <td class="label">حالة الموظف</td>
-            <td class="value" colspan="3">${employeeLeaveStatus}</td>
+            <td class="label">تاريخ النقل</td>
+            <td class="value ltr" colspan="3">${valueOrDash(formatDateYmdSlash(row.Enddate))}</td>
           </tr>
         </table>
       </section>
@@ -1402,40 +1178,19 @@
       }, 130);
     }
 
-    typeInput.addEventListener('change', () => {
-      if (typeInput.value !== 'اخرى') {
-        otherTypeInput.value = '';
-      }
-    });
-
-    [startDateInput, endDateInput].forEach((dateInput) => {
-      dateInput.addEventListener('change', () => {
-        syncDateDisplays();
-        calculateDays();
-      });
+    [transferDateInput].forEach((dateInput) => {
+      dateInput.addEventListener('change', syncDateDisplays);
     });
 
     dateOpenButtons.forEach((button) => {
-      button.addEventListener('click', (event) => {
-        event.preventDefault();
-        event.stopPropagation();
+      button.addEventListener('click', () => {
         const pickerId = button.dataset.pickerId;
         const pickerInput = document.getElementById(pickerId);
-        if (!pickerInput) {
-          return;
-        }
-
+        if (!pickerInput) return;
         if (typeof pickerInput.showPicker === 'function') {
-          try {
-            pickerInput.showPicker();
-          } catch (error) {
-            pickerInput.focus();
-            pickerInput.click();
-          }
+          pickerInput.showPicker();
           return;
         }
-
-        pickerInput.focus();
         pickerInput.click();
       });
     });
@@ -1449,31 +1204,36 @@
       setSelectedEmployeeByName(nameInput.value);
     });
 
-    nameFilterInput.addEventListener('input', () => {
-      applyNameFilter();
+    nameFilterInput.addEventListener('input', applyNameFilter);
+
+    toDepartmentInput.addEventListener('focus', () => {
+      populateDepartmentOptions(normalizeDepartment(toDepartmentInput.value));
+    });
+    toDepartmentInput.addEventListener('change', () => {
+      populateSectionOptions(normalizeDepartment(toDepartmentInput.value));
+    });
+    toSectionInput.addEventListener('focus', () => {
+      populateSectionOptions(normalizeDepartment(toDepartmentInput.value), toSectionInput.value);
     });
 
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
       clearStatus();
 
-      if (!validateForm()) {
-        return;
-      }
+      if (!validateForm()) return;
 
       addBtn.disabled = true;
-
       try {
         const payload = collectPayload();
-        await requestJson('/api/holidays', {
+        await requestJson('/api/administrative/transfers', {
           method: 'POST',
           headers: getHeaders(),
           body: JSON.stringify(payload)
         });
 
-        showStatus('تمت إضافة بيانات الاجازة بنجاح');
+        showStatus('تمت إضافة بيانات النقل بنجاح');
         clearForm();
-        await loadHolidays();
+        await loadTransfers();
       } catch (error) {
         showStatus(error.message, true);
       } finally {
@@ -1489,22 +1249,19 @@
         return;
       }
 
-      if (!validateForm()) {
-        return;
-      }
+      if (!validateForm()) return;
 
       updateBtn.disabled = true;
-
       try {
         const payload = collectPayload();
-        await requestJson(`/api/holidays/${selectedId}`, {
+        await requestJson(`/api/administrative/transfers/${selectedId}`, {
           method: 'PUT',
           headers: getHeaders(),
           body: JSON.stringify(payload)
         });
 
-        showStatus('تم تعديل بيانات الاجازة بنجاح');
-        await loadHolidays();
+        showStatus('تم تعديل بيانات النقل بنجاح');
+        await loadTransfers();
       } catch (error) {
         showStatus(error.message, true);
       } finally {
@@ -1520,21 +1277,20 @@
         return;
       }
 
-      const ok = confirm('هل أنت متأكد من حذف سجل الاجازة؟');
+      const ok = confirm('هل أنت متأكد من حذف سجل النقل؟');
       if (!ok) return;
 
       deleteBtn.disabled = true;
-
       try {
-        await requestJson(`/api/holidays/${selectedId}`, {
+        await requestJson(`/api/administrative/transfers/${selectedId}`, {
           method: 'DELETE',
           headers: getHeaders(),
           body: JSON.stringify({ userName: currentUser.username || 'system' })
         });
 
-        showStatus('تم حذف بيانات الاجازة بنجاح');
+        showStatus('تم حذف بيانات النقل بنجاح');
         clearForm();
-        await loadHolidays();
+        await loadTransfers();
       } catch (error) {
         showStatus(error.message, true);
       } finally {
@@ -1553,8 +1309,10 @@
 
     refreshBtn.addEventListener('click', async () => {
       clearStatus();
-      await loadHolidays();
-      showStatus('تم تحديث عرض بيانات الإجازات');
+      await loadDepartmentSections();
+      await loadEmployees();
+      await loadTransfers();
+      showStatus('تم تحديث عرض بيانات التنقلات');
     });
 
     backBtn.addEventListener('click', () => {
@@ -1563,8 +1321,9 @@
 
     (async () => {
       try {
+        await loadDepartmentSections();
         await loadEmployees();
-        await loadHolidays();
+        await loadTransfers();
       } catch (error) {
         showStatus(error.message, true);
       }

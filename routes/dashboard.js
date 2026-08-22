@@ -244,26 +244,28 @@ router.get('/summary', (req, res) => {
     const outgoingSummary = summarizeDocumentTable('OutgoingDocuments', 'DocDate', 'DocNumber', 'Subject', 'Recipient');
     const incomingSummary = summarizeDocumentTable('IncomingDocuments', 'DocDate', 'DocNumber', 'Subject', 'SourceDepartment');
 
-    const departments = tableOrViewExists('DailyAll_P')
+    const departments = tableOrViewExists('Main')
       ? db.prepare(`
+          WITH department_labels(label, sort_order) AS (
+            VALUES
+              ('البلاغات', 1),
+              ('العمليات', 2),
+              ('الخدمات المساندة', 3),
+              ('الموارد البشرية', 4),
+              ('المعلومات', 5),
+              ('الاحصاء', 6)
+          )
           SELECT
-            CASE
-              WHEN TRIM(Department) = 'الإحصاء' THEN 'الاحصاء'
-              ELSE TRIM(Department)
-            END AS label,
-            COUNT(DISTINCT EmpID) AS value
-          FROM DailyAll_P
-          WHERE Department IS NOT NULL AND TRIM(Department) <> ''
-          GROUP BY CASE
-            WHEN TRIM(Department) = 'الإحصاء' THEN 'الاحصاء'
-            ELSE TRIM(Department)
-          END
-          ORDER BY value DESC
-          LIMIT 8
+            department_labels.label AS label,
+            COUNT(Main.ID) AS value
+          FROM department_labels
+          LEFT JOIN Main ON TRIM(Main.Department) = department_labels.label AND TRIM(Main.Status) = 'نشط'
+          GROUP BY department_labels.label, department_labels.sort_order
+          ORDER BY department_labels.sort_order
         `).all()
       : [];
 
-    const shifts = tableOrViewExists('DailyAll_P')
+    const shifts = tableOrViewExists('Main')
       ? db.prepare(`
           WITH shift_labels(label, sort_order) AS (
             VALUES
@@ -273,82 +275,51 @@ router.get('/summary', (req, res) => {
               ('د - البلاغات', 4),
               ('هـ - البلاغات', 5),
               ('ثابت صبح', 6),
-              ('سكرتارية البلاغات', 7),
-              ('صباحاً', 8),
-              ('أ - العمليات', 9),
-              ('ب - العمليات', 10),
-              ('ج - العمليات', 11),
-              ('د - العمليات', 12),
-              ('هـ - العمليات', 13),
-              ('سكرتارية العمليات', 14),
-              ('أ - الخدمات', 15),
-              ('ب - الخدمات', 16),
-              ('ج - الخدمات', 17),
-              ('د - الخدمات', 18),
-              ('هـ - الخدمات', 19),
-              ('سكرتارية الخدمات', 20)
-          ),
-          section_labels(label) AS (
-            VALUES
-              ('أ - فريق عمل البلاغات'),
-              ('ب - فريق عمل البلاغات'),
-              ('ج - فريق عمل البلاغات'),
-              ('د - فريق عمل البلاغات'),
-              ('هـ - فريق عمل البلاغات'),
-              ('سكرتارية البلاغات'),
-              ('سكرتارية العمليات'),
-              ('سكرتارية الخدمات'),
-              ('صباحاً')
-          ),
-          filtered_shift_labels AS (
-            SELECT shift_labels.label, shift_labels.sort_order
-            FROM shift_labels
-            LEFT JOIN section_labels ON section_labels.label = shift_labels.label
-            WHERE section_labels.label IS NULL
-          ),
-          source AS (
-            SELECT DISTINCT EmpID, TRIM(Section) AS section_label
-            FROM DailyAll_P
-            WHERE Section IS NOT NULL AND TRIM(Section) <> ''
+              ('أ - فريق عمل البلاغات', 7),
+              ('ب - فريق عمل البلاغات', 8),
+              ('ج - فريق عمل البلاغات', 9),
+              ('د - فريق عمل البلاغات', 10),
+              ('هـ - فريق عمل البلاغات', 11),
+              ('سكرتارية البلاغات', 12),
+              ('صباحاً', 13),
+              ('أ - العمليات', 14),
+              ('ب - العمليات', 15),
+              ('ج - العمليات', 16),
+              ('د - العمليات', 17),
+              ('هـ - العمليات', 18),
+              ('سكرتارية العمليات', 19),
+              ('أ - الخدمات', 20),
+              ('ب - الخدمات', 21),
+              ('ج - الخدمات', 22),
+              ('د - الخدمات', 23),
+              ('هـ - الخدمات', 24),
+              ('سكرتارية الخدمات', 25)
           )
           SELECT
-            filtered_shift_labels.label AS label,
-            COUNT(source.EmpID) AS value
-          FROM filtered_shift_labels
-          LEFT JOIN source ON source.section_label = filtered_shift_labels.label
-          GROUP BY filtered_shift_labels.label, filtered_shift_labels.sort_order
-          ORDER BY filtered_shift_labels.sort_order
+            shift_labels.label AS label,
+            COUNT(Main.ID) AS value
+          FROM shift_labels
+          LEFT JOIN Main ON TRIM(Main.Section) = shift_labels.label AND TRIM(Main.Status) = 'نشط'
+          GROUP BY shift_labels.label, shift_labels.sort_order
+          ORDER BY shift_labels.sort_order
         `).all()
       : [];
 
-    const sections = tableOrViewExists('DailyAll_P')
+    const workplaces = tableOrViewExists('Main')
       ? db.prepare(`
-          WITH section_labels(label, sort_order) AS (
-            VALUES
-              ('أ - فريق عمل البلاغات', 1),
-              ('ب - فريق عمل البلاغات', 2),
-              ('ج - فريق عمل البلاغات', 3),
-              ('د - فريق عمل البلاغات', 4),
-              ('هـ - فريق عمل البلاغات', 5),
-              ('سكرتارية البلاغات', 6),
-              ('سكرتارية العمليات', 7),
-              ('سكرتارية الخدمات', 8),
-              ('صباحاً', 9)
-          ),
-          source AS (
-            SELECT DISTINCT EmpID, TRIM(Section) AS section_label
-            FROM DailyAll_P
-            WHERE Section IS NOT NULL AND TRIM(Section) <> ''
-          )
           SELECT
-            section_labels.label AS label,
-            COUNT(source.EmpID) AS value
-          FROM section_labels
-          LEFT JOIN source ON source.section_label = section_labels.label
-          GROUP BY section_labels.label, section_labels.sort_order
-          ORDER BY section_labels.sort_order
+            TRIM(Work) AS label,
+            COUNT(*) AS value
+          FROM Main
+          WHERE TRIM(Status) = 'نشط'
+            AND TRIM(Work) <> ''
+          GROUP BY TRIM(Work)
+          ORDER BY value DESC, label ASC
+          LIMIT 10
         `).all()
       : [];
+
+    const sections = [];
 
     let todaySummary = [];
     if (tableOrViewExists('DailyAll')) {
@@ -413,6 +384,7 @@ router.get('/summary', (req, res) => {
       departments,
       shifts,
       sections,
+      workplaces,
       outgoingSummary,
       incomingSummary,
       todaySummary,

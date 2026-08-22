@@ -302,6 +302,10 @@
     }
   </style>
   <link rel="stylesheet" href="/layout-defaults.css" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <meta name="theme-color" content="#1d4ed8" />
+  <meta name="apple-mobile-web-app-title" content="إدارة البلاغات" />
+  <link rel="apple-touch-icon" href="/images/logo.png" />
 </head>
 <body class="app-shell">
   <div class="page app-page">
@@ -320,7 +324,7 @@
       <a class="action-item" id="dailyBtn" href="/daily.html"><span class="action-icon" aria-hidden="true">🗓️</span><span>اليوميات</span></a>
       <a class="action-item" id="statisticsBtn" href="/statistics.html"><span class="action-icon" aria-hidden="true">📊</span><span>الاحصائيات</span></a>
       <div class="action-item" id="holidaysBtn"><span class="action-icon" aria-hidden="true">🏖️</span><span>الاجازات</span></div>
-      <div class="action-item" id="coursesBtn"><span class="action-icon" aria-hidden="true">🎓</span><span>الدورات</span></div>
+      <div class="action-item" id="coursesBtn" style="display: none;"><span class="action-icon" aria-hidden="true">🎓</span><span>الدورات</span></div>
       <div class="action-item" id="transfersBtn"><span class="action-icon" aria-hidden="true">🔄</span><span>التنقلات</span></div>
       <div class="action-item admin-only" id="evaluationsBtn"><span class="action-icon" aria-hidden="true">⭐</span><span>تقييم الاداء</span></div>
       <div class="action-item admin-only" id="adminFormsBtn"><span class="action-icon" aria-hidden="true">📝</span><span>النماذج الادارية</span></div>
@@ -364,7 +368,7 @@
             <p>الإجازات</p>
             <h3 id="totalHolidays">--</h3>
           </div>
-          <div class="stat-card">
+          <div class="stat-card" id="totalCoursesCard" style="display: none;">
             <p>الدورات</p>
             <h3 id="totalCourses">--</h3>
           </div>
@@ -386,8 +390,8 @@
         <div class="summary-panel" id="shiftStats"></div>
       </div>
       <div class="panel">
-        <h2>إحصائية الشعب</h2>
-        <div class="summary-panel" id="sectionStats"></div>
+        <h2>إحصائية مقر العمل</h2>
+        <div class="summary-panel" id="workplaceStats"></div>
       </div>
     </div>
 
@@ -465,6 +469,7 @@
     </div>
   </div>
 
+  <script src="/install-shortcut.js"></script>
   <script>
     const logoutBtn = document.getElementById('logoutBtn');
     const employeesBtn = document.getElementById('employeesBtn');
@@ -491,6 +496,13 @@
       window.location.href = '/';
     }
 
+    if (typeof window.initShortcutInstallGate === 'function') {
+      window.initShortcutInstallGate({
+        appName: 'إدارة البلاغات',
+        logoSrc: '/images/logo.png'
+      });
+    }
+
     localStorage.removeItem('activityLog');
     localStorage.removeItem('loggedInUser');
 
@@ -514,7 +526,7 @@
 
     const currentRole = String(currentUser?.role || '').trim().toLowerCase();
     const isAdminUser = currentRole === 'admin';
-    const defaultAllowedPages = ['employees', 'daily', 'statistics', 'holidays', 'courses', 'transfers', 'outsideEmployees', 'outgoing', 'incoming'];
+    const defaultAllowedPages = ['employees', 'daily', 'statistics', 'holidays', 'transfers', 'outsideEmployees', 'outgoing', 'incoming'];
     const allowedPages = Array.isArray(currentUser?.allowedPages) && currentUser.allowedPages.length
       ? currentUser.allowedPages
       : [];
@@ -535,6 +547,15 @@
       systemLog: systemLogBtn,
       settings: settingsBtn
     };
+
+    if (coursesBtn) {
+      coursesBtn.style.display = 'none';
+    }
+
+    const totalCoursesCard = document.getElementById('totalCoursesCard');
+    if (totalCoursesCard) {
+      totalCoursesCard.style.display = 'none';
+    }
 
     if (!isAdminUser) {
       ['evaluations', 'administrative', 'systemLog', 'settings'].forEach((key) => {
@@ -721,15 +742,40 @@
 
     const departmentStats = [];
     const shiftStats = [];
-    const sectionStats = [];
+    const workplaceStats = [];
 
-    function renderBlocks(containerId, items) {
+    function buildSummaryLink(kind, value) {
+      const url = new URL('/employees.html', window.location.origin);
+      if (kind === 'department') {
+        url.searchParams.set('department', value);
+      }
+      if (kind === 'section') {
+        url.searchParams.set('section', value);
+        url.searchParams.set('shift', value);
+      }
+      if (kind === 'workplace') {
+        url.searchParams.set('workplace', value);
+        url.searchParams.set('work', value);
+      }
+      return url.toString();
+    }
+
+    function renderBlocks(containerId, items, kind) {
       const container = document.getElementById(containerId);
-      container.innerHTML = ''; 
-      items.forEach(item => {
-        const block = document.createElement('div');
+      if (!container) return;
+      container.innerHTML = '';
+      items.forEach((item) => {
+        const block = document.createElement('a');
+        const label = item.label || item.name || '';
+        const count = item.value ?? 0;
+        block.href = buildSummaryLink(kind, label);
         block.className = 'stat-block';
-        block.innerHTML = `<h3>${item.value}</h3><p>${item.label}</p>`;
+        block.setAttribute('aria-label', `عرض الموظفين في ${label}`);
+        block.innerHTML = `<h3>${count}</h3><p>${label}</p>`;
+        block.addEventListener('click', (event) => {
+          event.preventDefault();
+          window.location.href = buildSummaryLink(kind, label);
+        });
         container.appendChild(block);
       });
     }
@@ -790,9 +836,9 @@
       });
     }
 
-    renderBlocks('departmentStats', departmentStats);
-    renderBlocks('shiftStats', shiftStats);
-    renderBlocks('sectionStats', sectionStats);
+    renderBlocks('departmentStats', departmentStats, 'department');
+    renderBlocks('shiftStats', shiftStats, 'section');
+    renderBlocks('workplaceStats', workplaceStats, 'workplace');
 
     function getActivityStatus(item) {
       const action = String(item?.Action || item?.action || '').toLowerCase();
@@ -928,9 +974,9 @@
         }
         const data = await response.json();
         updateDashboardNumbers(data);
-        renderBlocks('departmentStats', data.departments || []);
-        renderBlocks('shiftStats', data.shifts || []);
-        renderBlocks('sectionStats', data.sections || []);
+        renderBlocks('departmentStats', data.departments || [], 'department');
+        renderBlocks('shiftStats', data.shifts || [], 'section');
+        renderBlocks('workplaceStats', data.workplaces || [], 'workplace');
         renderDocumentSummary(outgoingSummary, 'ملخص الصادر', data.outgoingSummary || {}, 'الجهة المرسل لها');
         renderDocumentSummary(incomingSummary, 'ملخص الوارد', data.incomingSummary || {}, 'الجهة الوارد منها');
         renderTodaySummary(data.todaySummary || []);

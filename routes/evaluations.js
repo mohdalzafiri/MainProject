@@ -3,6 +3,46 @@ const { db } = require('../database');
 
 const router = express.Router();
 const validSummaries = new Set(['today', 'week', 'month', 'quarter', 'halfyear', 'year']);
+const forcedScopes = new Set(['employee', 'department', 'section']);
+
+const allDepartmentsOrder = [
+  'البلاغات',
+  'العمليات',
+  'الخدمات المساندة',
+  'الموارد البشرية',
+  'المعلومات',
+  'الاحصاء'
+];
+
+const allSectionsOrder = [
+  { department: 'البلاغات', section: 'أ - البلاغات' },
+  { department: 'البلاغات', section: 'ب - البلاغات' },
+  { department: 'البلاغات', section: 'ج - البلاغات' },
+  { department: 'البلاغات', section: 'د - البلاغات' },
+  { department: 'البلاغات', section: 'هـ - البلاغات' },
+  { department: 'البلاغات', section: 'ثابت صبح' },
+  { department: 'البلاغات', section: 'أ - فريق عمل البلاغات' },
+  { department: 'البلاغات', section: 'ب - فريق عمل البلاغات' },
+  { department: 'البلاغات', section: 'ج - فريق عمل البلاغات' },
+  { department: 'البلاغات', section: 'د - فريق عمل البلاغات' },
+  { department: 'البلاغات', section: 'هـ - فريق عمل البلاغات' },
+  { department: 'البلاغات', section: 'سكرتارية البلاغات' },
+  { department: 'البلاغات', section: 'صباحاً' },
+  { department: 'العمليات', section: 'أ - العمليات' },
+  { department: 'العمليات', section: 'ب - العمليات' },
+  { department: 'العمليات', section: 'ج - العمليات' },
+  { department: 'العمليات', section: 'د - العمليات' },
+  { department: 'العمليات', section: 'هـ - العمليات' },
+  { department: 'العمليات', section: 'سكرتارية العمليات' },
+  { department: 'العمليات', section: 'صباحاً' },
+  { department: 'الخدمات المساندة', section: 'أ - الخدمات' },
+  { department: 'الخدمات المساندة', section: 'ب - الخدمات' },
+  { department: 'الخدمات المساندة', section: 'ج - الخدمات' },
+  { department: 'الخدمات المساندة', section: 'د - الخدمات' },
+  { department: 'الخدمات المساندة', section: 'هـ - الخدمات' },
+  { department: 'الخدمات المساندة', section: 'سكرتارية الخدمات' },
+  { department: 'الخدمات المساندة', section: 'صباحاً' }
+];
 
 function normalizeDateInput(value) {
   const text = String(value || '').trim();
@@ -12,6 +52,11 @@ function normalizeDateInput(value) {
 
 function normalizeText(value) {
   return String(value || '').trim().toLowerCase();
+}
+
+function normalizeDepartment(value) {
+  const text = String(value || '').trim();
+  return text === 'الإحصاء' ? 'الاحصاء' : text;
 }
 
 function isMedicalEntry(text) {
@@ -62,34 +107,34 @@ function classifyDailyEntry(row) {
   return 'other';
 }
 
+function toNumber(value) {
+  const numeric = Number(value || 0);
+  return Number.isFinite(numeric) ? numeric : 0;
+}
+
+function resolveMetrics(metrics) {
+  return {
+    totalCount: toNumber(metrics.totalCount ?? metrics.TotalCount),
+    presentCount: toNumber(metrics.presentCount ?? metrics.PresentCount),
+    licenseCount: toNumber(metrics.licenseCount ?? metrics.LicenseCount),
+    absentCount: toNumber(metrics.absentCount ?? metrics.AbsentCount),
+    leaveCount: toNumber(metrics.leaveCount ?? metrics.LeaveCount),
+    medicalCount: toNumber(metrics.medicalCount ?? metrics.MedicalCount),
+    delayCount: toNumber(metrics.delayCount ?? metrics.DelayCount),
+    assignmentCount: toNumber(metrics.assignmentCount ?? metrics.AssignmentCount),
+    otherCount: toNumber(metrics.otherCount ?? metrics.OtherCount)
+  };
+}
+
 function calculatePercent(metrics) {
-  const denominator = metrics.totalCount || 0;
+  const resolved = resolveMetrics(metrics);
+  const denominator = resolved.totalCount || 0;
   if (!denominator) return 0;
-
-  if (metrics.presentCount === denominator) {
-    return 100;
-  }
-
-  const allPermissionOrDelay = metrics.presentCount === 0 && (metrics.licenseCount + metrics.delayCount) === denominator;
-  if (allPermissionOrDelay) {
-    return 50;
-  }
-
-  const allNegative = metrics.presentCount === 0 && (
-    metrics.absentCount +
-    metrics.leaveCount +
-    metrics.medicalCount +
-    metrics.assignmentCount +
-    metrics.otherCount
-  ) === denominator;
-  if (allNegative) {
-    return 0;
-  }
-
-  return Number(((metrics.presentCount / denominator) * 100).toFixed(2));
+  return Number(((resolved.presentCount / denominator) * 100).toFixed(2));
 }
 
 function getEvaluationProfile(percent, metrics) {
+  const resolved = resolveMetrics(metrics);
   const levels = [
     { min: 97, label: 'ممتاز' },
     { min: 93, label: 'ممتاز جدا' },
@@ -102,7 +147,7 @@ function getEvaluationProfile(percent, metrics) {
   let levelIndex = levels.findIndex((item) => percent >= item.min);
   if (levelIndex < 0) levelIndex = levels.length - 1;
 
-  const hasHighAbsence = metrics.absentCount >= metrics.presentCount && (metrics.presentCount + metrics.absentCount) >= 5;
+  const hasHighAbsence = resolved.absentCount >= resolved.presentCount && (resolved.presentCount + resolved.absentCount) >= 5;
   if (hasHighAbsence && levelIndex < levels.length - 1) {
     levelIndex += 1;
   }
@@ -112,42 +157,136 @@ function getEvaluationProfile(percent, metrics) {
 }
 
 function buildPerformanceReason(metrics) {
+  const resolved = resolveMetrics(metrics);
   const reasons = [];
 
-  if (metrics.presentCount === metrics.totalCount && metrics.totalCount > 0) {
+  if (resolved.presentCount === resolved.totalCount && resolved.totalCount > 0) {
     return 'حضور كامل';
   }
 
-  if (metrics.presentCount === 0 && (metrics.licenseCount + metrics.delayCount) === metrics.totalCount && metrics.totalCount > 0) {
+  if (resolved.presentCount === 0 && (resolved.licenseCount + resolved.delayCount) === resolved.totalCount && resolved.totalCount > 0) {
     return 'استئذان أو تأخير طوال الفترة';
   }
 
-  if (metrics.presentCount === 0 && metrics.totalCount > 0) {
-    if (metrics.absentCount) reasons.push(`غياب ${metrics.absentCount}`);
-    if (metrics.leaveCount) reasons.push(`إجازات ${metrics.leaveCount}`);
-    if (metrics.medicalCount) reasons.push(`طبية ${metrics.medicalCount}`);
-    if (metrics.assignmentCount) reasons.push(`تكليف ${metrics.assignmentCount}`);
-    if (metrics.delayCount) reasons.push(`تأخير ${metrics.delayCount}`);
-    if (metrics.licenseCount) reasons.push(`استئذان ${metrics.licenseCount}`);
-    if (metrics.otherCount) reasons.push(`أخرى ${metrics.otherCount}`);
+  if (resolved.presentCount === 0 && resolved.totalCount > 0) {
+    if (resolved.absentCount) reasons.push(`غياب ${resolved.absentCount}`);
+    if (resolved.leaveCount) reasons.push(`إجازات ${resolved.leaveCount}`);
+    if (resolved.medicalCount) reasons.push(`طبية ${resolved.medicalCount}`);
+    if (resolved.assignmentCount) reasons.push(`تكليف ${resolved.assignmentCount}`);
+    if (resolved.delayCount) reasons.push(`تأخير ${resolved.delayCount}`);
+    if (resolved.licenseCount) reasons.push(`استئذان ${resolved.licenseCount}`);
+    if (resolved.otherCount) reasons.push(`أخرى ${resolved.otherCount}`);
     return reasons.slice(0, 2).join('، ');
   }
 
-  if (metrics.delayCount) reasons.push(`تأخير ${metrics.delayCount}`);
-  if (metrics.licenseCount) reasons.push(`استئذان ${metrics.licenseCount}`);
-  if (metrics.leaveCount) reasons.push(`إجازات ${metrics.leaveCount}`);
-  if (metrics.medicalCount) reasons.push(`طبية ${metrics.medicalCount}`);
-  if (metrics.assignmentCount) reasons.push(`تكليف ${metrics.assignmentCount}`);
-  if (metrics.absentCount) reasons.push(`غياب ${metrics.absentCount}`);
+  if (resolved.delayCount) reasons.push(`تأخير ${resolved.delayCount}`);
+  if (resolved.licenseCount) reasons.push(`استئذان ${resolved.licenseCount}`);
+  if (resolved.leaveCount) reasons.push(`إجازات ${resolved.leaveCount}`);
+  if (resolved.medicalCount) reasons.push(`طبية ${resolved.medicalCount}`);
+  if (resolved.assignmentCount) reasons.push(`تكليف ${resolved.assignmentCount}`);
+  if (resolved.absentCount) reasons.push(`غياب ${resolved.absentCount}`);
 
   return reasons.slice(0, 2).join('، ');
 }
 
-function resolveReportScope(department, section, name) {
+function resolveReportScope(department, section, name, forcedScope = '') {
+  const preferred = String(forcedScope || '').trim();
+  if (forcedScopes.has(preferred)) {
+    return preferred;
+  }
+
   if (name) return 'employee';
-  if (section) return 'section';
-  if (department) return 'department';
+  if (section || department) return 'employee';
   return 'employee';
+}
+
+function createEmptySummaryRow(groupKey, name) {
+  return {
+    GroupKey: groupKey,
+    Name: name,
+    PresentCount: 0,
+    LicenseCount: 0,
+    AbsentCount: 0,
+    LeaveCount: 0,
+    MedicalCount: 0,
+    DelayCount: 0,
+    AssignmentCount: 0,
+    OtherCount: 0,
+    TotalCount: 0,
+    Percent: 0,
+    Evaluation: getEvaluationProfile(0, {}).label,
+    Notes: '',
+    PreviousYearPercent: null,
+    Rank: 0
+  };
+}
+
+function sortAndRankRows(rows) {
+  const sorted = [...rows].sort((a, b) => {
+    if (Number(b.Percent || 0) !== Number(a.Percent || 0)) return Number(b.Percent || 0) - Number(a.Percent || 0);
+    if (Number(b.PresentCount || 0) !== Number(a.PresentCount || 0)) return Number(b.PresentCount || 0) - Number(a.PresentCount || 0);
+    return String(a.Name || '').localeCompare(String(b.Name || ''), 'ar');
+  });
+
+  sorted.forEach((item, index) => {
+    item.Rank = index + 1;
+  });
+
+  return sorted;
+}
+
+function applyAllModeFilters(rows, mode) {
+  const normalizedMode = String(mode || '').trim();
+  if (!Array.isArray(rows) || !rows.length) {
+    if (normalizedMode === 'allDepartments') {
+      const baseRows = allDepartmentsOrder.map((department) =>
+        createEmptySummaryRow(`department:${normalizeDepartment(department)}`, normalizeDepartment(department))
+      );
+      return sortAndRankRows(baseRows);
+    }
+
+    if (normalizedMode === 'allSections') {
+      const baseRows = allSectionsOrder.map((item) =>
+        createEmptySummaryRow(
+          `section:${normalizeDepartment(item.department)}|${String(item.section || '').trim()}`,
+          String(item.section || '').trim()
+        )
+      );
+      return sortAndRankRows(baseRows);
+    }
+
+    return rows;
+  }
+
+  if (normalizedMode === 'allDepartments') {
+    const allowed = new Set(allDepartmentsOrder.map((item) => normalizeDepartment(item)));
+    const filtered = rows.filter((item) => allowed.has(normalizeDepartment(item.Name)));
+    const byDepartment = new Map(filtered.map((item) => [normalizeDepartment(item.Name), item]));
+
+    const completed = allDepartmentsOrder.map((department) => {
+      const key = normalizeDepartment(department);
+      return byDepartment.get(key) || createEmptySummaryRow(`department:${key}`, key);
+    });
+
+    return sortAndRankRows(completed);
+  }
+
+  if (normalizedMode === 'allSections') {
+    const allowedKeys = new Set(
+      allSectionsOrder.map((item) => `section:${normalizeDepartment(item.department)}|${String(item.section || '').trim()}`)
+    );
+    const filtered = rows.filter((item) => allowedKeys.has(String(item.GroupKey || '').trim()));
+    const byKey = new Map(filtered.map((item) => [String(item.GroupKey || '').trim(), item]));
+
+    const completed = allSectionsOrder.map((item) => {
+      const key = `section:${normalizeDepartment(item.department)}|${String(item.section || '').trim()}`;
+      return byKey.get(key) || createEmptySummaryRow(key, String(item.section || '').trim());
+    });
+
+    return sortAndRankRows(completed);
+  }
+
+  return rows;
 }
 
 function buildReportKey(row, scope) {
@@ -381,7 +520,9 @@ router.get('/report', (req, res) => {
     const fromDate = normalizeDateInput(req.query.fromDate);
     const toDate = normalizeDateInput(req.query.toDate);
     const compareYear = String(req.query.compareYear || '').trim();
-    const reportScope = resolveReportScope(department, section, name);
+    const forcedScope = String(req.query.scope || '').trim();
+    const mode = String(req.query.mode || '').trim();
+    const reportScope = resolveReportScope(department, section, name, forcedScope);
 
     const { whereClause, params } = buildDailyFilterQuery({
       department,
@@ -403,7 +544,7 @@ router.get('/report', (req, res) => {
       LIMIT 10000
     `).all(...params);
 
-    const reportRows = summarizeRows(rows, reportScope);
+    const reportRows = applyAllModeFilters(summarizeRows(rows, reportScope), mode);
 
     if (compareYear) {
       const previousFromDate = shiftDateYear(fromDate, compareYear);
@@ -430,7 +571,7 @@ router.get('/report', (req, res) => {
           LIMIT 10000
         `).all(...previousQuery.params);
 
-        const previousReportRows = summarizeRows(previousRows, reportScope);
+        const previousReportRows = applyAllModeFilters(summarizeRows(previousRows, reportScope), mode);
         const previousByKey = new Map(previousReportRows.map((item) => [item.GroupKey, item]));
 
         reportRows.forEach((item) => {

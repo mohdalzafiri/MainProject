@@ -1210,7 +1210,9 @@
     });
 
     dateOpenButtons.forEach((button) => {
-      button.addEventListener('click', () => {
+      button.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
         const pickerId = button.dataset.pickerId;
         const pickerInput = document.getElementById(pickerId);
         if (!pickerInput) {
@@ -1218,10 +1220,16 @@
         }
 
         if (typeof pickerInput.showPicker === 'function') {
-          pickerInput.showPicker();
+          try {
+            pickerInput.showPicker();
+          } catch (error) {
+            pickerInput.focus();
+            pickerInput.click();
+          }
           return;
         }
 
+        pickerInput.focus();
         pickerInput.click();
       });
     });
@@ -1344,7 +1352,7 @@
     });
 
     backBtn.addEventListener('click', () => {
-      window.location.href = '/dashboard.html';
+      window.location.href = localStorage.getItem('uiMode') === 'mobile' ? '/mobile/dashboard.html' : '/dashboard.html';
     });
 
     (async () => {

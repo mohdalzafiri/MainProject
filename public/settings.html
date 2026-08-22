@@ -1827,7 +1827,7 @@
     });
 
     backBtn.addEventListener('click', () => {
-      window.location.href = '/dashboard.html';
+      window.location.href = localStorage.getItem('uiMode') === 'mobile' ? '/mobile/dashboard.html' : '/dashboard.html';
     });
 
     refreshBtn.addEventListener('click', () => {

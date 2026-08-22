@@ -13,6 +13,7 @@
     .daily-shell {
       display: grid;
       gap: 16px;
+      max-width: 100%;
     }
 
     .daily-header {
@@ -34,16 +35,9 @@
       justify-content: flex-start;
     }
 
-    .daily-layout {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 12px;
-      align-items: start;
-    }
-
     .summary-panel {
       min-width: 0;
-      background: var(--ui-surface);
+      background: linear-gradient(135deg, #f8fbff 0%, #eef4ff 100%);
       border: 1px solid var(--ui-border);
       border-radius: var(--ui-panel-radius);
       padding: var(--ui-panel-padding);
@@ -51,18 +45,9 @@
       overflow: hidden;
     }
 
-    .summary-head {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 10px;
-      font-weight: 700;
-      margin-bottom: 12px;
-    }
-
     .summary-grid {
       display: grid;
-      gap: 12px;
+      gap: 10px;
     }
 
     .summary-row {
@@ -71,11 +56,18 @@
       gap: 10px;
       font-weight: 700;
       color: #1f2937;
+      padding: 6px 0;
+      border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+    }
+
+    .summary-row:last-child {
+      border-bottom: 0;
     }
 
     .summary-row span:last-child {
       min-width: 40px;
-      text-align: center;
+      text-align: left;
+      color: var(--ui-primary);
     }
 
     .summary-note {
@@ -85,12 +77,6 @@
       font-size: 12px;
       color: var(--ui-muted);
       background: transparent;
-    }
-
-    .daily-content {
-      display: grid;
-      gap: 16px;
-      min-width: 0;
     }
 
     .top-panel .form-grid .field {
@@ -121,7 +107,7 @@
       justify-content: space-between;
       align-items: center;
       gap: 10px;
-      flex-wrap: nowrap;
+      flex-wrap: wrap;
       margin-bottom: 10px;
     }
 
@@ -221,153 +207,7 @@
     }
 
     .table-wrap table {
-      min-width: 1050px;
-    }
-
-    .mobile-daily-cards {
-      display: none;
-      gap: 12px;
-    }
-
-    .mobile-daily-card {
-      border: 1px solid var(--ui-border);
-      border-radius: 16px;
-      background: #fff;
-      padding: 14px;
-      display: grid;
-      gap: 10px;
-      text-align: right;
-      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
-    }
-
-    .mobile-daily-card.status-present {
-      border-color: #22c55e;
-    }
-
-    .mobile-daily-card.status-absent {
-      border-color: #ef4444;
-    }
-
-    .mobile-daily-card.status-leave {
-      border-color: #3b82f6;
-    }
-
-    .mobile-daily-card.status-delay {
-      border-color: #f59e0b;
-    }
-
-    .mobile-daily-card.status-course {
-      border-color: #a855f7;
-    }
-
-    .mobile-daily-card.status-selected {
-      box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.16);
-    }
-
-    .mobile-daily-card.selected {
-      border-color: #60a5fa;
-      box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.16);
-    }
-
-    .mobile-daily-card-head {
-      display: flex;
-      justify-content: space-between;
-      gap: 10px;
-      align-items: flex-start;
-    }
-
-    .mobile-daily-card-head strong {
-      font-size: 15px;
-      line-height: 1.4;
-    }
-
-    .mobile-daily-card-head span {
-      color: var(--ui-muted);
-      font-size: 12px;
-      white-space: nowrap;
-    }
-
-    .mobile-daily-status-badge {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 72px;
-      padding: 4px 10px;
-      border-radius: 999px;
-      font-size: 12px;
-      font-weight: 700;
-      white-space: nowrap;
-      border: 1px solid transparent;
-    }
-
-    .mobile-daily-status-badge.status-present {
-      background: #dcfce7;
-      color: #166534;
-      border-color: #22c55e;
-    }
-
-    .mobile-daily-status-badge.status-absent {
-      background: #fee2e2;
-      color: #991b1b;
-      border-color: #ef4444;
-    }
-
-    .mobile-daily-status-badge.status-leave {
-      background: #dbeafe;
-      color: #1d4ed8;
-      border-color: #3b82f6;
-    }
-
-    .mobile-daily-status-badge.status-delay {
-      background: #fef3c7;
-      color: #92400e;
-      border-color: #f59e0b;
-    }
-
-    .mobile-daily-status-badge.status-course {
-      background: #f3e8ff;
-      color: #7e22ce;
-      border-color: #a855f7;
-    }
-
-    .mobile-daily-card-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 8px;
-    }
-
-    .mobile-daily-card-item {
-      padding: 8px 10px;
-      border-radius: 12px;
-      background: #f8fafc;
-      border: 1px solid rgba(15, 23, 42, 0.08);
-      display: grid;
-      gap: 3px;
-    }
-
-    .mobile-daily-card-item span:first-child {
-      color: var(--ui-muted);
-      font-size: 11px;
-      font-weight: 700;
-    }
-
-    .mobile-daily-card-item span:last-child {
-      color: var(--ui-text);
-      font-size: 13px;
-      font-weight: 700;
-      line-height: 1.4;
-      overflow-wrap: anywhere;
-    }
-
-    .mobile-daily-card-note {
-      padding: 10px 12px;
-      border-radius: 12px;
-      background: #f8fafc;
-      border: 1px solid rgba(15, 23, 42, 0.08);
-      color: var(--ui-text);
-      font-size: 13px;
-      line-height: 1.6;
-      overflow-wrap: anywhere;
+      min-width: 100%;
     }
 
     .badge.soft {
@@ -407,11 +247,11 @@
     }
 
     .row-leave-end {
-      background: #93c5fd;
+      background: #bfdbfe;
     }
 
     .row-course {
-      background: #fef9c3;
+      background: #fef3c7;
     }
 
     .row-delay {
@@ -419,7 +259,51 @@
     }
 
     .row-absent {
-      background: #fecaca;
+      background: #fee2e2;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 72px;
+      justify-content: center;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+      border: 1px solid transparent;
+    }
+
+    .status-badge.present {
+      background: #dcfce7;
+      color: #166534;
+      border-color: #86efac;
+    }
+
+    .status-badge.absent {
+      background: #fee2e2;
+      color: #991b1b;
+      border-color: #fda4af;
+    }
+
+    .status-badge.leave {
+      background: #dbeafe;
+      color: #1d4ed8;
+      border-color: #93c5fd;
+    }
+
+    .status-badge.course {
+      background: #fef3c7;
+      color: #92400e;
+      border-color: #fde68a;
+    }
+
+    .status-badge.delay {
+      background: #fef3c7;
+      color: #b45309;
+      border-color: #fdba74;
     }
 
     .row-flash-added {
@@ -436,6 +320,10 @@
     }
 
     @media (max-width: 720px) {
+      .daily-shell {
+        gap: 12px;
+      }
+
       .daily-header h1 {
         font-size: 24px;
       }
@@ -449,72 +337,7 @@
       }
 
       .table-wrap table {
-        min-width: 920px;
-      }
-    }
-
-    @media (max-width: 1100px) {
-      body.app-shell .daily-shell,
-      body.app-shell .daily-layout,
-      body.app-shell .daily-content,
-      body.app-shell .daily-shell .panel,
-      body.app-shell .top-panel,
-      body.app-shell .summary-panel {
-        width: 100% !important;
-        max-width: 100% !important;
-        min-width: 0 !important;
-      }
-
-      body.app-shell .daily-shell .panel,
-      body.app-shell .top-panel,
-      body.app-shell .summary-panel {
-        box-sizing: border-box !important;
-        padding: 14px !important;
-      }
-
-      body.app-shell .daily-content {
-        grid-template-columns: minmax(0, 1fr) !important;
-      }
-
-      body.app-shell .daily-content > * {
-        width: 100% !important;
-        max-width: 100% !important;
-        min-width: 0 !important;
-      }
-
-      body.app-shell.mobile-ui .table-wrap {
-        display: none !important;
-      }
-
-      body.app-shell.mobile-ui .mobile-daily-cards {
-        display: grid !important;
-      }
-
-      body.app-shell .top-panel .form-grid {
-        grid-template-columns: 1fr !important;
-        width: 100% !important;
-        max-width: 100% !important;
-      }
-
-      body.app-shell .top-panel .form-grid > * {
-        grid-column: 1 / -1 !important;
-        min-width: 0 !important;
-      }
-
-      body.app-shell .top-panel .placeholder-cell {
-        display: none !important;
-      }
-
-      body.app-shell .table-tools {
-        flex-wrap: wrap !important;
-      }
-
-      body.app-shell .search-box {
-        flex: 1 1 100% !important;
-      }
-
-      body.app-shell .bottom-actions {
-        width: 100% !important;
+        min-width: 100%;
       }
     }
   </style>
@@ -531,124 +354,152 @@
       </div>
     </header>
 
-    <div class="daily-layout">
-      <section class="daily-content">
-        <section class="panel top-panel">
-          <h2>تعبئة / اظهار البيانات</h2>
-          <form id="dailyForm">
-            <input id="dailyId" type="hidden" />
-            <input id="selectedTable" type="hidden" />
-            <input id="name" type="hidden" />
-            <input id="status" type="hidden" value="حضور" />
-            <input id="inTime" type="hidden" />
-            <input id="outTime" type="hidden" />
-            <input id="note" type="hidden" />
+    <section class="panel top-panel">
+      <h2>تعبئة / اظهار البيانات</h2>
+      <form id="dailyForm">
+        <input id="dailyId" type="hidden" />
+        <input id="selectedTable" type="hidden" />
+        <input id="name" type="hidden" />
+        <input id="status" type="hidden" value="حضور" />
+        <input id="inTime" type="hidden" />
+        <input id="outTime" type="hidden" />
+        <input id="note" type="hidden" />
 
-            <div class="form-grid">
-              <div class="field">
-                <label for="today">التاريخ</label>
-                <div class="date-picker-wrap">
-                  <input id="todayDisplay" class="date-display-input" type="text" placeholder="yyyy/mm/dd" readonly />
-                  <button type="button" class="date-picker-trigger" data-picker-id="today" aria-label="اختيار التاريخ"></button>
-                  <input id="today" type="date" class="native-date-input" />
-                </div>
-              </div>
-
-              <div class="field">
-                <label for="day">اليوم</label>
-                <input id="day" type="text" readonly />
-              </div>
-
-              <div class="field placeholder-cell" aria-hidden="true">
-                <label>&nbsp;</label>
-                <input type="text" tabindex="-1" />
-              </div>
-
-              <div class="field">
-                <label for="department">القسم</label>
-                <select id="department"><option value="">-- اختر --</option></select>
-              </div>
-
-              <div class="field">
-                <label for="section">النوبة</label>
-                <select id="section"><option value="">-- اختر --</option></select>
-              </div>
-
-              <div class="field">
-                <label for="period">الفترة</label>
-                <select id="period"><option value="">-- اختر --</option></select>
-              </div>
-            </div>
-
-            <div id="recordedSectionsLabel" class="section-hint">النوبات المسجّلة لليوم حسب التاريخ المختار: لا توجد نوبات مسجلة</div>
-
-            <div class="toolbar">
-              <button type="submit" class="btn success" id="addBtn">اضافة بيانات جديدة</button>
-              <button type="button" class="btn warning" id="updateBtn">تعديل بيانات</button>
-              <button type="button" class="btn danger" id="deleteBtn">حذف بيانات</button>
-              <button type="button" class="btn primary" id="printBtn">طباعة بيانات</button>
-            </div>
-          </form>
-          <div id="statusLine" class="status-line"></div>
-        </section>
-
-        <section class="panel">
-          <h2>صندوق عرض البيانات</h2>
-          <div class="table-tools">
-            <p id="countLabel">عدد السجلات: 0</p>
-            <div class="search-box">
-              <input id="searchName" class="table-search" type="text" placeholder="فلترة بالاسم أثناء الكتابة" autocomplete="off" list="employeeSuggestions" />
-              <datalist id="employeeSuggestions"></datalist>
-              <div id="searchSuggestions" class="search-suggestions" hidden></div>
-            </div>
-            <div class="bottom-actions">
-              <button type="button" class="btn success" id="newBtn">إضافة موظف</button>
-              <button type="button" class="btn warning" id="deleteByNameBtn">حذف بالاسم</button>
-              <button type="button" class="btn dark" id="refreshBtn">تحديث العرض</button>
+        <div class="form-grid">
+          <div class="field">
+            <label for="today">التاريخ</label>
+            <div class="date-picker-wrap">
+              <input id="todayDisplay" class="date-display-input" type="text" placeholder="yyyy/mm/dd" readonly />
+              <button type="button" class="date-picker-trigger" data-picker-id="today" aria-label="اختيار التاريخ"></button>
+              <input id="today" type="date" class="native-date-input" />
             </div>
           </div>
 
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>م</th>
-                  <th>الاسم</th>
-                  <th>الحالة</th>
-                  <th>الحضور</th>
-                  <th>الانصراف</th>
-                  <th>بداية</th>
-                  <th>نهاية</th>
-                  <th>الوصف</th>
-                  <th>ملاحظات</th>
-                </tr>
-              </thead>
-              <tbody id="rows"></tbody>
-            </table>
+          <div class="field">
+            <label for="day">اليوم</label>
+            <input id="day" type="text" readonly />
           </div>
-          <div id="mobileRows" class="mobile-daily-cards" aria-live="polite"></div>
-        </section>
 
-        <aside class="summary-panel">
-          <div class="summary-grid">
-            <div class="summary-row"><span>اليوم:</span><span id="sideDay">--</span></div>
-            <div class="summary-row"><span>التاريخ:</span><span id="sideDate">--</span></div>
-            <div class="summary-row"><span>القسم:</span><span id="summaryDepartment">--</span></div>
-            <div class="summary-row"><span>النوبة:</span><span id="summarySection">--</span></div>
-            <div class="summary-row"><span>الفترة:</span><span id="summaryPeriod">--</span></div>
-            <div class="summary-row"><span>إجمالي الموظفين:</span><span id="summaryEmployees">0</span></div>
-            <div class="summary-row"><span>الحضور:</span><span id="summaryPresent">0</span></div>
-            <div class="summary-row"><span>الغياب:</span><span id="summaryAbsent">0</span></div>
-            <div class="summary-row"><span>الأذونات:</span><span id="summaryPermissions">0</span></div>
-            <div class="summary-row"><span>الإجازة:</span><span id="summaryLeaves">0</span></div>
-            <div class="summary-row"><span>الدورة:</span><span id="summaryCourses">0</span></div>
-            <div class="summary-row"><span>العجز:</span><span id="summaryDetention">0</span></div>
+          <div class="field placeholder-cell" aria-hidden="true">
+            <label>&nbsp;</label>
+            <input type="text" tabindex="-1" />
           </div>
-          <div class="summary-note" id="summaryFooter">--</div>
-        </aside>
-      </section>
-    </div>
+
+          <div class="field">
+            <label for="department">القسم</label>
+            <select id="department"><option value="">-- اختر --</option></select>
+          </div>
+
+          <div class="field">
+            <label for="section">النوبة</label>
+            <select id="section"><option value="">-- اختر --</option></select>
+          </div>
+
+          <div class="field">
+            <label for="period">الفترة</label>
+            <select id="period"><option value="">-- اختر --</option></select>
+          </div>
+        </div>
+
+        <div id="recordedSectionsLabel" class="section-hint">النوبات المسجّلة لليوم حسب التاريخ المختار: لا توجد نوبات مسجلة</div>
+
+        <div class="toolbar">
+          <button type="submit" class="btn success" id="addBtn">اضافة بيانات جديدة</button>
+          <button type="button" class="btn warning" id="updateBtn">تعديل بيانات</button>
+          <button type="button" class="btn danger" id="deleteBtn">حذف بيانات</button>
+          <button type="button" class="btn primary" id="printBtn">طباعة بيانات</button>
+        </div>
+      </form>
+      <div id="statusLine" class="status-line"></div>
+    </section>
+
+    <section class="panel">
+      <h2>صندوق عرض البيانات</h2>
+      <div class="table-tools">
+        <p id="countLabel">عدد السجلات: 0</p>
+        <div class="search-box">
+          <input id="searchName" class="table-search" type="text" placeholder="فلترة بالاسم أثناء الكتابة" autocomplete="off" list="employeeSuggestions" />
+          <datalist id="employeeSuggestions"></datalist>
+          <div id="searchSuggestions" class="search-suggestions" hidden></div>
+        </div>
+        <div class="bottom-actions">
+          <button type="button" class="btn success" id="newBtn">إضافة موظف</button>
+          <button type="button" class="btn danger" id="deleteByNameBtn">حذف موظف</button>
+          <button type="button" class="btn primary" id="refreshBtn">تحديث العرض</button>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>م</th>
+              <th>الاسم</th>
+              <th>الحالة</th>
+              <th>الفترة</th>
+              <th>الحضور</th>
+              <th>الانصراف</th>
+              <th>بداية</th>
+              <th>نهاية</th>
+              <th>الوصف</th>
+              <th>ملاحظات</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel summary-panel">
+      <h2>ملخص اليوم</h2>
+      <div class="summary-grid">
+        <div class="summary-row"><span>اليوم:</span><span id="sideDay">--</span></div>
+        <div class="summary-row"><span>التاريخ:</span><span id="sideDate">--</span></div>
+        <div class="summary-row"><span>القسم:</span><span id="summaryDepartment">--</span></div>
+        <div class="summary-row"><span>النوبة:</span><span id="summarySection">--</span></div>
+        <div class="summary-row"><span>الفترة:</span><span id="summaryPeriod">--</span></div>
+        <div class="summary-row"><span>إجمالي الموظفين:</span><span id="summaryEmployees">0</span></div>
+        <div class="summary-row"><span>الحضور:</span><span id="summaryPresent">0</span></div>
+        <div class="summary-row"><span>الغياب:</span><span id="summaryAbsent">0</span></div>
+        <div class="summary-row"><span>الأذونات:</span><span id="summaryPermissions">0</span></div>
+        <div class="summary-row"><span>الإجازة:</span><span id="summaryLeaves">0</span></div>
+        <div class="summary-row"><span>الدورة:</span><span id="summaryCourses">0</span></div>
+        <div class="summary-row"><span>العجز:</span><span id="summaryDetention">0</span></div>
+      </div>
+      <div class="summary-note" id="summaryFooter">--</div>
+    </section>
+  </div>
+
   <script>
+    const authToken = localStorage.getItem('authToken');
+    if (!authToken) window.location.href = '/';
+
+    function parseJwtPayload(token) {
+      try {
+        const payload = token.split('.')[1];
+        if (!payload) return null;
+        const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+        const decoded = atob(normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '='));
+        return JSON.parse(decoded);
+      } catch {
+        return null;
+      }
+    }
+
+    const currentUser = parseJwtPayload(authToken);
+    if (!currentUser) {
+      localStorage.removeItem('authToken');
+      window.location.href = '/';
+    }
+
+    const STATUS_OPTIONS = ['حضور', 'تأخير', 'تأخير+عقوبة', 'استئذان', 'غياب', 'حضور بعد غياب', 'طبية', 'اجازة', 'دورة', 'تكليف'];
+    const PERIOD_DEFAULTS = {
+      'نوبة صبح': { inTime: '08:00', outTime: '16:00' },
+      'نوبة عصر': { inTime: '16:00', outTime: '00:00' },
+      'نوبة ليل': { inTime: '00:00', outTime: '08:00' },
+      'صباحاً': { inTime: '07:30', outTime: '14:30' }
+    };
+
     const form = document.getElementById('dailyForm');
     const todayInput = document.getElementById('today');
     const todayDisplayInput = document.getElementById('todayDisplay');
@@ -657,7 +508,6 @@
     const sectionInput = document.getElementById('section');
     const periodInput = document.getElementById('period');
     const rowsBody = document.getElementById('rows');
-    const mobileRows = document.getElementById('mobileRows');
     const countLabel = document.getElementById('countLabel');
     const searchNameInput = document.getElementById('searchName');
     const employeeSuggestionsList = document.getElementById('employeeSuggestions');
@@ -685,34 +535,6 @@
     const summaryCourses = document.getElementById('summaryCourses');
     const summaryDetention = document.getElementById('summaryDetention');
     const summaryFooter = document.getElementById('summaryFooter');
-    const authToken = localStorage.getItem('authToken');
-    const isMobileUiMode = localStorage.getItem('uiMode') === 'mobile';
-    const homeRoute = localStorage.getItem('uiMode') === 'mobile' ? '/mobile-dashboard.html' : '/dashboard.html';
-
-    if (isMobileUiMode) {
-      document.body.classList.add('mobile-ui');
-    } else {
-      document.body.classList.remove('mobile-ui');
-    }
-
-    function parseJwtPayload(token) {
-      try {
-        const payload = String(token || '').split('.')[1];
-        if (!payload) return null;
-        const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
-        const decoded = atob(normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '='));
-        return JSON.parse(decoded);
-      } catch (error) {
-        return null;
-      }
-    }
-
-    const currentUser = parseJwtPayload(authToken);
-
-    if (!authToken || !currentUser) {
-      localStorage.removeItem('authToken');
-      window.location.href = '/';
-    }
 
     const dateOpenButtons = document.querySelectorAll('.date-picker-trigger');
     let departmentSectionRows = [];
@@ -725,47 +547,6 @@
     let suggestionRequestToken = 0;
     let suggestionDebounceHandle = null;
     let pendingAddedEmployeeName = '';
-
-    const fallbackDepartments = ['البلاغات', 'العمليات', 'الخدمات المساندة', 'الموارد البشرية', 'المعلومات', 'الاحصاء'];
-    const fallbackDepartmentSections = [
-      { Department: 'البلاغات', Section: 'أ - البلاغات' },
-      { Department: 'البلاغات', Section: 'ب - البلاغات' },
-      { Department: 'البلاغات', Section: 'ج - البلاغات' },
-      { Department: 'البلاغات', Section: 'د - البلاغات' },
-      { Department: 'البلاغات', Section: 'هـ - البلاغات' },
-      { Department: 'البلاغات', Section: 'ثابت صبح' },
-      { Department: 'البلاغات', Section: 'أ - فريق عمل البلاغات' },
-      { Department: 'البلاغات', Section: 'ب - فريق عمل البلاغات' },
-      { Department: 'البلاغات', Section: 'ج - فريق عمل البلاغات' },
-      { Department: 'البلاغات', Section: 'د - فريق عمل البلاغات' },
-      { Department: 'البلاغات', Section: 'هـ - فريق عمل البلاغات' },
-      { Department: 'البلاغات', Section: 'سكرتارية البلاغات' },
-      { Department: 'البلاغات', Section: 'صباحاً' },
-      { Department: 'العمليات', Section: 'أ - العمليات' },
-      { Department: 'العمليات', Section: 'ب - العمليات' },
-      { Department: 'العمليات', Section: 'ج - العمليات' },
-      { Department: 'العمليات', Section: 'د - العمليات' },
-      { Department: 'العمليات', Section: 'هـ - العمليات' },
-      { Department: 'العمليات', Section: 'سكرتارية العمليات' },
-      { Department: 'العمليات', Section: 'صباحاً' },
-      { Department: 'الخدمات المساندة', Section: 'أ - الخدمات' },
-      { Department: 'الخدمات المساندة', Section: 'ب - الخدمات' },
-      { Department: 'الخدمات المساندة', Section: 'ج - الخدمات' },
-      { Department: 'الخدمات المساندة', Section: 'د - الخدمات' },
-      { Department: 'الخدمات المساندة', Section: 'هـ - الخدمات' },
-      { Department: 'الخدمات المساندة', Section: 'سكرتارية الخدمات' },
-      { Department: 'الخدمات المساندة', Section: 'صباحاً' }
-    ];
-
-    const STATUS_OPTIONS = ['حضور', 'تأخير', 'تأخير+عقوبة', 'استئذان', 'غياب', 'حضور بعد غياب', 'طبية', 'اجازة', 'دورة', 'تكليف'];
-
-    if (departmentInput.options.length <= 1) {
-      departmentSectionRows = [...fallbackDepartmentSections];
-      basePeriods = ['نوبة صبح', 'نوبة عصر', 'نوبة ليل', 'صباحاً'];
-      populateSelect(departmentInput, fallbackDepartments);
-      populateSelect(sectionInput, fallbackDepartmentSections.map((item) => item.Section));
-      populateSelect(periodInput, basePeriods);
-    }
 
     function showStatus(message, isError = false) {
       statusLine.className = `status-line show ${isError ? 'error' : 'ok'}`;
@@ -883,7 +664,14 @@
         .map((row) => String(row.Section || '').trim())
         .filter(Boolean);
 
-      populateSelect(sectionInput, sections);
+      const fallbackSections = {
+        'البلاغات': ['أ - البلاغات', 'ب - البلاغات', 'ج - البلاغات', 'د - البلاغات', 'هـ - البلاغات', 'ثابت صبح', 'أ - فريق عمل البلاغات', 'ب - فريق عمل البلاغات', 'ج - فريق عمل البلاغات', 'د - فريق عمل البلاغات', 'هـ - فريق عمل البلاغات', 'سكرتارية البلاغات', 'صباحاً'],
+        العمليات: ['أ - العمليات', 'ب - العمليات', 'ج - العمليات', 'د - العمليات', 'هـ - العمليات', 'سكرتارية العمليات', 'صباحاً'],
+        'الخدمات المساندة': ['أ - الخدمات', 'ب - الخدمات', 'ج - الخدمات', 'د - الخدمات', 'هـ - الخدمات', 'سكرتارية الخدمات', 'صباحاً']
+      };
+
+      const nextSections = sections.length ? sections : (fallbackSections[selectedDepartment] || []);
+      populateSelect(sectionInput, nextSections);
       if (preferredValue && Array.from(sectionInput.options).some((opt) => opt.value === preferredValue)) {
         sectionInput.value = preferredValue;
       }
@@ -891,34 +679,29 @@
 
     async function loadFilterOptions() {
       try {
-        const response = await fetch('/api/daily-logs/filters', {
-          headers: getHeaders()
-        });
-
-        if (response.status === 401 || response.status === 403) {
-          localStorage.removeItem('authToken');
-          window.location.href = '/';
-          return false;
-        }
-
-        const data = await response.json().catch(() => null);
-        if (!response.ok || !data) {
-          throw new Error('تعذر تحميل اختيارات الأقسام والنوبات.');
-        }
+        const data = await requestJson('/api/daily-logs/filters', { headers: getHeaders() });
+        if (!data) return false;
 
         departmentSectionRows = Array.isArray(data.departmentSections) ? data.departmentSections : [];
         basePeriods = Array.isArray(data.periods) ? data.periods : [];
-        const departments = Array.isArray(data.departments) ? data.departments : [];
-        populateSelect(departmentInput, departments);
+        populateSelect(departmentInput, Array.isArray(data.departments) ? data.departments : []);
         populateSectionOptions(sectionInput.value);
         populateSelect(periodInput, basePeriods);
         return true;
       } catch {
-        // Keep the page usable without showing a blocking filters error message.
         departmentSectionRows = [];
         if (!basePeriods.length) {
           basePeriods = ['نوبة صبح', 'نوبة عصر', 'نوبة ليل', 'صباحاً'];
         }
+        populateSelect(departmentInput, [
+          'البلاغات',
+          'العمليات',
+          'الخدمات المساندة',
+          'الموارد البشرية',
+          'المعلومات',
+          'الاحصاء'
+        ]);
+        populateSectionOptions(sectionInput.value);
         populateSelect(periodInput, basePeriods);
         return false;
       }
@@ -949,12 +732,19 @@
         return;
       }
 
-      const params = new URLSearchParams({ today, department });
-      const data = await requestJson(`/api/daily-logs/recorded-sections?${params.toString()}`, { headers: getHeaders() });
-      const list = Array.isArray(data?.sections) ? data.sections : [];
-      recordedSectionsLabel.textContent = list.length
-        ? `النوبات المسجّلة لليوم حسب التاريخ المختار: ${list.join(' - ')}`
-        : 'النوبات المسجّلة لليوم حسب التاريخ المختار: لا توجد نوبات مسجلة';
+      try {
+        const params = new URLSearchParams({ today, department });
+        const data = await requestJson(`/api/daily-logs/recorded-sections?${params.toString()}`, { headers: getHeaders() });
+        const list = Array.isArray(data?.sections) ? data.sections : [];
+        recordedSectionsLabel.textContent = list.length
+          ? `النوبات المسجّلة لليوم حسب التاريخ المختار: ${list.join(' - ')}`
+          : 'النوبات المسجّلة لليوم حسب التاريخ المختار: لا توجد نوبات مسجلة';
+      } catch {
+        const fallbackSections = (department === 'البلاغات' ? ['أ - البلاغات', 'ب - البلاغات'] : []);
+        recordedSectionsLabel.textContent = fallbackSections.length
+          ? `النوبات المسجّلة لليوم حسب التاريخ المختار: ${fallbackSections.join(' - ')}`
+          : 'النوبات المسجّلة لليوم حسب التاريخ المختار: لا توجد نوبات مسجلة';
+      }
     }
 
     function buildQueryString() {
@@ -1185,21 +975,6 @@
       return '';
     }
 
-    function getMobileStatusClass(item) {
-      const status = String(item.Status || '').trim();
-      if (status === 'حضور' || status === 'حضور بعد غياب') return 'status-present';
-      if (status === 'غياب') return 'status-absent';
-      if (status === 'اجازة') return 'status-leave';
-      if (['تأخير', 'تأخير+عقوبة', 'استئذان'].includes(status)) return 'status-delay';
-      if (status === 'دورة') return 'status-course';
-      return '';
-    }
-
-    function getMobileStatusLabel(item) {
-      const status = String(item.Status || '').trim();
-      return status || '--';
-    }
-
     function updateSummaryPanel(items = []) {
       const rows = Array.isArray(items) ? items : [];
       summaryDepartment.textContent = departmentInput.value || '--';
@@ -1240,51 +1015,34 @@
       summaryCourses.textContent = String(courseCount);
       summaryDetention.textContent = String(detentionCount);
 
-      const presenceRate = totalEmployees > 0 ? presentCount / totalEmployees : 0;
+      const ratio = totalEmployees > 0 ? detentionCount / totalEmployees : 0;
       summaryFooter.style.borderTopColor = 'var(--ui-border)';
       summaryFooter.style.background = 'transparent';
       summaryFooter.style.color = 'var(--ui-muted)';
 
-      if (totalEmployees === 0) {
-        summaryFooter.textContent = 'ℹ️ لا توجد بيانات كافية لتقييم وضع حضور النوبة';
-        summaryFooter.style.background = '#f1f5f9';
-        summaryFooter.style.color = '#475569';
-      } else if (presenceRate >= 0.9) {
-        summaryFooter.textContent = '✅ وضع حضور النوبة ممتاز';
-        summaryFooter.style.background = '#dcfce7';
-        summaryFooter.style.color = '#166534';
-      } else if (presenceRate >= 0.75) {
-        summaryFooter.textContent = '🟦 وضع حضور النوبة جيد';
-        summaryFooter.style.background = '#dbeafe';
-        summaryFooter.style.color = '#1d4ed8';
-      } else if (presenceRate >= 0.5) {
-        summaryFooter.textContent = '⚠️ وضع حضور النوبة مقبول ويحتاج متابعة';
+      if (ratio >= 0.5) {
+        summaryFooter.textContent = 'لقد تجاوز العجز نصف العدد الكلي للموظفين';
+        summaryFooter.style.background = '#fee2e2';
+        summaryFooter.style.color = '#991b1b';
+      } else if (ratio >= (1 / 3)) {
+        summaryFooter.textContent = 'لقد تجاوز العجز ثلث العدد الكلي للموظفين';
+        summaryFooter.style.background = '#ffedd5';
+        summaryFooter.style.color = '#9a3412';
+      } else if (ratio >= 0.25) {
+        summaryFooter.textContent = 'لقد تجاوز العجز ربع العدد الكلي للموظفين';
         summaryFooter.style.background = '#fef9c3';
         summaryFooter.style.color = '#854d0e';
       } else {
-        summaryFooter.textContent = '⛔ وضع حضور النوبة ضعيف ويحتاج تدخلًا سريعًا';
-        summaryFooter.style.background = '#fee2e2';
-        summaryFooter.style.color = '#991b1b';
+        summaryFooter.textContent = '--';
       }
-    }
-
-    function clearSelectedRowIndicators() {
-      Array.from(rowsBody.querySelectorAll('tr.selected')).forEach((row) => row.classList.remove('selected'));
-      Array.from(mobileRows.querySelectorAll('.selected')).forEach((row) => row.classList.remove('selected'));
-    }
-
-    function markSelectedRecord(item, visualElement = null) {
-      clearSelectedRowIndicators();
-      if (visualElement) {
-        visualElement.classList.add('selected');
-      }
-      selectedRecord = { ...item };
-      searchNameInput.value = String(item.Name || '').trim();
-      clearStatus();
     }
 
     function markSelectedRow(rowElement, item) {
-      markSelectedRecord(item, rowElement);
+      Array.from(rowsBody.querySelectorAll('tr')).forEach((row) => row.classList.remove('selected'));
+      rowElement.classList.add('selected');
+      selectedRecord = { ...item };
+      searchNameInput.value = String(item.Name || '').trim();
+      clearStatus();
     }
 
     async function saveRowChanges(item, payload, successMessage = '') {
@@ -1311,13 +1069,34 @@
     }
 
     function createStatusSelect(item) {
+      const status = String(item.Status || '').trim();
+      const wrapper = document.createElement('div');
+      wrapper.className = 'status-cell';
+
+      const badge = document.createElement('div');
+      badge.className = 'status-badge';
+      const badgeText = status || '—';
+      badge.textContent = badgeText;
+
+      if (status === 'حضور' || status === 'حضور بعد غياب') {
+        badge.classList.add('present');
+      } else if (status === 'غياب') {
+        badge.classList.add('absent');
+      } else if (status === 'اجازة') {
+        badge.classList.add('leave');
+      } else if (status === 'دورة') {
+        badge.classList.add('course');
+      } else if (['تأخير', 'تأخير+عقوبة', 'استئذان'].includes(status)) {
+        badge.classList.add('delay');
+      }
+
       const select = document.createElement('select');
       select.className = 'status-select';
-      STATUS_OPTIONS.forEach((status) => {
+      STATUS_OPTIONS.forEach((optionStatus) => {
         const option = document.createElement('option');
-        option.value = status;
-        option.textContent = status;
-        if (String(item.Status || '').trim() === status) option.selected = true;
+        option.value = optionStatus;
+        option.textContent = optionStatus;
+        if (status === optionStatus) option.selected = true;
         select.appendChild(option);
       });
 
@@ -1339,7 +1118,9 @@
         applyNameFilterAndRender();
       });
 
-      return select;
+      wrapper.appendChild(badge);
+      wrapper.appendChild(select);
+      return wrapper;
     }
 
     function createTimeInput(item, key) {
@@ -1359,10 +1140,8 @@
 
     function renderRows(items) {
       rowsBody.innerHTML = '';
-      mobileRows.innerHTML = '';
       if (!Array.isArray(items) || items.length === 0) {
-        rowsBody.innerHTML = '<tr><td colspan="9">لا توجد بيانات متاحة للمعايير الحالية.</td></tr>';
-        mobileRows.innerHTML = '<div class="mobile-daily-card"><div class="mobile-daily-card-note">لا توجد بيانات متاحة للمعايير الحالية.</div></div>';
+        rowsBody.innerHTML = '<tr><td colspan="10">لا توجد بيانات متاحة للمعايير الحالية.</td></tr>';
         countLabel.textContent = 'عدد السجلات: 0';
         updateSummaryPanel([]);
         return;
@@ -1386,6 +1165,7 @@
           <td class="mono">${index + 1}</td>
           <td>${item.Name ?? ''}</td>
           <td></td>
+          <td>${item.Period ?? ''}</td>
           <td></td>
           <td></td>
           <td class="mono">${formatDateYmdSlash(item.Startdate || '')}</td>
@@ -1395,39 +1175,17 @@
         `;
 
         const statusCell = tr.children[2];
-        const inCell = tr.children[3];
-        const outCell = tr.children[4];
+        const inCell = tr.children[4];
+        const outCell = tr.children[5];
+        statusCell.style.padding = '6px';
+        inCell.style.padding = '6px';
+        outCell.style.padding = '6px';
         statusCell.appendChild(createStatusSelect(item));
         inCell.appendChild(createTimeInput(item, 'InTime'));
         outCell.appendChild(createTimeInput(item, 'OutTime'));
 
         tr.addEventListener('click', () => markSelectedRow(tr, item));
         rowsBody.appendChild(tr);
-
-        const card = document.createElement('article');
-        card.className = `mobile-daily-card ${getMobileStatusClass(item)}`.trim();
-        if (selectedRecord?.ID && String(selectedRecord.ID) === String(item.ID)) {
-          card.classList.add('selected');
-        }
-
-        card.innerHTML = `
-          <div class="mobile-daily-card-head">
-            <strong>${index + 1}. ${item.Name ?? ''}</strong>
-            <span class="mobile-daily-status-badge ${getMobileStatusClass(item)}">${getMobileStatusLabel(item)}</span>
-          </div>
-          <div class="mobile-daily-card-grid">
-            <div class="mobile-daily-card-item"><span>الفترة</span><span>${item.Period ?? ''}</span></div>
-            <div class="mobile-daily-card-item"><span>القسم</span><span>${item.Department ?? ''}</span></div>
-            <div class="mobile-daily-card-item"><span>الحضور</span><span class="mono">${String(item.InTime || '').trim() || '--'}</span></div>
-            <div class="mobile-daily-card-item"><span>الانصراف</span><span class="mono">${String(item.OutTime || '').trim() || '--'}</span></div>
-            <div class="mobile-daily-card-item"><span>بداية</span><span class="mono">${formatDateYmdSlash(item.Startdate || '')}</span></div>
-            <div class="mobile-daily-card-item"><span>نهاية</span><span class="mono">${formatDateYmdSlash(item.Enddate || '')}</span></div>
-          </div>
-          <div class="mobile-daily-card-note">${description || 'بدون وصف'}</div>
-        `;
-
-        card.addEventListener('click', () => markSelectedRecord(item, card));
-        mobileRows.appendChild(card);
       });
 
       countLabel.textContent = `عدد السجلات: ${items.length}`;
@@ -1700,28 +1458,14 @@
     }
 
     dateOpenButtons.forEach((button) => {
-      button.addEventListener('click', (event) => {
-        event.preventDefault();
-        event.stopPropagation();
+      button.addEventListener('click', () => {
         const pickerInput = document.getElementById(button.dataset.pickerId);
         if (!pickerInput) return;
-        const triggerDatePicker = () => {
-          if (typeof pickerInput.showPicker === 'function') {
-            try {
-              pickerInput.showPicker();
-              return;
-            } catch (error) {
-              // fall through to a safer fallback
-            }
-          }
-          pickerInput.focus();
+        if (typeof pickerInput.showPicker === 'function') {
+          pickerInput.showPicker();
+        } else {
           pickerInput.click();
-          if (pickerInput.type === 'date') {
-            pickerInput.setAttribute('type', 'text');
-            pickerInput.setAttribute('type', 'date');
-          }
-        };
-        triggerDatePicker();
+        }
       });
     });
 
@@ -1773,7 +1517,7 @@
     });
 
     backBtn.addEventListener('click', () => {
-      window.location.href = homeRoute;
+      window.location.href = localStorage.getItem('uiMode') === 'mobile' ? '/mobile/dashboard.html' : '/dashboard.html';
     });
 
     form.addEventListener('submit', (event) => {

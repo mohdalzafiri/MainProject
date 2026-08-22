@@ -215,6 +215,7 @@ body.app-shell textarea:focus {
 
 body.app-shell .date-picker-wrap {
   position: relative;
+  touch-action: manipulation;
 }
 
 body.app-shell .date-display-input {
@@ -225,6 +226,9 @@ body.app-shell .date-display-input {
   cursor: pointer;
   direction: ltr;
   text-align: right;
+  position: relative;
+  z-index: 1;
+  pointer-events: none;
 }
 
 body.app-shell .date-picker-trigger {
@@ -245,6 +249,7 @@ body.app-shell .date-picker-trigger {
   justify-content: center;
   line-height: 1;
   padding: 0;
+  z-index: 3;
 }
 
 body.app-shell .date-picker-trigger::before {
@@ -255,10 +260,16 @@ body.app-shell .date-picker-trigger::before {
 
 body.app-shell .native-date-input {
   position: absolute;
-  width: 1px;
-  height: 1px;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   opacity: 0;
-  pointer-events: none;
+  pointer-events: auto;
+  z-index: 2;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
 }
 
 body.app-shell textarea {
