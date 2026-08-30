@@ -8,11 +8,13 @@ const CUSTOMIZABLE_NON_ADMIN_PAGE_KEYS = [
   'daily',
   'statistics',
   'holidays',
+  'reduction',
   'courses',
   'transfers',
   'outsideEmployees',
   'outgoing',
-  'incoming'
+  'incoming',
+  'archive'
 ];
 
 function normalizeRole(value) {
@@ -33,6 +35,8 @@ function normalizePageKey(value) {
     dailylogs: 'daily',
     statistics: 'statistics',
     holidays: 'holidays',
+    reduction: 'reduction',
+    workreduction: 'reduction',
     courses: 'courses',
     transfers: 'transfers',
     outsideemployees: 'outsideEmployees',

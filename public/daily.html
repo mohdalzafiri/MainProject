@@ -138,6 +138,58 @@
       align-items: center;
     }
 
+    .bulk-edit-dialog {
+      width: min(520px, calc(100vw - 32px));
+      border: 1px solid var(--ui-border);
+      border-radius: 8px;
+      padding: 0;
+      color: var(--ui-text);
+      background: var(--ui-surface);
+      box-shadow: 0 24px 60px rgba(15, 23, 42, 0.25);
+    }
+
+    .bulk-edit-dialog::backdrop { background: rgba(15, 23, 42, 0.45); }
+    .bulk-edit-dialog form { padding: 18px; }
+    .bulk-edit-dialog h2 { margin: 0 0 8px; font-size: 18px; }
+    .bulk-edit-dialog p { margin: 0 0 14px; color: var(--ui-muted); font-size: 13px; }
+    .bulk-edit-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .bulk-edit-actions { display: flex; gap: 8px; justify-content: flex-start; margin-top: 16px; }
+
+    .absence-type-options {
+      display: grid;
+      align-items: start;
+      justify-content: flex-start;
+      direction: rtl;
+      gap: 8px;
+      padding: 8px;
+      border: 1px solid var(--ui-border);
+      border-radius: 10px;
+      background: #f8fafc;
+    }
+
+    .absence-type-options label {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      min-height: 34px;
+      padding: 0;
+      cursor: pointer;
+      color: var(--ui-text);
+      font-size: 14px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .absence-type-options input {
+      width: 14px !important;
+      min-width: 14px;
+      max-width: 14px;
+      height: 14px !important;
+      margin: 0;
+      cursor: pointer;
+      flex: 0 0 14px;
+    }
+
     .table-search {
       flex: 1;
       min-width: 0;
@@ -418,6 +470,34 @@
       background: #dcfce7;
     }
 
+    .time-cell-wrap {
+      display: grid;
+      gap: 4px;
+    }
+
+    .reduction-indicator {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 36px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1.4;
+      margin: 0 auto;
+    }
+
+    .reduction-indicator.late {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .reduction-indicator.early {
+      background: #dcfce7;
+      color: #166534;
+    }
+
     .row-absent {
       background: #fecaca;
     }
@@ -585,6 +665,7 @@
             <div class="toolbar">
               <button type="submit" class="btn success" id="addBtn">اضافة بيانات جديدة</button>
               <button type="button" class="btn warning" id="updateBtn">تعديل بيانات</button>
+              <button type="button" class="btn primary" id="bulkEditBtn">تعديل تاريخ / فترة اليومية</button>
               <button type="button" class="btn danger" id="deleteBtn">حذف بيانات</button>
               <button type="button" class="btn primary" id="printBtn">طباعة بيانات</button>
             </div>
@@ -648,6 +729,41 @@
         </aside>
       </section>
     </div>
+  <dialog id="bulkEditDialog" class="bulk-edit-dialog">
+    <form id="bulkEditForm">
+      <h2>تعديل تاريخ أو فترة اليومية</h2>
+      <p>سيشمل التعديل جميع السجلات المطابقة للتاريخ والقسم والنوبة والفترة المختارة.</p>
+      <div class="bulk-edit-grid">
+        <div class="field">
+          <label for="bulkToday">التاريخ الجديد</label>
+          <input id="bulkToday" type="date" />
+        </div>
+        <div class="field">
+          <label for="bulkPeriod">الفترة الجديدة</label>
+          <select id="bulkPeriod"><option value="">بدون تغيير</option></select>
+        </div>
+      </div>
+      <div class="bulk-edit-actions">
+        <button type="submit" class="btn success">حفظ التعديل</button>
+        <button type="button" class="btn dark" id="bulkEditCancelBtn">إلغاء</button>
+      </div>
+    </form>
+  </dialog>
+  <dialog id="absenceTypeDialog" class="bulk-edit-dialog">
+    <form id="absenceTypeForm">
+      <h2>نوع الغياب</h2>
+      <p>اختر نوع الغياب ليتم حفظه في الوصف.</p>
+      <div class="absence-type-options">
+        <label><input type="radio" name="absenceType" value="طبية" /><span>طبية</span></label>
+        <label><input type="radio" name="absenceType" value="عرضي" /><span>عرضي</span></label>
+        <label><input type="radio" name="absenceType" value="انقطاع عن العمل (خصم)" /><span>انقطاع عن العمل (خصم)</span></label>
+      </div>
+      <div class="bulk-edit-actions">
+        <button type="submit" class="btn success">حفظ</button>
+        <button type="button" class="btn dark" id="absenceTypeCancelBtn">إلغاء</button>
+      </div>
+    </form>
+  </dialog>
   <script>
     const form = document.getElementById('dailyForm');
     const todayInput = document.getElementById('today');
@@ -672,6 +788,15 @@
     const updateBtn = document.getElementById('updateBtn');
     const deleteBtn = document.getElementById('deleteBtn');
     const printBtn = document.getElementById('printBtn');
+    const bulkEditBtn = document.getElementById('bulkEditBtn');
+    const bulkEditDialog = document.getElementById('bulkEditDialog');
+    const bulkEditForm = document.getElementById('bulkEditForm');
+    const bulkEditCancelBtn = document.getElementById('bulkEditCancelBtn');
+    const bulkTodayInput = document.getElementById('bulkToday');
+    const bulkPeriodInput = document.getElementById('bulkPeriod');
+    const absenceTypeDialog = document.getElementById('absenceTypeDialog');
+    const absenceTypeForm = document.getElementById('absenceTypeForm');
+    const absenceTypeCancelBtn = document.getElementById('absenceTypeCancelBtn');
     const sideDay = document.getElementById('sideDay');
     const sideDate = document.getElementById('sideDate');
     const summaryDepartment = document.getElementById('summaryDepartment');
@@ -725,6 +850,8 @@
     let suggestionRequestToken = 0;
     let suggestionDebounceHandle = null;
     let pendingAddedEmployeeName = '';
+    let reductionSchedule = [];
+    let pendingAbsenceChange = null;
 
     const fallbackDepartments = ['البلاغات', 'العمليات', 'الخدمات المساندة', 'الموارد البشرية', 'المعلومات', 'الاحصاء'];
     const fallbackDepartmentSections = [
@@ -757,7 +884,7 @@
       { Department: 'الخدمات المساندة', Section: 'صباحاً' }
     ];
 
-    const STATUS_OPTIONS = ['حضور', 'تأخير', 'تأخير+عقوبة', 'استئذان', 'غياب', 'حضور بعد غياب', 'طبية', 'اجازة', 'دورة', 'تكليف'];
+    const STATUS_OPTIONS = ['حضور', 'تأخير', 'تأخير+عقوبة', 'استئذان', 'غياب', 'حضور بعد غياب', 'طبية', 'اجازة', 'دورة', 'تكليف', 'عرضي', 'انقطاع عن العمل'];
 
     if (departmentInput.options.length <= 1) {
       departmentSectionRows = [...fallbackDepartmentSections];
@@ -966,7 +1093,67 @@
       return params.toString();
     }
 
+    function openBulkEditDialog() {
+      if (!todayInput.value || !departmentInput.value || !sectionInput.value || !periodInput.value) {
+        showStatus('اختر التاريخ والقسم والنوبة والفترة لليومية المطلوب تعديلها أولاً.', true);
+        return;
+      }
+
+      bulkTodayInput.value = '';
+      bulkPeriodInput.innerHTML = '<option value="">بدون تغيير</option>';
+      Array.from(periodInput.options)
+        .map((option) => String(option.value || '').trim())
+        .filter(Boolean)
+        .forEach((period) => {
+          const option = document.createElement('option');
+          option.value = period;
+          option.textContent = period;
+          bulkPeriodInput.appendChild(option);
+        });
+      bulkEditDialog.showModal();
+    }
+
+    async function saveBulkDailyEdit() {
+      const nextToday = String(bulkTodayInput.value || '').trim();
+      const nextPeriod = String(bulkPeriodInput.value || '').trim();
+      if (!nextToday && !nextPeriod) {
+        showStatus('اختر تاريخًا جديدًا أو فترة جديدة واحدة على الأقل.', true);
+        return;
+      }
+
+      const confirmed = window.confirm('سيتم تعديل جميع سجلات اليومية المطابقة للمعايير الحالية. هل تريد المتابعة؟');
+      if (!confirmed) return;
+
+      const result = await requestJson('/api/daily-logs/bulk', {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify({
+          today: todayInput.value,
+          department: departmentInput.value,
+          section: sectionInput.value,
+          period: periodInput.value,
+          nextToday,
+          nextPeriod,
+          userName: currentUser.username || 'system'
+        })
+      });
+
+      if (nextToday) {
+        todayInput.value = nextToday;
+        syncDateDisplays();
+      }
+      if (nextPeriod) {
+        periodInput.value = nextPeriod;
+      }
+      bulkEditDialog.close();
+      selectedRecord = null;
+      searchNameInput.value = '';
+      await refreshDailyView();
+      showStatus(result?.message || 'تم تعديل اليومية بنجاح.');
+    }
+
     async function refreshDailyView() {
+      await loadReductionSchedule();
       await updateRecordedSectionsLabel();
       await loadDailyRows();
       scheduleEmployeeSuggestionsLoad();
@@ -1181,14 +1368,14 @@
       }
       if (status === 'دورة') return 'row-course';
       if (['تأخير', 'تأخير+عقوبة', 'استئذان'].includes(status)) return 'row-delay';
-      if (status === 'غياب') return 'row-absent';
+      if (['غياب', 'انقطاع عن العمل'].includes(status)) return 'row-absent';
       return '';
     }
 
     function getMobileStatusClass(item) {
       const status = String(item.Status || '').trim();
       if (status === 'حضور' || status === 'حضور بعد غياب') return 'status-present';
-      if (status === 'غياب') return 'status-absent';
+      if (['غياب', 'انقطاع عن العمل'].includes(status)) return 'status-absent';
       if (status === 'اجازة') return 'status-leave';
       if (['تأخير', 'تأخير+عقوبة', 'استئذان'].includes(status)) return 'status-delay';
       if (status === 'دورة') return 'status-course';
@@ -1230,7 +1417,7 @@
       const delayCount = countStatus(['تأخير', 'تأخير+عقوبة', 'استئذان']);
       const leaveCount = countStatus(['اجازة']);
       const courseCount = countStatus(['دورة']);
-      const detentionCount = absentCount + leaveCount + courseCount;
+      const detentionCount = absentCount + countStatus(['انقطاع عن العمل']) + leaveCount + courseCount;
 
       summaryEmployees.textContent = String(totalEmployees);
       summaryPresent.textContent = String(presentCount);
@@ -1324,6 +1511,13 @@
       select.addEventListener('click', (event) => event.stopPropagation());
       select.addEventListener('change', async (event) => {
         const nextStatus = event.target.value;
+        if (nextStatus === 'غياب') {
+          pendingAbsenceChange = { item, select, previousStatus: String(item.Status || '').trim() || 'حضور' };
+          absenceTypeForm.reset();
+          absenceTypeDialog.showModal();
+          return;
+        }
+
         const payload = { Status: nextStatus };
 
         if (nextStatus !== 'حضور') {
@@ -1342,11 +1536,89 @@
       return select;
     }
 
+    async function saveAbsenceType() {
+      const selectedType = absenceTypeForm.querySelector('input[name="absenceType"]:checked')?.value || '';
+      if (!selectedType || !pendingAbsenceChange) {
+        showStatus('اختر نوع الغياب أولاً.', true);
+        return;
+      }
+
+      const { item } = pendingAbsenceChange;
+      await saveRowChanges(item, {
+        Status: 'غياب',
+        Note: selectedType,
+        InTime: '',
+        OutTime: ''
+      }, 'تم حفظ الغياب ونوعه في الوصف بنجاح.');
+      pendingAbsenceChange = null;
+      absenceTypeDialog.close();
+      applyNameFilterAndRender();
+    }
+
+    function cancelAbsenceType() {
+      if (pendingAbsenceChange?.select) {
+        pendingAbsenceChange.select.value = pendingAbsenceChange.previousStatus;
+      }
+      pendingAbsenceChange = null;
+      absenceTypeDialog.close();
+    }
+
+    function findReductionForRow(item) {
+      if (!item) return null;
+
+      const targetDate = String(item.Today || item.Startdate || '').trim();
+      if (!targetDate) return null;
+
+      const target = parseFlexibleDate(targetDate);
+      if (!target || Number.isNaN(target.getTime())) return null;
+
+      const employeeName = String(item.Name || '').trim();
+      const reduction = reductionSchedule.find((row) => {
+        const rowName = String(row.Name || '').trim();
+        if (!rowName || rowName !== employeeName) return false;
+
+        const start = parseFlexibleDate(row.Startdate || '');
+        const end = parseFlexibleDate(row.Enddate || '');
+        if (!start || Number.isNaN(start.getTime())) return false;
+
+        if (end && !Number.isNaN(end.getTime())) {
+          return target >= start && target <= end;
+        }
+
+        return target >= start;
+      });
+
+      return reduction || null;
+    }
+
     function createTimeInput(item, key) {
       const input = document.createElement('input');
       input.type = 'time';
       input.className = 'time-input mono';
       input.value = String(item[key] || '').trim();
+
+      const wrapper = document.createElement('div');
+      wrapper.className = 'time-cell-wrap';
+
+      const reduction = findReductionForRow(item);
+      if (reduction) {
+        const reductionHours = Number(reduction.Hours || 2);
+        if (key === 'InTime' && String(reduction.Type || '').trim() === 'بداية الدوام') {
+          const badge = document.createElement('div');
+          badge.className = 'reduction-indicator late';
+          badge.textContent = `-${reductionHours}`;
+          wrapper.appendChild(badge);
+        }
+
+        if (key === 'OutTime' && String(reduction.Type || '').trim() === 'نهاية الدوام') {
+          const badge = document.createElement('div');
+          badge.className = 'reduction-indicator early';
+          badge.textContent = `+${reductionHours}`;
+          wrapper.appendChild(badge);
+        }
+      }
+
+      wrapper.appendChild(input);
 
       input.addEventListener('click', (event) => event.stopPropagation());
       input.addEventListener('change', async (event) => {
@@ -1354,7 +1626,7 @@
         await saveRowChanges(item, { [key]: value }, 'تم حفظ تعديل الوقت تلقائياً.');
       });
 
-      return input;
+      return wrapper;
     }
 
     function renderRows(items) {
@@ -1446,6 +1718,15 @@
     function applyNameFilterAndRender() {
       visibleRows = getNameFilteredRows();
       renderRows(visibleRows);
+    }
+
+    async function loadReductionSchedule() {
+      try {
+        const data = await requestJson('/api/reduction', { headers: getHeaders() });
+        reductionSchedule = Array.isArray(data) ? data : [];
+      } catch (error) {
+        reductionSchedule = [];
+      }
     }
 
     async function loadDailyRows() {
@@ -1657,21 +1938,33 @@
           <meta charset="UTF-8" />
           <title>طباعة بيانات اليوميات</title>
           <style>
-            body { font-family: Tahoma, Arial, sans-serif; margin: 16px; color: #0f172a; }
-            h1 { margin: 0 0 10px; font-size: 20px; }
-            .meta { margin: 0 0 10px; font-size: 13px; }
-            table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 12px; }
-            th, td { border: 1px solid #94a3b8; padding: 6px; text-align: center; vertical-align: top; word-break: break-word; }
-            th { background: #e2e8f0; }
-            @page { size: A4 landscape; margin: 10mm; }
+            * { box-sizing: border-box; }
+            body { font-family: Tahoma, Arial, sans-serif; margin: 0; color: #0f172a; }
+            .print-sheet { width: 287mm; margin: 0 auto; }
+            h1 { margin: 0 0 2mm; font-size: 16px; font-weight: 800; }
+            .meta { margin: 0 0 1mm; font-size: 9px; font-weight: 700; }
+            table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 8px; }
+            th, td { border: 1px solid #64748b; padding: 0.75mm 0.7mm; height: 4mm; text-align: center; vertical-align: middle; font-weight: 700; line-height: 1.05; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+            th { background: #dbeafe; font-size: 8.5px; font-weight: 800; }
+            th:nth-child(1) { width: 4%; }
+            th:nth-child(2) { width: 21%; }
+            th:nth-child(3) { width: 10%; }
+            th:nth-child(4) { width: 10%; }
+            th:nth-child(5), th:nth-child(6) { width: 8%; }
+            th:nth-child(7), th:nth-child(8) { width: 9%; }
+            th:nth-child(9) { width: 11%; }
+            th:nth-child(10) { width: 10%; }
+            thead { display: table-header-group; }
+            tr { break-inside: avoid; page-break-inside: avoid; }
+            @page { size: A4 landscape; margin: 5mm; }
           </style>
         </head>
         <body>
-          <h1>بيانات اليوميات</h1>
-          <p class="meta">اليوم: ${escapePrintHtml(dayInput.value || '--')} | التاريخ: ${escapePrintHtml(formatDateYmdSlash(todayInput.value || ''))}</p>
-          <p class="meta">القسم: ${escapePrintHtml(departmentInput.value || '--')} | النوبة: ${escapePrintHtml(sectionInput.value || '--')} | الفترة: ${escapePrintHtml(periodInput.value || '--')}</p>
-          <p class="meta">عدد السجلات: ${rows.length}</p>
-          <table>
+          <main class="print-sheet">
+            <h1>بيانات اليوميات</h1>
+            <p class="meta">اليوم: ${escapePrintHtml(dayInput.value || '--')} | التاريخ: ${escapePrintHtml(formatDateYmdSlash(todayInput.value || ''))}</p>
+            <p class="meta">القسم: ${escapePrintHtml(departmentInput.value || '--')} | النوبة: ${escapePrintHtml(sectionInput.value || '--')} | الفترة: ${escapePrintHtml(periodInput.value || '--')} | عدد السجلات: ${rows.length}</p>
+            <table>
             <thead>
               <tr>
                 <th>م</th>
@@ -1687,7 +1980,8 @@
               </tr>
             </thead>
             <tbody>${rowsHtml}</tbody>
-          </table>
+            </table>
+          </main>
         </body>
         </html>
       `);
@@ -1791,6 +2085,27 @@
 
     updateBtn.addEventListener('click', () => {
       showStatus('التعديل يتم مباشرة من الجدول مع حفظ تلقائي.', false);
+    });
+
+    bulkEditBtn.addEventListener('click', openBulkEditDialog);
+
+    bulkEditCancelBtn.addEventListener('click', () => bulkEditDialog.close());
+
+    bulkEditForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      saveBulkDailyEdit().catch((error) => showStatus(error.message, true));
+    });
+
+    absenceTypeForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      saveAbsenceType().catch((error) => showStatus(error.message, true));
+    });
+
+    absenceTypeCancelBtn.addEventListener('click', cancelAbsenceType);
+
+    absenceTypeDialog.addEventListener('cancel', (event) => {
+      event.preventDefault();
+      cancelAbsenceType();
     });
 
     deleteBtn.addEventListener('click', () => {

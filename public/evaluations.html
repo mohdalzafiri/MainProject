@@ -85,7 +85,7 @@
     }
 
     .evaluation-table th:nth-child(1),
-    .evaluation-table td:nth-child(1) { width: 16%; }
+    .evaluation-table td:nth-child(1) { width: 14%; }
     .evaluation-table th:nth-child(2),
     .evaluation-table td:nth-child(2) { width: 8%; }
     .evaluation-table th:nth-child(3),
@@ -97,15 +97,21 @@
     .evaluation-table th:nth-child(6),
     .evaluation-table td:nth-child(6) { width: 8%; }
     .evaluation-table th:nth-child(7),
-    .evaluation-table td:nth-child(7) { width: 12%; }
+    .evaluation-table td:nth-child(7) { width: 8%; }
     .evaluation-table th:nth-child(8),
-    .evaluation-table td:nth-child(8) { width: 12%; }
+    .evaluation-table td:nth-child(8) { width: 8%; }
     .evaluation-table th:nth-child(9),
-    .evaluation-table td:nth-child(9) { width: 10%; }
+    .evaluation-table td:nth-child(9) { width: 8%; }
     .evaluation-table th:nth-child(10),
-    .evaluation-table td:nth-child(10) { width: 12%; }
+    .evaluation-table td:nth-child(10) { width: 10%; }
     .evaluation-table th:nth-child(11),
     .evaluation-table td:nth-child(11) { width: 12%; }
+    .evaluation-table th:nth-child(12),
+    .evaluation-table td:nth-child(12) { width: 8%; }
+    .evaluation-table th:nth-child(13),
+    .evaluation-table td:nth-child(13) { width: 8%; }
+    .evaluation-table th:nth-child(14),
+    .evaluation-table td:nth-child(14) { width: 10%; }
 
     .table-wrap table {
       min-width: 1100px;
@@ -262,10 +268,13 @@
             <tr>
               <th>الاسم</th>
               <th>عدد الحضور</th>
-              <th>عدد الرخص</th>
-              <th>عدد الغياب</th>
+              <th>عدد الرخص<br>(مرات / ساعات)</th>
+              <th>عدد<br>التأخير<br>(ساعات)</th>
+              <th>عدد<br>الغياب</th>
               <th>عدد الاجازات</th>
               <th>عدد الطبيات</th>
+              <th>عدد العرضي</th>
+              <th>انقطاع<br>عن العمل (خصم)</th>
               <th>النسبة المئوية</th>
               <th>التقييم</th>
               <th>ملاحظات</th>
@@ -275,7 +284,7 @@
           </thead>
           <tbody id="rows">
             <tr>
-              <td colspan="11">لا توجد بيانات متاحة للمعايير الحالية.</td>
+              <td colspan="14">لا توجد بيانات متاحة للمعايير الحالية.</td>
             </tr>
           </tbody>
         </table>
@@ -347,6 +356,17 @@
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
+    }
+
+    function formatDelayDuration(value) {
+      const totalMinutes = Math.max(0, Number(value || 0));
+      const hours = Math.floor(totalMinutes / 60);
+      const minutes = Math.floor(totalMinutes % 60);
+      return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+    }
+
+    function formatLicenseUsage(count, minutes) {
+      return `${Number(count || 0)} / ${formatDelayDuration(minutes)}`;
     }
 
     function populateSelect(select, values, preferred = '') {
@@ -492,7 +512,7 @@
       rowsBody.innerHTML = '';
 
       if (!Array.isArray(items) || items.length === 0) {
-        rowsBody.innerHTML = '<tr><td colspan="11">لا توجد بيانات متاحة للمعايير الحالية.</td></tr>';
+        rowsBody.innerHTML = '<tr><td colspan="14">لا توجد بيانات متاحة للمعايير الحالية.</td></tr>';
         countLabel.textContent = 'عدد السجلات: 0';
         return;
       }
@@ -520,10 +540,13 @@
         row.innerHTML = `
           <td>${escapeHtml(item.Name || '')}</td>
           <td class="mono performance-value">${escapeHtml(item.PresentCount ?? 0)}</td>
-          <td class="mono performance-value">${escapeHtml(item.LicenseCount ?? 0)}</td>
+          <td class="mono performance-value">${formatLicenseUsage(item.LicenseCount, item.LicenseMinutes)}</td>
+          <td class="mono performance-value">${formatDelayDuration(item.DelayMinutes)}</td>
           <td class="mono performance-value">${escapeHtml(item.AbsentCount ?? 0)}</td>
           <td class="mono performance-value">${escapeHtml(item.LeaveCount ?? 0)}</td>
           <td class="mono performance-value">${escapeHtml(item.MedicalCount ?? 0)}</td>
+          <td class="mono performance-value">${escapeHtml(item.OccasionalCount ?? 0)}</td>
+          <td class="mono performance-value">${escapeHtml(item.WorkInterruptionCount ?? 0)}</td>
           <td class="mono performance-value">${escapeHtml(item.Percent ?? 0)}%</td>
           <td>${escapeHtml(item.Evaluation || '')}</td>
           <td>${escapeHtml(item.Notes || '')}</td>
@@ -669,10 +692,13 @@
         <tr class="${Number(item.Percent ?? 0) < 50 ? 'performance-low' : 'performance-high'}">
           <td>${escapeHtml(item.Name || '')}</td>
           <td class="performance-value">${escapeHtml(item.PresentCount ?? 0)}</td>
-          <td class="performance-value">${escapeHtml(item.LicenseCount ?? 0)}</td>
+          <td class="performance-value">${formatLicenseUsage(item.LicenseCount, item.LicenseMinutes)}</td>
+          <td class="performance-value">${formatDelayDuration(item.DelayMinutes)}</td>
           <td class="performance-value">${escapeHtml(item.AbsentCount ?? 0)}</td>
           <td class="performance-value">${escapeHtml(item.LeaveCount ?? 0)}</td>
           <td class="performance-value">${escapeHtml(item.MedicalCount ?? 0)}</td>
+          <td class="performance-value">${escapeHtml(item.OccasionalCount ?? 0)}</td>
+          <td class="performance-value">${escapeHtml(item.WorkInterruptionCount ?? 0)}</td>
           <td class="performance-value">${escapeHtml(item.Percent ?? 0)}%</td>
           <td>${escapeHtml(item.Evaluation || '')}</td>
           <td>${escapeHtml(item.Notes || '')}</td>
@@ -714,10 +740,13 @@
               <tr>
                 <th>الاسم</th>
                 <th>عدد الحضور</th>
-                <th>عدد الرخص</th>
-                <th>عدد الغياب</th>
+                <th>عدد الرخص<br>(مرات / ساعات)</th>
+                <th>عدد<br>التأخير<br>(ساعات)</th>
+                <th>عدد<br>الغياب</th>
                 <th>عدد الاجازات</th>
                 <th>عدد الطبيات</th>
+                <th>عدد العرضي</th>
+                <th>انقطاع<br>عن العمل (خصم)</th>
                 <th>النسبة المئوية</th>
                 <th>التقييم</th>
                 <th>ملاحظات</th>

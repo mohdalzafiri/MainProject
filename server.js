@@ -6,6 +6,7 @@ const path = require('path');
 const fs = require('fs');
 require('dotenv').config();
 
+const archiveRoutes = require('./routes/archive');
 const app = express();
 
 function getLanIps() {
@@ -50,6 +51,7 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/archive-files', express.static(archiveRoutes.archiveRoot || path.join(__dirname, 'Archive')));
 
 app.get(/^\/mobile\/(.+)$/, (req, res, next) => {
   const requested = req.params[0];

@@ -558,6 +558,8 @@
         <label class="status-filter-item"><input type="checkbox" id="statusLicense" /><span>رخصة</span></label>
         <label class="status-filter-item"><input type="checkbox" id="statusLeave" /><span>إجازة</span></label>
         <label class="status-filter-item"><input type="checkbox" id="statusCourse" /><span>دورة</span></label>
+        <label class="status-filter-item"><input type="checkbox" id="statusOccasional" /><span>عرضي</span></label>
+        <label class="status-filter-item"><input type="checkbox" id="statusWorkInterruption" /><span>انقطاع عن العمل</span></label>
         <button type="button" class="status-filter-refresh" id="resetStatusFilters" title="إعادة التعيين" aria-label="إعادة التعيين">↻</button>
       </div>
 
@@ -643,7 +645,9 @@
       'حضور بعد غياب': document.getElementById('statusReturn'),
       رخصة: document.getElementById('statusLicense'),
       إجازة: document.getElementById('statusLeave'),
-      دورة: document.getElementById('statusCourse')
+      دورة: document.getElementById('statusCourse'),
+      عرضي: document.getElementById('statusOccasional'),
+      'انقطاع عن العمل': document.getElementById('statusWorkInterruption')
     };
 
     function setSearchMessage(message) {
@@ -732,7 +736,9 @@
         { key: 'حضور بعد غياب', terms: ['حضور بعد غياب'] },
         { key: 'رخصة', terms: ['رخصة'] },
         { key: 'إجازة', terms: ['إجازة', 'اجازة'] },
-        { key: 'دورة', terms: ['دورة'] }
+        { key: 'دورة', terms: ['دورة'] },
+        { key: 'عرضي', terms: ['عرضي'] },
+        { key: 'انقطاع عن العمل', terms: ['انقطاع عن العمل'] }
       ];
 
       return mapping.filter((item) => statusCheckboxes[item.key]?.checked);
@@ -741,7 +747,7 @@
     function getMobileStatusClass(item) {
       const status = String(item.Status || '').trim();
       if (status === 'حضور' || status === 'حضور بعد غياب') return 'status-present';
-      if (status === 'غياب') return 'status-absent';
+      if (status === 'غياب' || status === 'انقطاع عن العمل') return 'status-absent';
       if (status === 'إجازة' || status === 'اجازة' || status === 'رخصة') return 'status-leave';
       if (['تأخير', 'استئذان'].includes(status)) return 'status-delay';
       if (status === 'دورة') return 'status-course';

@@ -13,6 +13,7 @@ const upload = multer({
 
 const moduleConfig = {
   holidays: { table: 'Holiday', pageKey: 'holidays', pageName: 'Holiday' },
+  reduction: { table: 'Reduction', pageKey: 'reduction', pageName: 'Reduction' },
   courses: { table: 'Course', pageKey: 'courses', pageName: 'Course' },
   transfers: { table: 'Transfer', pageKey: 'transfers', pageName: 'Transfer' },
   outgoing: { table: 'OutgoingDocuments', pageKey: 'outgoing', pageName: 'Outgoing' },

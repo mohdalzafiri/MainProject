@@ -609,6 +609,41 @@
         </table>
       </div>
     </section>
+
+    <section class="panel">
+      <h2>إدارة الأرشيف</h2>
+      <form id="archiveUploadForm" enctype="multipart/form-data" autocomplete="off">
+        <div class="row">
+          <div class="field">
+            <label for="archiveUploadFile">رفع ملفات للأرشيف</label>
+            <input id="archiveUploadFile" type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.bmp,.webp" multiple />
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label for="archiveCategorySelect">التصنيف</label>
+            <select id="archiveCategorySelect">
+              <option value="general">تعاميم</option>
+              <option value="reports">كشوف</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label for="archiveDisplayName">اسم الملف الظاهر</label>
+            <input id="archiveDisplayName" type="text" placeholder="اسم الملف داخل الأرشيف" />
+          </div>
+        </div>
+
+        <div class="toolbar">
+          <button class="btn success" type="submit" id="archiveUploadBtn">رفع الملف</button>
+        </div>
+
+        <div class="status-line" id="archiveStatusMsg"></div>
+      </form>
+    </section>
   </div>
 
   <script>
@@ -639,6 +674,11 @@
     const lookupRows = document.getElementById('lookupRows');
     const lookupStatusMsg = document.getElementById('lookupStatusMsg');
     const lookupSearchInput = document.getElementById('lookupSearchInput');
+    const archiveUploadForm = document.getElementById('archiveUploadForm');
+    const archiveUploadFileInput = document.getElementById('archiveUploadFile');
+    const archiveCategorySelect = document.getElementById('archiveCategorySelect');
+    const archiveDisplayNameInput = document.getElementById('archiveDisplayName');
+    const archiveStatusMsg = document.getElementById('archiveStatusMsg');
     const templateUploadFileInput = document.getElementById('templateUploadFile');
     const templateFileNameSelect = document.getElementById('templateFileName');
     const templateNameInput = document.getElementById('templateNameInput');
@@ -681,6 +721,7 @@
       { key: 'daily', label: 'اليوميات' },
       { key: 'statistics', label: 'الاحصائيات' },
       { key: 'holidays', label: 'الاجازات' },
+      { key: 'reduction', label: 'تخفيف العمل' },
       { key: 'courses', label: 'الدورات' },
       { key: 'transfers', label: 'التنقلات' },
       { key: 'outsideEmployees', label: 'خارج الإدارة' },
@@ -757,6 +798,23 @@
       }
       if (type === 'error') {
         templateStatusMsg.classList.add('error');
+      }
+    }
+
+    function setArchiveStatus(message, type = '') {
+      archiveStatusMsg.textContent = message || '';
+      archiveStatusMsg.className = 'status-line';
+
+      if (!message) {
+        return;
+      }
+
+      archiveStatusMsg.classList.add('show');
+      if (type === 'success') {
+        archiveStatusMsg.classList.add('ok');
+      }
+      if (type === 'error') {
+        archiveStatusMsg.classList.add('error');
       }
     }
 
@@ -1861,6 +1919,49 @@
       if (!selectedFileName) return;
       applyAutoTemplateName(selectedFileName);
     });
+    archiveUploadForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const files = Array.from(archiveUploadFileInput.files || []);
+      if (!files.length) {
+        setArchiveStatus('اختر ملفًا واحدًا أو أكثر قبل الرفع.', 'error');
+        return;
+      }
+
+      const displayName = archiveDisplayNameInput.value.trim() || files[0].name.replace(/\.[^.]+$/, '');
+      const formData = new FormData();
+      files.forEach((file) => formData.append('files', file));
+      formData.append('category', archiveCategorySelect.value || 'general');
+      formData.append('name', displayName);
+
+      try {
+        const response = await fetch('/api/archive/upload', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${authToken}`
+          },
+          body: formData
+        });
+
+        if (response.status === 401 || response.status === 403) {
+          localStorage.removeItem('authToken');
+          window.location.href = '/';
+          return;
+        }
+
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          setArchiveStatus(payload.message || 'تعذر رفع الملفات إلى الأرشيف.', 'error');
+          return;
+        }
+
+        const label = files.length > 1 ? `${files.length} ملفات` : (payload.record?.FileName || files[0].name);
+        setArchiveStatus(`تم رفع ${label} بنجاح.`, 'success');
+        archiveUploadForm.reset();
+      } catch (error) {
+        setArchiveStatus(error.message || 'تعذر رفع الملفات إلى الأرشيف.', 'error');
+      }
+    });
+
     templateAddBtn.addEventListener('click', addTemplateConfig);
     templateEditBtn.addEventListener('click', updateTemplateConfig);
     templateDeleteBtn.addEventListener('click', deleteTemplateConfig);

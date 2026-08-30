@@ -324,12 +324,14 @@
       <a class="action-item" id="dailyBtn" href="/daily.html"><span class="action-icon" aria-hidden="true">🗓️</span><span>اليوميات</span></a>
       <a class="action-item" id="statisticsBtn" href="/statistics.html"><span class="action-icon" aria-hidden="true">📊</span><span>الاحصائيات</span></a>
       <div class="action-item" id="holidaysBtn"><span class="action-icon" aria-hidden="true">🏖️</span><span>الاجازات</span></div>
+      <div class="action-item" id="reductionBtn"><span class="action-icon" aria-hidden="true">⏱️</span><span>تخفيف العمل</span></div>
       <div class="action-item" id="coursesBtn" style="display: none;"><span class="action-icon" aria-hidden="true">🎓</span><span>الدورات</span></div>
       <div class="action-item" id="transfersBtn"><span class="action-icon" aria-hidden="true">🔄</span><span>التنقلات</span></div>
       <div class="action-item admin-only" id="evaluationsBtn"><span class="action-icon" aria-hidden="true">⭐</span><span>تقييم الاداء</span></div>
       <div class="action-item admin-only" id="adminFormsBtn"><span class="action-icon" aria-hidden="true">📝</span><span>النماذج الادارية</span></div>
       <div class="action-item admin-only" id="systemLogBtn"><span class="action-icon" aria-hidden="true">📜</span><span>سجل النظام</span></div>
       <div class="action-item admin-only" id="settingsBtn"><span class="action-icon" aria-hidden="true">⚙️</span><span>الاعدادات</span></div>
+      <a class="action-item" id="archiveBtn" href="/archive.html"><span class="action-icon" aria-hidden="true">🗂️</span><span>الأرشيف</span></a>
       <div class="action-item" id="outsideAdminBtn"><span class="action-icon" aria-hidden="true">🏢</span><span>خارج الإدارة</span></div>
       <a class="action-item" id="newPage1Btn" href="/outgoing.html"><span class="action-icon" aria-hidden="true">📤</span><span>الصادر</span></a>
       <a class="action-item" id="newPage2Btn" href="/incoming.html"><span class="action-icon" aria-hidden="true">📥</span><span>الوارد</span></a>
@@ -475,6 +477,7 @@
     const employeesBtn = document.getElementById('employeesBtn');
     const outsideAdminBtn = document.getElementById('outsideAdminBtn');
     const holidaysBtn = document.getElementById('holidaysBtn');
+    const reductionBtn = document.getElementById('reductionBtn');
     const statisticsBtn = document.getElementById('statisticsBtn');
     const coursesBtn = document.getElementById('coursesBtn');
     const transfersBtn = document.getElementById('transfersBtn');
@@ -526,7 +529,7 @@
 
     const currentRole = String(currentUser?.role || '').trim().toLowerCase();
     const isAdminUser = currentRole === 'admin';
-    const defaultAllowedPages = ['employees', 'daily', 'statistics', 'holidays', 'transfers', 'outsideEmployees', 'outgoing', 'incoming'];
+    const defaultAllowedPages = ['employees', 'daily', 'statistics', 'holidays', 'reduction', 'transfers', 'outsideEmployees', 'outgoing', 'incoming'];
     const allowedPages = Array.isArray(currentUser?.allowedPages) && currentUser.allowedPages.length
       ? currentUser.allowedPages
       : [];
@@ -537,6 +540,7 @@
       daily: document.getElementById('dailyBtn'),
       statistics: statisticsBtn,
       holidays: holidaysBtn,
+      reduction: reductionBtn,
       courses: coursesBtn,
       transfers: transfersBtn,
       outsideEmployees: outsideAdminBtn,
@@ -913,6 +917,12 @@
     holidaysBtn.addEventListener('click', () => {
       window.location.href = '/holidays.html';
     });
+
+    if (reductionBtn) {
+      reductionBtn.addEventListener('click', () => {
+        window.location.href = '/reduction.html';
+      });
+    }
 
     const dailyBtn = document.getElementById('dailyBtn');
 

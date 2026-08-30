@@ -5,6 +5,13 @@ const router = express.Router();
 const validSummaries = new Set(['today', 'week', 'month', 'quarter', 'halfyear', 'year']);
 const forcedScopes = new Set(['employee', 'department', 'section']);
 
+const periodStartTimes = {
+  'نوبة صبح': '08:00',
+  'نوبة عصر': '16:00',
+  'نوبة ليل': '00:00',
+  'صباحاً': '07:30'
+};
+
 const allDepartmentsOrder = [
   'البلاغات',
   'العمليات',
@@ -94,12 +101,22 @@ function isAssignmentEntry(text) {
   return content.includes('تكليف');
 }
 
+function isOccasionalEntry(text) {
+  return normalizeText(text).includes('عرضي');
+}
+
+function isWorkInterruptionEntry(text) {
+  return normalizeText(text).includes('انقطاع عن العمل');
+}
+
 function classifyDailyEntry(row) {
   const bucketText = [row.Status, row.Type, row.Note].filter(Boolean).join(' ');
 
   if (isMedicalEntry(bucketText)) return 'medical';
   if (isLeaveEntry(bucketText)) return 'leave';
   if (isLicenseEntry(bucketText)) return 'license';
+  if (isOccasionalEntry(bucketText)) return 'occasional';
+  if (isWorkInterruptionEntry(bucketText)) return 'workInterruption';
   if (isPresentEntry(bucketText)) return 'present';
   if (isAbsentEntry(bucketText)) return 'absent';
   if (isDelayEntry(bucketText)) return 'delay';
@@ -112,16 +129,54 @@ function toNumber(value) {
   return Number.isFinite(numeric) ? numeric : 0;
 }
 
+function getTimeMinutes(value) {
+  const match = String(value || '').trim().match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return null;
+
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+  return (hours * 60) + minutes;
+}
+
+function getDelayMinutes(row) {
+  const expectedStart = getTimeMinutes(periodStartTimes[String(row.Period || '').trim()]);
+  const actualStart = getTimeMinutes(row.InTime);
+  if (expectedStart === null || actualStart === null) return 0;
+  return Math.max(0, actualStart - expectedStart);
+}
+
+function getPermissionMinutes(row) {
+  const start = getTimeMinutes(row.InTime);
+  const end = getTimeMinutes(row.OutTime);
+  if (start === null || end === null || start === end) return 0;
+  return end > start ? end - start : (24 * 60) - start + end;
+}
+
+function getMonthKey(value) {
+  const match = String(value || '').trim().replace(/\//g, '-').match(/^(\d{4})-(\d{1,2})/);
+  return match ? `${match[1]}/${String(match[2]).padStart(2, '0')}` : '';
+}
+
+function formatDuration(totalMinutes) {
+  const minutes = Math.max(0, toNumber(totalMinutes));
+  return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(Math.floor(minutes % 60)).padStart(2, '0')}`;
+}
+
 function resolveMetrics(metrics) {
   return {
     totalCount: toNumber(metrics.totalCount ?? metrics.TotalCount),
     presentCount: toNumber(metrics.presentCount ?? metrics.PresentCount),
     licenseCount: toNumber(metrics.licenseCount ?? metrics.LicenseCount),
+    licenseMinutes: toNumber(metrics.licenseMinutes ?? metrics.LicenseMinutes),
     absentCount: toNumber(metrics.absentCount ?? metrics.AbsentCount),
     leaveCount: toNumber(metrics.leaveCount ?? metrics.LeaveCount),
     medicalCount: toNumber(metrics.medicalCount ?? metrics.MedicalCount),
     delayCount: toNumber(metrics.delayCount ?? metrics.DelayCount),
+    delayMinutes: toNumber(metrics.delayMinutes ?? metrics.DelayMinutes),
     assignmentCount: toNumber(metrics.assignmentCount ?? metrics.AssignmentCount),
+    occasionalCount: toNumber(metrics.occasionalCount ?? metrics.OccasionalCount),
+    workInterruptionCount: toNumber(metrics.workInterruptionCount ?? metrics.WorkInterruptionCount),
     otherCount: toNumber(metrics.otherCount ?? metrics.OtherCount)
   };
 }
@@ -147,7 +202,8 @@ function getEvaluationProfile(percent, metrics) {
   let levelIndex = levels.findIndex((item) => percent >= item.min);
   if (levelIndex < 0) levelIndex = levels.length - 1;
 
-  const hasHighAbsence = resolved.absentCount >= resolved.presentCount && (resolved.presentCount + resolved.absentCount) >= 5;
+  const deductionCount = resolved.absentCount + resolved.workInterruptionCount;
+  const hasHighAbsence = deductionCount >= resolved.presentCount && (resolved.presentCount + deductionCount) >= 5;
   if (hasHighAbsence && levelIndex < levels.length - 1) {
     levelIndex += 1;
   }
@@ -173,6 +229,8 @@ function buildPerformanceReason(metrics) {
     if (resolved.leaveCount) reasons.push(`إجازات ${resolved.leaveCount}`);
     if (resolved.medicalCount) reasons.push(`طبية ${resolved.medicalCount}`);
     if (resolved.assignmentCount) reasons.push(`تكليف ${resolved.assignmentCount}`);
+    if (resolved.occasionalCount) reasons.push(`عرضي ${resolved.occasionalCount}`);
+    if (resolved.workInterruptionCount) reasons.push(`انقطاع عن العمل ${resolved.workInterruptionCount}`);
     if (resolved.delayCount) reasons.push(`تأخير ${resolved.delayCount}`);
     if (resolved.licenseCount) reasons.push(`استئذان ${resolved.licenseCount}`);
     if (resolved.otherCount) reasons.push(`أخرى ${resolved.otherCount}`);
@@ -185,6 +243,8 @@ function buildPerformanceReason(metrics) {
   if (resolved.medicalCount) reasons.push(`طبية ${resolved.medicalCount}`);
   if (resolved.assignmentCount) reasons.push(`تكليف ${resolved.assignmentCount}`);
   if (resolved.absentCount) reasons.push(`غياب ${resolved.absentCount}`);
+  if (resolved.occasionalCount) reasons.push(`عرضي ${resolved.occasionalCount}`);
+  if (resolved.workInterruptionCount) reasons.push(`انقطاع عن العمل ${resolved.workInterruptionCount}`);
 
   return reasons.slice(0, 2).join('، ');
 }
@@ -206,11 +266,16 @@ function createEmptySummaryRow(groupKey, name) {
     Name: name,
     PresentCount: 0,
     LicenseCount: 0,
+    LicenseMinutes: 0,
+    LicenseUsageByMonth: {},
     AbsentCount: 0,
     LeaveCount: 0,
     MedicalCount: 0,
     DelayCount: 0,
+    DelayMinutes: 0,
     AssignmentCount: 0,
+    OccasionalCount: 0,
+    WorkInterruptionCount: 0,
     OtherCount: 0,
     TotalCount: 0,
     Percent: 0,
@@ -332,11 +397,16 @@ function summarizeRows(rows, scope) {
         Name: displayName,
         PresentCount: 0,
         LicenseCount: 0,
+        LicenseMinutes: 0,
+        LicenseUsageByMonth: {},
         AbsentCount: 0,
         LeaveCount: 0,
         MedicalCount: 0,
         DelayCount: 0,
+        DelayMinutes: 0,
         AssignmentCount: 0,
+        OccasionalCount: 0,
+        WorkInterruptionCount: 0,
         OtherCount: 0,
         TotalCount: 0,
         Percent: 0,
@@ -363,6 +433,15 @@ function summarizeRows(rows, scope) {
 
     if (classification === 'license') {
       item.LicenseCount += 1;
+      const permissionMinutes = getPermissionMinutes(row);
+      item.LicenseMinutes += permissionMinutes;
+      const monthKey = getMonthKey(row.Today);
+      if (monthKey) {
+        const monthlyUsage = item.LicenseUsageByMonth[monthKey] || { count: 0, minutes: 0 };
+        monthlyUsage.count += 1;
+        monthlyUsage.minutes += permissionMinutes;
+        item.LicenseUsageByMonth[monthKey] = monthlyUsage;
+      }
       return;
     }
 
@@ -378,11 +457,22 @@ function summarizeRows(rows, scope) {
 
     if (classification === 'delay') {
       item.DelayCount += 1;
+      item.DelayMinutes += getDelayMinutes(row);
       return;
     }
 
     if (classification === 'assignment') {
       item.AssignmentCount += 1;
+      return;
+    }
+
+    if (classification === 'occasional') {
+      item.OccasionalCount += 1;
+      return;
+    }
+
+    if (classification === 'workInterruption') {
+      item.WorkInterruptionCount += 1;
       return;
     }
 
@@ -393,12 +483,21 @@ function summarizeRows(rows, scope) {
     const percent = calculatePercent(item);
     const evaluationProfile = getEvaluationProfile(percent, item);
     const performanceReason = buildPerformanceReason(item);
+    const exceededMonths = scope === 'employee'
+      ? Object.entries(item.LicenseUsageByMonth)
+        .filter(([, usage]) => usage.count > 4 || usage.minutes > (12 * 60))
+        .map(([month, usage]) => `${month}: ${usage.count} مرات / ${formatDuration(usage.minutes)} ساعة`)
+      : [];
+    const licenseLimitNote = exceededMonths.length
+      ? `تجاوز حد الاستئذان الشهري (${exceededMonths.join(' - ')})`
+      : '';
 
     return {
       ...item,
       Percent: percent,
       Evaluation: evaluationProfile.label,
-      Notes: performanceReason
+      LicenseLimitExceeded: exceededMonths.length > 0,
+      Notes: [performanceReason, licenseLimitNote].filter(Boolean).join(' | ')
     };
   });
 
@@ -462,13 +561,13 @@ function buildDailyFilterQuery({ department, section, period, name, fromDate, to
 
 function buildDailySourceQuery() {
   return `
-    SELECT EmpID, Name, Status, Type, Note, Today, Department, Section, Period, ID FROM Daily1
+    SELECT EmpID, Name, Status, Type, Note, Today, Department, Section, Period, InTime, OutTime, ID FROM Daily1
     UNION ALL
-    SELECT EmpID, Name, Status, Type, Note, Today, Department, Section, Period, ID FROM Daily2
+    SELECT EmpID, Name, Status, Type, Note, Today, Department, Section, Period, InTime, OutTime, ID FROM Daily2
     UNION ALL
-    SELECT EmpID, Name, Status, Type, Note, Today, Department, Section, Period, ID FROM Daily3
+    SELECT EmpID, Name, Status, Type, Note, Today, Department, Section, Period, InTime, OutTime, ID FROM Daily3
     UNION ALL
-    SELECT EmpID, Name, Status, Type, Note, Today, Department, Section, Period, ID FROM Daily4
+    SELECT EmpID, Name, Status, Type, Note, Today, Department, Section, Period, InTime, OutTime, ID FROM Daily4
   `;
 }
 
@@ -535,7 +634,7 @@ router.get('/report', (req, res) => {
     });
 
     const rows = db.prepare(`
-      SELECT EmpID, Name, Status, Type, Note, Today, Department, Section, Period, ID
+      SELECT EmpID, Name, Status, Type, Note, Today, Department, Section, Period, InTime, OutTime, ID
       FROM (
         ${buildDailySourceQuery()}
       ) AS DailyUnion
@@ -562,7 +661,7 @@ router.get('/report', (req, res) => {
         });
 
         const previousRows = db.prepare(`
-          SELECT EmpID, Name, Status, Type, Note, Today, Department, Section, Period, ID
+          SELECT EmpID, Name, Status, Type, Note, Today, Department, Section, Period, InTime, OutTime, ID
           FROM (
             ${buildDailySourceQuery()}
           ) AS DailyUnion

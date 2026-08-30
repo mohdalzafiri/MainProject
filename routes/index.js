@@ -5,6 +5,7 @@ const evaluationsRoutes = require('./evaluations');
 const employeesRoutes = require('./employees');
 const attendanceRoutes = require('./attendance');
 const holidaysRoutes = require('./holidays');
+const reductionRoutes = require('./reduction');
 const coursesRoutes = require('./courses');
 const administrativeRoutes = require('./administrative');
 const outgoingRoutes = require('./outgoing');
@@ -13,6 +14,7 @@ const outsideEmployeesRoutes = require('./outsideEmployees');
 const dashboardRoutes = require('./dashboard');
 const systemLogRoutes = require('./systemLog');
 const settingsRoutes = require('./settings');
+const archiveRoutes = require('./archive');
 const wordTemplatesRoutes = require('./wordTemplates');
 const attachmentsRoutes = require('./attachments');
 const authMiddleware = require('../auth/auth');
@@ -30,6 +32,7 @@ const routePageKeyMap = {
 	'/evaluations': 'evaluations',
 	'/employees': 'employees',
 	'/holidays': 'holidays',
+	'/reduction': 'reduction',
 	'/courses': 'courses',
 	'/administrative/transfers': 'transfers',
 	'/administrative': 'administrative',
@@ -39,6 +42,7 @@ const routePageKeyMap = {
 	'/dashboard': 'dashboard',
 	'/system-log': 'systemLog',
 	'/settings': 'settings',
+	'/archive': 'archive',
 	'/word-templates': 'administrative'
 };
 
@@ -47,6 +51,7 @@ const sharedEmployeesReadAllowedPages = new Set([
 	'daily',
 	'statistics',
 	'holidays',
+	'reduction',
 	'courses',
 	'transfers',
 	'outsideEmployees',
@@ -133,6 +138,7 @@ router.use('/evaluations', evaluationsRoutes);
 router.use('/employees', employeesRoutes);
 router.use('/attendance', attendanceRoutes);
 router.use('/holidays', holidaysRoutes);
+router.use('/reduction', reductionRoutes);
 router.use('/courses', coursesRoutes);
 router.use('/administrative', administrativeRoutes);
 router.use('/outgoing', outgoingRoutes);
@@ -141,6 +147,7 @@ router.use('/outside-employees', outsideEmployeesRoutes);
 router.use('/dashboard', dashboardRoutes);
 router.use('/system-log', systemLogRoutes);
 router.use('/settings', settingsRoutes);
+router.use('/archive', archiveRoutes);
 router.use('/word-templates', wordTemplatesRoutes);
 router.use('/attachments', attachmentsRoutes);
 

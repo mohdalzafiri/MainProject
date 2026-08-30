@@ -63,6 +63,86 @@ function toSlashDate(value) {
   return `${parts[0]}/${parts[1]}/${parts[2]}`;
 }
 
+function getTimeMinutes(value) {
+  const match = String(value || '').trim().match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return null;
+
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+  return (hours * 60) + minutes;
+}
+
+function getPermissionMinutes(inTime, outTime) {
+  const start = getTimeMinutes(inTime);
+  const end = getTimeMinutes(outTime);
+  if (start === null || end === null || start === end) return 0;
+  return end > start ? end - start : (24 * 60) - start + end;
+}
+
+function getMonthBounds(value) {
+  const match = normalizeDateInput(value).match(/^(\d{4})-(\d{1,2})-\d{1,2}$/);
+  if (!match) return null;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  if (month < 1 || month > 12) return null;
+  const lastDay = new Date(year, month, 0).getDate();
+  const monthText = String(month).padStart(2, '0');
+  return {
+    from: `${year}-${monthText}-01`,
+    to: `${year}-${monthText}-${String(lastDay).padStart(2, '0')}`
+  };
+}
+
+function getPermissionSourceQuery() {
+  return dailyTables.map((table) => `
+    SELECT '${table}' AS SourceTable, ID, EmpID, Name, Today, Status, InTime, OutTime
+    FROM ${table}
+  `).join(' UNION ALL ');
+}
+
+function validateMonthlyPermissionLimit(record, excludedTable = '', excludedId = 0) {
+  if (String(record.Status || '').trim() !== 'استئذان') return '';
+
+  const today = normalizeDateInput(record.Today);
+  const name = String(record.Name || '').trim();
+  const empId = String(record.EmpID || '').trim();
+  const bounds = getMonthBounds(today);
+  if (!today || !bounds || (!empId && !name)) return '';
+
+  const records = db.prepare(`
+    SELECT SourceTable, ID, InTime, OutTime
+    FROM (${getPermissionSourceQuery()}) AS DailyPermissions
+    WHERE TRIM(Status) = 'استئذان'
+      AND date(REPLACE(Today, '/', '-')) BETWEEN date(?) AND date(?)
+      AND (
+        (EmpID IS NOT NULL AND CAST(EmpID AS TEXT) = ?)
+        OR TRIM(Name) = ?
+      )
+  `).all(bounds.from, bounds.to, empId, name).filter((item) =>
+    String(item.SourceTable || '') !== excludedTable || Number(item.ID) !== Number(excludedId)
+  );
+
+  const totalCount = records.length + 1;
+  const totalMinutes = records.reduce(
+    (sum, item) => sum + getPermissionMinutes(item.InTime, item.OutTime),
+    getPermissionMinutes(record.InTime, record.OutTime)
+  );
+
+  if (totalCount > 4) {
+    return `لا يمكن تسجيل الاستئذان: الحد الشهري هو 4 استئذانات، والمستخدم حاليًا ${totalCount} استئذانات.`;
+  }
+
+  if (totalMinutes > (12 * 60)) {
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    return `لا يمكن تسجيل الاستئذان: إجمالي ساعات الاستئذان للشهر أصبح ${hours}:${String(minutes).padStart(2, '0')} ويتجاوز الحد المسموح 12:00 ساعة.`;
+  }
+
+  return '';
+}
+
 function getArabicDay(value) {
   const normalized = normalizeDateInput(value);
   if (!normalized) return '';
@@ -226,7 +306,7 @@ router.get('/filters', (req, res) => {
         SortOrder: row.SortOrder
       })),
       periods,
-      statuses: ['حضور', 'تأخير', 'تأخير+عقوبة', 'استئذان', 'غياب', 'حضور بعد غياب', 'طبية', 'اجازة', 'دورة', 'تكليف']
+      statuses: ['حضور', 'تأخير', 'تأخير+عقوبة', 'استئذان', 'غياب', 'حضور بعد غياب', 'طبية', 'اجازة', 'دورة', 'تكليف', 'عرضي', 'انقطاع عن العمل']
     });
   } catch (error) {
     console.error(error);
@@ -235,7 +315,7 @@ router.get('/filters', (req, res) => {
       departments: [],
       departmentSections: [],
       periods,
-      statuses: ['حضور', 'تأخير', 'تأخير+عقوبة', 'استئذان', 'غياب', 'حضور بعد غياب', 'طبية', 'اجازة', 'دورة', 'تكليف']
+      statuses: ['حضور', 'تأخير', 'تأخير+عقوبة', 'استئذان', 'غياب', 'حضور بعد غياب', 'طبية', 'اجازة', 'دورة', 'تكليف', 'عرضي', 'انقطاع عن العمل']
     });
   }
 });
@@ -598,6 +678,11 @@ router.post('/table/:table', (req, res) => {
   payload.Day = day;
   payload.Today = todayValue;
 
+  const permissionLimitError = validateMonthlyPermissionLimit(payload);
+  if (permissionLimitError) {
+    return res.status(400).json({ message: permissionLimitError });
+  }
+
   const statement = buildInsertStatement(table, payload);
   if (!statement) {
     return res.status(400).json({ message: 'البيانات المرسلة غير كاملة' });
@@ -606,6 +691,75 @@ router.post('/table/:table', (req, res) => {
   const result = db.prepare(statement.sql).run(statement.values);
   logSystem({ userName: req.body.userName || 'system', action: 'Add', page: table, details: `Added daily record ID=${result.lastInsertRowid}` });
   res.json({ id: result.lastInsertRowid });
+});
+
+router.put('/bulk', (req, res) => {
+  try {
+    const sourceToday = normalizeDateInput(req.body.today);
+    const sourceDepartment = normalizeDepartment(req.body.department);
+    const sourceSection = String(req.body.section || '').trim();
+    const sourcePeriod = String(req.body.period || '').trim();
+    const nextToday = normalizeDateInput(req.body.nextToday) || sourceToday;
+    const nextPeriod = String(req.body.nextPeriod || '').trim() || sourcePeriod;
+
+    if (!sourceToday || !sourceDepartment || !sourceSection || !sourcePeriod) {
+      return res.status(400).json({ message: 'اختر التاريخ والقسم والنوبة والفترة لليومية المطلوب تعديلها.' });
+    }
+
+    if (!nextToday || !periods.includes(nextPeriod)) {
+      return res.status(400).json({ message: 'أدخل تاريخًا صحيحًا أو اختر فترة صحيحة للتعديل.' });
+    }
+
+    const table = resolveDailyTableByDepartment(sourceDepartment);
+    if (!table) {
+      return res.status(400).json({ message: 'تعذر تحديد جدول اليومية للقسم المحدد.' });
+    }
+
+    const sourceRows = db.prepare(`
+      SELECT * FROM ${table}
+      WHERE date(REPLACE(Today, '/', '-')) = date(?)
+        AND TRIM(Department) = ?
+        AND TRIM(Section) = ?
+        AND TRIM(Period) = ?
+      ORDER BY ID ASC
+    `).all(sourceToday, sourceDepartment, sourceSection, sourcePeriod);
+
+    if (!sourceRows.length) {
+      return res.status(404).json({ message: 'لا توجد سجلات مطابقة لليومية المحددة لتعديلها.' });
+    }
+
+    const targetToday = toSlashDate(nextToday);
+    const targetDay = getArabicDay(nextToday);
+    const findDuplicate = db.prepare(`
+      SELECT ID FROM ${table}
+      WHERE date(REPLACE(Today, '/', '-')) = date(?)
+        AND TRIM(Period) = ?
+        AND ID <> ?
+        AND ((EmpID IS NOT NULL AND CAST(EmpID AS TEXT) = ?) OR TRIM(Name) = ?)
+      LIMIT 1
+    `);
+
+    for (const row of sourceRows) {
+      const duplicate = findDuplicate.get(nextToday, nextPeriod, row.ID, String(row.EmpID || '').trim(), String(row.Name || '').trim());
+      if (duplicate) {
+        return res.status(409).json({ message: `لا يمكن تعديل اليومية لأن الموظف ${row.Name || ''} موجود مسبقًا في التاريخ والفترة الجديدة.` });
+      }
+
+      const permissionLimitError = validateMonthlyPermissionLimit({ ...row, Today: targetToday, Day: targetDay, Period: nextPeriod }, table, row.ID);
+      if (permissionLimitError) {
+        return res.status(400).json({ message: `${permissionLimitError} الموظف: ${row.Name || ''}.` });
+      }
+    }
+
+    const update = db.prepare(`UPDATE ${table} SET Today = ?, Day = ?, Period = ? WHERE ID = ?`);
+    db.transaction(() => sourceRows.forEach((row) => update.run(targetToday, targetDay, nextPeriod, row.ID)))();
+
+    logSystem({ userName: req.body.userName || 'system', action: 'Update', page: table, details: `Bulk updated ${sourceRows.length} daily records to ${targetToday} / ${nextPeriod}` });
+    return res.json({ changes: sourceRows.length, message: `تم تعديل ${sourceRows.length} سجلًا في اليومية بنجاح.` });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'تعذر تعديل تاريخ أو فترة اليومية. تحقق من اتصال قاعدة البيانات ثم حاول مرة أخرى.' });
+  }
 });
 
 router.put('/table/:table/:id', (req, res) => {
@@ -621,6 +775,16 @@ router.put('/table/:table/:id', (req, res) => {
   }
   if (Object.prototype.hasOwnProperty.call(payload, 'Day') && !String(payload.Day || '').trim() && payload.Today) {
     payload.Day = getArabicDay(payload.Today);
+  }
+
+  const current = db.prepare(`SELECT * FROM ${table} WHERE ID = ?`).get(id);
+  if (!current) {
+    return res.status(404).json({ message: 'السجل غير موجود للتعديل' });
+  }
+
+  const permissionLimitError = validateMonthlyPermissionLimit({ ...current, ...payload }, table, id);
+  if (permissionLimitError) {
+    return res.status(400).json({ message: permissionLimitError });
   }
 
   const statement = buildUpdateStatement(table, payload, id);

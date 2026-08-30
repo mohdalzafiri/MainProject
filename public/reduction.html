@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>تخفيف العمل</title>
+  <link rel="stylesheet" href="/layout-defaults.css" />
+  <style>
+    body.app-shell {
+      background: linear-gradient(180deg, #eef6ff 0%, #f9fbff 100%);
+    }
+
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .table-wrap {
+      overflow: auto;
+      border: 1px solid var(--ui-border);
+      border-radius: 14px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1100px;
+      background: #fff;
+    }
+
+    th, td {
+      padding: 10px 8px;
+      border-bottom: 1px solid #e2e8f0;
+      text-align: right;
+      font-size: 14px;
+      vertical-align: top;
+    }
+
+    th {
+      background: #f8fafc;
+      color: #475569;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    tbody tr:hover {
+      background: #f8fbff;
+      cursor: pointer;
+    }
+
+    tbody tr.selected {
+      background: #dbeafe;
+    }
+
+    .mono {
+      direction: ltr;
+      unicode-bidi: isolate;
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .status-line {
+      display: none;
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .status-line.show {
+      display: block;
+    }
+
+    .status-line.ok {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .status-line.error {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+
+    .date-picker-wrap {
+      position: relative;
+    }
+
+    .date-display-input {
+      padding-left: 44px;
+      cursor: pointer;
+      direction: ltr;
+      text-align: right;
+    }
+
+    .date-picker-trigger {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 26px;
+      height: 26px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      background: #f8fafc;
+      color: #1e293b;
+      font-size: 0;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+      padding: 0;
+    }
+
+    .date-picker-trigger::before {
+      content: '📅';
+      font-size: 14px;
+      line-height: 1;
+    }
+
+    .native-date-input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    .field.full {
+      grid-column: 1 / -1;
+    }
+
+    .admin-only-field,
+    .user-name-column {
+      display: none;
+    }
+
+    .doc-images-box {
+      margin-top: 12px;
+      border: 1px solid var(--ui-border);
+      border-radius: 12px;
+      padding: 10px;
+      background: #f8fafc;
+    }
+
+    .doc-images-head,
+    .table-tools {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: nowrap;
+      margin-bottom: 10px;
+    }
+
+    .doc-images-head {
+      font-weight: 700;
+      color: #334155;
+    }
+
+    .doc-images-view {
+      display: grid;
+      grid-template-columns: 44px 1fr 44px;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .doc-images-frame {
+      min-height: 220px;
+      border: 1px dashed #cbd5e1;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      background: #fff;
+      color: #64748b;
+      text-align: center;
+      padding: 8px;
+    }
+
+    .doc-images-frame img {
+      width: 100%;
+      height: 100%;
+      max-height: 280px;
+      object-fit: contain;
+      display: none;
+    }
+
+    .doc-images-nav {
+      padding: 10px 8px;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      background: #fff;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .doc-images-actions {
+      margin-top: 10px;
+      display: flex;
+      justify-content: flex-start;
+    }
+
+    .table-tools p {
+      margin: 0;
+      color: #475569;
+      font-weight: 700;
+    }
+
+    .table-search {
+      flex: 1;
+      min-width: 0;
+    }
+
+    @media (max-width: 900px) {
+      body.app-shell .grid,
+      body.app-shell .form-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 640px) {
+      body.app-shell .grid,
+      body.app-shell .form-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body class="app-shell">
+  <div class="page app-page">
+    <header class="page-header header">
+      <div>
+        <h1>تخفيف العمل</h1>
+        <p>إدارة بيانات الموظفين الحاصلين على تخفيف عمل وعرض كل الموظفين الحاصلين على تخفيف عمل.</p>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn dark" id="backBtn">رجوع للرئيسية</button>
+      </div>
+    </header>
+
+    <section class="panel">
+      <h2>تعبئة / اظهار البيانات</h2>
+      <form id="reductionForm">
+        <input id="reductionId" type="hidden" />
+
+        <div class="grid">
+          <div class="field">
+            <label for="name">اسم الموظف</label>
+            <select id="name">
+              <option value="">-- اختر --</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="status">الحالة</label>
+            <input id="status" value="تخفيف عمل" readonly />
+          </div>
+
+          <div class="field">
+            <label for="type">نوع التخفيف</label>
+            <select id="type">
+              <option value="">-- اختر --</option>
+              <option value="بداية الدوام">بداية الدوام</option>
+              <option value="نهاية الدوام">نهاية الدوام</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="department">القسم</label>
+            <input id="department" readonly />
+          </div>
+
+          <div class="field">
+            <label for="section">النوبة</label>
+            <input id="section" readonly />
+          </div>
+
+          <div class="field">
+            <label for="hours">عدد الساعات</label>
+            <input id="hours" type="number" min="1" max="12" value="2" />
+          </div>
+
+          <div class="field">
+            <label for="startDate">البداية</label>
+            <div class="date-picker-wrap">
+              <input id="startDateDisplay" class="date-display-input" type="text" placeholder="yyyy/mm/dd" readonly />
+              <button type="button" class="date-picker-trigger" data-picker-id="startDate" aria-label="اختيار تاريخ البداية"></button>
+              <input id="startDate" type="date" class="native-date-input" />
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="endDate">النهاية</label>
+            <div class="date-picker-wrap">
+              <input id="endDateDisplay" class="date-display-input" type="text" placeholder="yyyy/mm/dd" readonly />
+              <button type="button" class="date-picker-trigger" data-picker-id="endDate" aria-label="اختيار تاريخ النهاية"></button>
+              <input id="endDate" type="date" class="native-date-input" />
+            </div>
+          </div>
+
+          <div class="field full">
+            <label for="note">ملاحظات</label>
+            <textarea id="note"></textarea>
+          </div>
+
+          <div class="field full admin-only-field" id="userNameField">
+            <label for="userName">اسم المستخدم</label>
+            <input id="userName" type="text" readonly />
+          </div>
+        </div>
+
+        <div class="toolbar">
+          <button type="submit" class="btn success" id="addBtn">إضافة بيانات جديدة</button>
+          <button type="button" class="btn warning" id="updateBtn">تعديل بيانات</button>
+          <button type="button" class="btn danger" id="deleteBtn">حذف بيانات</button>
+          <button type="button" class="btn primary" id="printBtn">طباعة بيانات</button>
+        </div>
+      </form>
+
+      <div id="statusLine" class="status-line"></div>
+
+      <div class="doc-images-box">
+        <div class="doc-images-head">
+          <span>صور المستندات الرسمية</span>
+          <span id="docImageCount">0 / 0</span>
+        </div>
+        <div class="doc-images-view">
+          <button type="button" class="doc-images-nav" id="docImagePrevBtn">◀</button>
+          <div class="doc-images-frame">
+            <img id="docImagePreview" alt="صورة مستند" />
+            <div id="docImageEmpty">اختر سجلًا أولًا لعرض صور المستندات.</div>
+          </div>
+          <button type="button" class="doc-images-nav" id="docImageNextBtn">▶</button>
+        </div>
+        <div class="doc-images-actions">
+          <button type="button" class="btn primary" id="docImageUploadBtn">تصوير/رفع مستند</button>
+          <input id="docImageInput" type="file" accept="image/*" capture="environment" hidden />
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>صندوق عرض البيانات</h2>
+      <div class="table-tools">
+        <p id="countLabel">عدد السجلات: 0</p>
+        <input id="nameFilterInput" class="table-search" placeholder="فلترة بالاسم أثناء الكتابة" />
+        <button type="button" class="btn primary" id="refreshBtn">تحديث العرض</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>م</th>
+              <th>اسم الموظف</th>
+              <th>الحالة</th>
+              <th>نوع التخفيف</th>
+              <th>القسم</th>
+              <th>النوبة</th>
+              <th>عدد الساعات</th>
+              <th>البداية</th>
+              <th>النهاية</th>
+              <th>ملاحظات</th>
+              <th class="user-name-column">اسم المستخدم</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <script src="/record-photos.js"></script>
+  <script>
+    const authToken = localStorage.getItem('authToken');
+    if (!authToken) {
+      window.location.href = '/';
+    }
+
+    const currentUser = parseJwtPayload(authToken);
+    if (!currentUser) {
+      localStorage.removeItem('authToken');
+      window.location.href = '/';
+    }
+
+    const isAdminUser = String(currentUser?.role || currentUser?.username || '').trim().toLowerCase() === 'admin';
+    const homeRoute = localStorage.getItem('uiMode') === 'mobile' ? '/mobile-dashboard.html' : '/dashboard.html';
+    const backBtn = document.getElementById('backBtn');
+    const form = document.getElementById('reductionForm');
+    const nameInput = document.getElementById('name');
+    const statusInput = document.getElementById('status');
+    const typeInput = document.getElementById('type');
+    const departmentInput = document.getElementById('department');
+    const sectionInput = document.getElementById('section');
+    const hoursInput = document.getElementById('hours');
+    const noteInput = document.getElementById('note');
+    const startDateInput = document.getElementById('startDate');
+    const endDateInput = document.getElementById('endDate');
+    const startDateDisplayInput = document.getElementById('startDateDisplay');
+    const endDateDisplayInput = document.getElementById('endDateDisplay');
+    const rowsBody = document.getElementById('rows');
+    const countLabel = document.getElementById('countLabel');
+    const statusLine = document.getElementById('statusLine');
+    const nameFilterInput = document.getElementById('nameFilterInput');
+    const reductionIdInput = document.getElementById('reductionId');
+    const userNameInput = document.getElementById('userName');
+    const userNameField = document.getElementById('userNameField');
+    const printBtn = document.getElementById('printBtn');
+    const refreshBtn = document.getElementById('refreshBtn');
+    const userNameColumnCells = () => document.querySelectorAll('.user-name-column');
+
+    let allEmployees = [];
+    let allReduction = [];
+    let selectedId = null;
+
+    const recordPhotos = initRecordPhotos({
+      moduleKey: 'reduction',
+      authToken,
+      getRecordId: () => selectedId,
+      onStatus: showStatus
+    });
+
+    if (userNameField) {
+      userNameField.style.display = isAdminUser ? 'grid' : 'none';
+    }
+
+    function syncUserNameColumnVisibility() {
+      userNameColumnCells().forEach((cell) => {
+        cell.style.display = isAdminUser ? 'table-cell' : 'none';
+      });
+    }
+
+    function parseJwtPayload(token) {
+      try {
+        const payload = token.split('.')[1];
+        if (!payload) return null;
+        const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+        return JSON.parse(atob(normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=')));
+      } catch (error) {
+        return null;
+      }
+    }
+
+    function showStatus(message, isError = false) {
+      statusLine.className = `status-line show ${isError ? 'error' : 'ok'}`;
+      statusLine.textContent = message;
+    }
+
+    function clearStatus() {
+      statusLine.className = 'status-line';
+      statusLine.textContent = '';
+    }
+
+    function pad2(value) {
+      return String(value).padStart(2, '0');
+    }
+
+    function parseFlexibleDate(value) {
+      const raw = String(value || '').trim();
+      if (!raw) return null;
+      const normalized = raw.replace(/\//g, '-');
+      const match = normalized.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+      if (match) {
+        return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+      }
+      return null;
+    }
+
+    function formatDateYmdSlash(value) {
+      const date = parseFlexibleDate(value);
+      if (!date || Number.isNaN(date.getTime())) return '';
+      return `${date.getFullYear()}/${pad2(date.getMonth() + 1)}/${pad2(date.getDate())}`;
+    }
+
+    function toDateInputValue(value) {
+      const date = parseFlexibleDate(value);
+      if (!date || Number.isNaN(date.getTime())) return '';
+      return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+    }
+
+    function syncDateInputs() {
+      startDateDisplayInput.value = formatDateYmdSlash(startDateInput.value);
+      endDateDisplayInput.value = formatDateYmdSlash(endDateInput.value);
+    }
+
+    function getHeaders() {
+      return { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` };
+    }
+
+    async function requestJson(url, options = {}) {
+      const response = await fetch(url, options);
+      if (response.status === 401 || response.status === 403) {
+        localStorage.removeItem('authToken');
+        window.location.href = '/';
+        return null;
+      }
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data?.message || 'تعذر تنفيذ العملية.');
+      return data;
+    }
+
+    async function loadEmployees() {
+      try {
+        const data = await requestJson('/api/employees', { headers: getHeaders() });
+        const rows = Array.isArray(data) ? data : [];
+        allEmployees = rows.filter((item) => String(item.Status || '').trim() === 'نشط');
+        populateNameOptions();
+      } catch (error) {
+        showStatus(error.message || 'تعذر تحميل الموظفين.', true);
+      }
+    }
+
+    function populateNameOptions() {
+      const currentValue = nameInput.value;
+      const uniqueNames = Array.from(new Set(allEmployees.map((item) => String(item.Name || '').trim()).filter(Boolean)));
+      nameInput.innerHTML = '<option value="">-- اختر --</option>';
+      uniqueNames.forEach((name) => {
+        const option = document.createElement('option');
+        option.value = name;
+        option.textContent = name;
+        nameInput.appendChild(option);
+      });
+      if (currentValue && [...nameInput.options].some((option) => option.value === currentValue)) {
+        nameInput.value = currentValue;
+      }
+    }
+
+    function setEmployeeFields(employeeName) {
+      const employee = allEmployees.find((item) => String(item.Name || '').trim() === String(employeeName || '').trim());
+      if (!employee) {
+        departmentInput.value = '';
+        sectionInput.value = '';
+        return;
+      }
+      departmentInput.value = employee.Department || '';
+      sectionInput.value = employee.Section || '';
+    }
+
+    function renderRows(items) {
+      rowsBody.innerHTML = '';
+      if (!Array.isArray(items) || !items.length) {
+        rowsBody.innerHTML = `<tr><td colspan="${isAdminUser ? 11 : 10}">لا توجد بيانات متاحة.</td></tr>`;
+        countLabel.textContent = 'عدد السجلات: 0';
+        syncUserNameColumnVisibility();
+        return;
+      }
+
+      items.forEach((item, index) => {
+        const tr = document.createElement('tr');
+        if (selectedId && Number(item.ID) === Number(selectedId)) {
+          tr.classList.add('selected');
+        }
+        tr.innerHTML = `
+          <td class="mono">${index + 1}</td>
+          <td>${String(item.Name || '').trim()}</td>
+          <td>${String(item.Status || '').trim()}</td>
+          <td>${String(item.Type || '').trim()}</td>
+          <td>${String(item.Department || '').trim()}</td>
+          <td>${String(item.Section || '').trim()}</td>
+          <td class="mono">${String(item.Hours || '2')}</td>
+          <td class="mono">${formatDateYmdSlash(item.Startdate || '')}</td>
+          <td class="mono">${formatDateYmdSlash(item.Enddate || '')}</td>
+          <td>${String(item.Note || '').trim()}</td>
+          <td class="user-name-column">${String(item.UserName || '').trim()}</td>
+        `;
+
+        tr.addEventListener('click', () => {
+          selectedId = Number(item.ID);
+          fillForm(item);
+          renderRows(items);
+        });
+
+        rowsBody.appendChild(tr);
+      });
+
+      countLabel.textContent = `عدد السجلات: ${items.length}`;
+      syncUserNameColumnVisibility();
+    }
+
+    function fillForm(item) {
+      reductionIdInput.value = item.ID || '';
+      nameInput.value = String(item.Name || '').trim();
+      statusInput.value = String(item.Status || '').trim();
+      typeInput.value = String(item.Type || '').trim();
+      departmentInput.value = String(item.Department || '').trim();
+      sectionInput.value = String(item.Section || '').trim();
+      hoursInput.value = Number(item.Hours || 2);
+      noteInput.value = String(item.Note || '').trim();
+      if (userNameInput) userNameInput.value = item.UserName || currentUser?.username || 'system';
+      startDateInput.value = toDateInputValue(item.Startdate || '');
+      endDateInput.value = toDateInputValue(item.Enddate || '');
+      syncDateInputs();
+      recordPhotos.load();
+    }
+
+    function resetForm() {
+      reductionIdInput.value = '';
+      selectedId = null;
+      nameInput.value = '';
+      statusInput.value = 'تخفيف عمل';
+      typeInput.value = '';
+      departmentInput.value = '';
+      sectionInput.value = '';
+      hoursInput.value = 2;
+      noteInput.value = '';
+      startDateInput.value = '';
+      endDateInput.value = '';
+      syncDateInputs();
+      if (userNameInput) userNameInput.value = currentUser?.username || 'system';
+      recordPhotos.clear();
+    }
+
+    async function loadReduction() {
+      try {
+        const data = await requestJson('/api/reduction', { headers: getHeaders() });
+        allReduction = Array.isArray(data) ? data : [];
+        const filterText = (nameFilterInput.value || '').trim().toLowerCase();
+        const visible = !filterText ? allReduction : allReduction.filter((item) => String(item.Name || '').toLowerCase().includes(filterText));
+        renderRows(visible);
+      } catch (error) {
+        showStatus(error.message || 'تعذر تحميل بيانات التخفيف.', true);
+      }
+    }
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const name = String(nameInput.value || '').trim();
+      const status = String(statusInput.value || '').trim();
+      const type = String(typeInput.value || '').trim();
+      const startDate = startDateInput.value;
+      const endDate = endDateInput.value;
+      const hours = Number(hoursInput.value || 2);
+
+      if (!name) {
+        showStatus('يجب اختيار اسم الموظف.', true);
+        return;
+      }
+      if (!type || !['بداية الدوام', 'نهاية الدوام'].includes(type)) {
+        showStatus('يجب اختيار بداية الدوام أو نهاية الدوام.', true);
+        return;
+      }
+      if (!startDate) {
+        showStatus('تاريخ البداية إجباري.', true);
+        return;
+      }
+
+      const employee = allEmployees.find((item) => String(item.Name || '').trim() === name) || null;
+      const payload = {
+        EmpID: employee ? employee.ID : null,
+        Name: name,
+        Department: employee ? (employee.Department || '') : departmentInput.value,
+        Section: employee ? (employee.Section || '') : sectionInput.value,
+        Status: status,
+        Type: type,
+        Startdate: startDate,
+        Enddate: endDate || '',
+        Hours: hours || 2,
+        Note: noteInput.value,
+        UserName: isAdminUser ? (userNameInput.value || currentUser?.username || 'system') : (currentUser?.username || 'system')
+      };
+
+      try {
+        await requestJson('/api/reduction', {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify(payload)
+        });
+        showStatus('تمت إضافة بيانات تخفيف العمل بنجاح.');
+        resetForm();
+        await loadReduction();
+      } catch (error) {
+        showStatus(error.message || 'تعذر إضافة بيانات تخفيف العمل.', true);
+      }
+    });
+
+    document.getElementById('updateBtn').addEventListener('click', async () => {
+      if (!selectedId) {
+        showStatus('اختر سجلًا أولاً قبل التعديل.', true);
+        return;
+      }
+
+      const employee = allEmployees.find((item) => String(item.Name || '').trim() === String(nameInput.value || '').trim()) || null;
+      const payload = {
+        EmpID: employee ? employee.ID : null,
+        Name: String(nameInput.value || '').trim(),
+        Department: employee ? (employee.Department || '') : departmentInput.value,
+        Section: employee ? (employee.Section || '') : sectionInput.value,
+        Status: String(statusInput.value || '').trim(),
+        Type: String(typeInput.value || '').trim(),
+        Startdate: startDateInput.value || '',
+        Enddate: endDateInput.value || '',
+        Hours: Number(hoursInput.value || 2),
+        Note: noteInput.value,
+        UserName: isAdminUser ? (userNameInput.value || currentUser?.username || 'system') : (currentUser?.username || 'system')
+      };
+
+      try {
+        await requestJson(`/api/reduction/${selectedId}`, {
+          method: 'PUT',
+          headers: getHeaders(),
+          body: JSON.stringify(payload)
+        });
+        showStatus('تم تعديل بيانات تخفيف العمل بنجاح.');
+        await loadReduction();
+      } catch (error) {
+        showStatus(error.message || 'تعذر تعديل بيانات تخفيف العمل.', true);
+      }
+    });
+
+    document.getElementById('deleteBtn').addEventListener('click', async () => {
+      if (!selectedId) {
+        showStatus('اختر سجلًا أولاً قبل الحذف.', true);
+        return;
+      }
+
+      const confirmed = window.confirm('هل تريد حذف سجل تخفيف العمل الحالي؟');
+      if (!confirmed) return;
+
+      try {
+        await requestJson(`/api/reduction/${selectedId}`, {
+          method: 'DELETE',
+          headers: getHeaders(),
+          body: JSON.stringify({ userName: parseJwtPayload(authToken)?.username || 'system' })
+        });
+        showStatus('تم حذف سجل تخفيف العمل بنجاح.');
+        resetForm();
+        await loadReduction();
+      } catch (error) {
+        showStatus(error.message || 'تعذر حذف سجل تخفيف العمل.', true);
+      }
+    });
+
+    refreshBtn.addEventListener('click', async () => {
+      await loadReduction();
+      clearStatus();
+    });
+
+    backBtn.addEventListener('click', () => {
+      window.location.href = homeRoute;
+    });
+
+    function buildPrintHtml() {
+      const item = allReduction.find((row) => Number(row.ID) === Number(selectedId)) || {
+        Name: nameInput.value,
+        Status: statusInput.value,
+        Type: typeInput.value,
+        Department: departmentInput.value,
+        Section: sectionInput.value,
+        Hours: hoursInput.value,
+        Startdate: startDateInput.value,
+        Enddate: endDateInput.value,
+        Note: noteInput.value
+      };
+      const valueOrDash = (value) => String(value || '').trim() || '---';
+      const now = new Date();
+      const stamp = `${pad2(now.getHours())}:${pad2(now.getMinutes())}:${pad2(now.getSeconds())} ${now.getFullYear()}/${pad2(now.getMonth() + 1)}/${pad2(now.getDate())}`;
+
+      return `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>بيانات تخفيف العمل</title><style>body{font-family:Tahoma,Arial,sans-serif;margin:0;color:#0f172a}.page{width:210mm;min-height:297mm;margin:auto;padding:10mm}.sheet{border:1.5px solid #0f172a;min-height:277mm;padding:7mm}.head{display:flex;justify-content:space-between;align-items:start}.title{text-align:center;color:#0b3a6f;font-size:11mm;font-weight:800}.meta{display:flex;justify-content:space-between;border:1px solid #cbd5e1;padding:2mm;margin:5mm 0;font-size:3mm}.section{border:1px solid #0f172a;margin-top:4mm}.section h2{margin:0;padding:2mm;background:#0b3a6f;color:#fff;font-size:4mm}table{width:100%;border-collapse:collapse}td{border:1px solid #cbd5e1;padding:3mm;font-size:4mm}.label{width:25%;background:#f8fafc;font-weight:bold}.ltr{direction:ltr;text-align:center}@media print{@page{size:A4;margin:0}}</style></head><body><main class="page"><section class="sheet"><header class="head"><div>ادارة البلاغات<br>قسم الخدمات المساندة<br>شعبة التحضير</div><h1 class="title">بيانات تخفيف العمل</h1><div>صورة</div></header><div class="meta"><span>رقم المرجع: ${valueOrDash(item.ID || selectedId)}</span><span class="ltr">وقت الطباعة: ${stamp}</span></div><section class="section"><h2>البيانات الأساسية</h2><table><tr><td class="label">اسم الموظف</td><td>${valueOrDash(item.Name)}</td><td class="label">الحالة</td><td>${valueOrDash(item.Status)}</td></tr><tr><td class="label">نوع التخفيف</td><td>${valueOrDash(item.Type)}</td><td class="label">عدد الساعات</td><td class="ltr">${valueOrDash(item.Hours)}</td></tr><tr><td class="label">القسم</td><td>${valueOrDash(item.Department)}</td><td class="label">النوبة</td><td>${valueOrDash(item.Section)}</td></tr></table></section><section class="section"><h2>البيانات الزمنية</h2><table><tr><td class="label">البداية</td><td class="ltr">${valueOrDash(formatDateYmdSlash(item.Startdate))}</td><td class="label">النهاية</td><td class="ltr">${valueOrDash(formatDateYmdSlash(item.Enddate))}</td></tr></table></section><section class="section"><h2>ملاحظات</h2><table><tr><td>${valueOrDash(item.Note)}</td></tr></table></section></section></main></body></html>`;
+    }
+
+    printBtn.addEventListener('click', () => {
+      if (!selectedId && !String(nameInput.value || '').trim()) {
+        showStatus('اكتب اسم الموظف في الحقول أولاً قبل الطباعة.', true);
+        return;
+      }
+      const frame = document.createElement('iframe');
+      frame.style.cssText = 'position:fixed;width:210mm;height:297mm;border:0;opacity:.01;pointer-events:none;z-index:-1;';
+      document.body.appendChild(frame);
+      const printWindow = frame.contentWindow;
+      const printDocument = frame.contentDocument || printWindow?.document;
+      if (!printWindow || !printDocument) {
+        frame.remove();
+        showStatus('تعذر تجهيز نافذة الطباعة.', true);
+        return;
+      }
+      printWindow.onafterprint = () => frame.remove();
+      printDocument.open();
+      printDocument.write(buildPrintHtml());
+      printDocument.close();
+      setTimeout(() => { printWindow.focus(); printWindow.print(); }, 130);
+    });
+
+    nameInput.addEventListener('change', () => {
+      setEmployeeFields(nameInput.value);
+    });
+
+    nameFilterInput.addEventListener('input', () => {
+      const filterText = (nameFilterInput.value || '').trim().toLowerCase();
+      const visible = !filterText ? allReduction : allReduction.filter((item) => String(item.Name || '').toLowerCase().includes(filterText));
+      renderRows(visible);
+    });
+
+    dateOpenButtons = document.querySelectorAll('.date-picker-trigger');
+    dateOpenButtons.forEach((button) => {
+      button.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const pickerInput = document.getElementById(button.dataset.pickerId);
+        if (!pickerInput) return;
+        if (typeof pickerInput.showPicker === 'function') {
+          try { pickerInput.showPicker(); return; } catch (error) {}
+        }
+        pickerInput.focus();
+        pickerInput.click();
+      });
+    });
+
+    startDateInput.addEventListener('change', syncDateInputs);
+    endDateInput.addEventListener('change', syncDateInputs);
+
+    (async function init() {
+      await loadEmployees();
+      await loadReduction();
+      resetForm();
+    })();
+  </script>
+</body>
+</html>
