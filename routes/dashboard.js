@@ -199,6 +199,17 @@ function countOngoingRecords(tableName) {
   `).get(today, today).count;
 }
 
+function countUpcomingHolidays() {
+  if (!tableOrViewExists('Holiday')) return 0;
+
+  return db.prepare(`
+    SELECT COUNT(*) AS count
+    FROM Holiday
+    WHERE date(REPLACE(Startdate, '/', '-')) > date('now', 'localtime')
+      AND date(REPLACE(Startdate, '/', '-')) <= date('now', 'localtime', '+3 day')
+  `).get().count;
+}
+
 function summarizeDocumentTable(tableName, dateColumn, numberColumn, subjectColumn, extraColumn) {
   if (!tableOrViewExists(tableName)) {
     return {
@@ -231,7 +242,15 @@ router.get('/summary', (req, res) => {
     const totals = {
       totalEmployees: countActiveEmployees(),
       totalDailyRecords: tableOrViewExists('DailyAll') ? db.prepare('SELECT COUNT(*) AS count FROM DailyAll').get().count : 0,
-      totalHolidays: countOngoingRecords('Holiday'),
+      currentHolidays: countOngoingRecords('Holiday'),
+      upcomingHolidays: countUpcomingHolidays(),
+      totalHolidays: tableOrViewExists('Holiday')
+        ? db.prepare(`
+            SELECT COUNT(*) AS count
+            FROM Holiday
+            WHERE date(REPLACE(Enddate, '/', '-')) >= date('now', 'localtime')
+          `).get().count
+        : 0,
       totalCourses: countOngoingRecords('Course'),
       totalTransfers: countOutsideEmployees(),
       totalUsers: tableOrViewExists('Login') ? db.prepare('SELECT COUNT(*) AS count FROM Login').get().count : 0,
@@ -322,17 +341,65 @@ router.get('/summary', (req, res) => {
     const sections = [];
 
     let todaySummary = [];
+    let latestDailyShift = null;
     if (tableOrViewExists('DailyAll')) {
-      const latestShift = db.prepare(`
-        SELECT date(REPLACE(Today, '/', '-')) AS logDate, TRIM(Period) AS period
-        FROM DailyAll
-        WHERE Today IS NOT NULL AND TRIM(Today) <> ''
-          AND date(REPLACE(Today, '/', '-')) = date('now', 'localtime')
-        ORDER BY ID DESC
-        LIMIT 1
-      `).get();
+      const dailyTables = new Set(['Daily1', 'Daily2', 'Daily3', 'Daily4']);
+      const latestDailyAdd = tableOrViewExists('SystemLog')
+        ? db.prepare(`
+            SELECT Target, Details
+            FROM SystemLog
+            WHERE LOWER(TRIM(Action)) = 'add'
+              AND Target IN ('Daily1', 'Daily2', 'Daily3', 'Daily4')
+            ORDER BY datetime(Timestamp) DESC, ID DESC
+            LIMIT 1
+          `).get()
+        : null;
 
-      if (latestShift?.logDate && latestShift?.period) {
+      if (latestDailyAdd && dailyTables.has(latestDailyAdd.Target)) {
+        const recordId = String(latestDailyAdd.Details || '').match(/daily record ID=(\d+)/i)?.[1];
+        const batchDate = String(latestDailyAdd.Details || '').match(/\bon\s+(\d{4}[/-]\d{2}[/-]\d{2})/i)?.[1];
+        const sourceFilter = recordId
+          ? { clause: 'ID = ?', value: Number(recordId) }
+          : batchDate
+            ? { clause: "date(REPLACE(Today, '/', '-')) = date(?)", value: batchDate }
+            : null;
+
+        if (sourceFilter) {
+          latestDailyShift = db.prepare(`
+            SELECT
+              date(REPLACE(Today, '/', '-')) AS logDate,
+              TRIM(Department) AS department,
+              TRIM(Section) AS section,
+              TRIM(Period) AS period
+            FROM ${latestDailyAdd.Target}
+            WHERE ${sourceFilter.clause}
+              AND TRIM(Department) <> ''
+              AND TRIM(Section) <> ''
+              AND TRIM(Period) <> ''
+            ORDER BY ID DESC
+            LIMIT 1
+          `).get(sourceFilter.value);
+        }
+      }
+
+      if (!latestDailyShift) {
+        latestDailyShift = db.prepare(`
+          SELECT
+            date(REPLACE(Today, '/', '-')) AS logDate,
+            TRIM(Department) AS department,
+            TRIM(Section) AS section,
+            TRIM(Period) AS period
+          FROM DailyAll
+          WHERE Today IS NOT NULL AND TRIM(Today) <> ''
+            AND TRIM(Department) <> ''
+            AND TRIM(Section) <> ''
+            AND TRIM(Period) <> ''
+          ORDER BY date(REPLACE(Today, '/', '-')) DESC, ID DESC
+          LIMIT 1
+        `).get();
+      }
+
+      if (latestDailyShift?.logDate && latestDailyShift?.department && latestDailyShift?.section && latestDailyShift?.period) {
         todaySummary = db.prepare(`
           SELECT
             Name,
@@ -346,10 +413,17 @@ router.get('/summary', (req, res) => {
             Note
           FROM DailyAll
           WHERE date(REPLACE(Today, '/', '-')) = date(?)
+            AND TRIM(Department) = ?
+            AND TRIM(Section) = ?
             AND TRIM(Period) = ?
           ORDER BY Name ASC
           LIMIT 60
-        `).all(latestShift.logDate, latestShift.period);
+        `).all(
+          latestDailyShift.logDate,
+          latestDailyShift.department,
+          latestDailyShift.section,
+          latestDailyShift.period
+        );
       }
     }
 
@@ -388,6 +462,7 @@ router.get('/summary', (req, res) => {
       outgoingSummary,
       incomingSummary,
       todaySummary,
+      latestDailyShift,
       leaveDailySummary,
       recentActivities
     });

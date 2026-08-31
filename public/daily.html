@@ -749,21 +749,6 @@
       </div>
     </form>
   </dialog>
-  <dialog id="absenceTypeDialog" class="bulk-edit-dialog">
-    <form id="absenceTypeForm">
-      <h2>نوع الغياب</h2>
-      <p>اختر نوع الغياب ليتم حفظه في الوصف.</p>
-      <div class="absence-type-options">
-        <label><input type="radio" name="absenceType" value="طبية" /><span>طبية</span></label>
-        <label><input type="radio" name="absenceType" value="عرضي" /><span>عرضي</span></label>
-        <label><input type="radio" name="absenceType" value="انقطاع عن العمل (خصم)" /><span>انقطاع عن العمل (خصم)</span></label>
-      </div>
-      <div class="bulk-edit-actions">
-        <button type="submit" class="btn success">حفظ</button>
-        <button type="button" class="btn dark" id="absenceTypeCancelBtn">إلغاء</button>
-      </div>
-    </form>
-  </dialog>
   <script>
     const form = document.getElementById('dailyForm');
     const todayInput = document.getElementById('today');
@@ -794,9 +779,6 @@
     const bulkEditCancelBtn = document.getElementById('bulkEditCancelBtn');
     const bulkTodayInput = document.getElementById('bulkToday');
     const bulkPeriodInput = document.getElementById('bulkPeriod');
-    const absenceTypeDialog = document.getElementById('absenceTypeDialog');
-    const absenceTypeForm = document.getElementById('absenceTypeForm');
-    const absenceTypeCancelBtn = document.getElementById('absenceTypeCancelBtn');
     const sideDay = document.getElementById('sideDay');
     const sideDate = document.getElementById('sideDate');
     const summaryDepartment = document.getElementById('summaryDepartment');
@@ -851,7 +833,6 @@
     let suggestionDebounceHandle = null;
     let pendingAddedEmployeeName = '';
     let reductionSchedule = [];
-    let pendingAbsenceChange = null;
 
     const fallbackDepartments = ['البلاغات', 'العمليات', 'الخدمات المساندة', 'الموارد البشرية', 'المعلومات', 'الاحصاء'];
     const fallbackDepartmentSections = [
@@ -885,6 +866,12 @@
     ];
 
     const STATUS_OPTIONS = ['حضور', 'تأخير', 'تأخير+عقوبة', 'استئذان', 'غياب', 'حضور بعد غياب', 'طبية', 'اجازة', 'دورة', 'تكليف', 'عرضي', 'انقطاع عن العمل'];
+    const PERIOD_DEFAULTS = {
+      'نوبة صبح': { inTime: '08:00', outTime: '16:00' },
+      'نوبة عصر': { inTime: '16:00', outTime: '00:00' },
+      'نوبة ليل': { inTime: '00:00', outTime: '08:00' },
+      'صباحاً': { inTime: '07:30', outTime: '14:30' }
+    };
 
     if (departmentInput.options.length <= 1) {
       departmentSectionRows = [...fallbackDepartmentSections];
@@ -1497,6 +1484,66 @@
       updateSummaryPanel(visibleRows);
     }
 
+    function formatPermissionDuration(minutesValue) {
+      const totalMinutes = Math.max(0, Number(minutesValue) || 0);
+      const hours = Math.floor(totalMinutes / 60);
+      const minutes = totalMinutes % 60;
+      return `${hours}:${String(minutes).padStart(2, '0')}`;
+    }
+
+    async function showPermissionSummary(item) {
+      const table = inferDailyTable(item.Department);
+      const params = new URLSearchParams({
+        today: item.Today || todayInput.value,
+        empId: item.EmpID || '',
+        name: item.Name || '',
+        table: table || '',
+        id: item.ID || ''
+      });
+      const summary = await requestJson(`/api/daily-logs/permission-summary?${params.toString()}`, {
+        headers: getHeaders()
+      });
+      const remainingCount = Math.max(0, Number(summary.remainingCount) - 1);
+      const remainingMinutes = Math.max(0, Number(summary.remainingMinutes));
+      const exceedsLimit = Boolean(summary.exceeded) || Number(summary.remainingCount) <= 0;
+
+      if (exceedsLimit) {
+        showStatus(`تنبيه: تجاوز ${item.Name || 'الموظف'} الحد الشهري للاستئذان (4 مرات أو 12:00 ساعة).`, true);
+        return false;
+      }
+
+      showStatus(`رصيد الاستئذان المتاح للموظف بعد هذا الاستئذان: ${remainingCount} مرات و${formatPermissionDuration(remainingMinutes)} ساعة.`);
+      return true;
+    }
+
+    function createDescriptionSelect(item) {
+      const status = String(item.Status || '').trim();
+      if (status !== 'غياب') {
+        return document.createTextNode(String(item.Type || '').trim() || (status === 'دورة' ? 'دورة' : ''));
+      }
+
+      const select = document.createElement('select');
+      select.className = 'status-select';
+      const currentDescription = String(item.Type || '').trim() || String(item.Note || '').trim();
+      [
+        { value: '', label: '-- اختياري --' },
+        { value: 'طبية', label: 'طبية' },
+        { value: 'عرضي', label: 'عرضي' },
+        { value: 'انقطاع عن العمل (خصم)', label: 'انقطاع عن العمل (خصم)' }
+      ].forEach(({ value, label }) => {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = label;
+        option.selected = currentDescription === value;
+        select.appendChild(option);
+      });
+      select.addEventListener('click', (event) => event.stopPropagation());
+      select.addEventListener('change', async (event) => {
+        await saveRowChanges(item, { Type: event.target.value }, 'تم تحديث وصف الغياب بنجاح.');
+      });
+      return select;
+    }
+
     function createStatusSelect(item) {
       const select = document.createElement('select');
       select.className = 'status-select';
@@ -1511,11 +1558,12 @@
       select.addEventListener('click', (event) => event.stopPropagation());
       select.addEventListener('change', async (event) => {
         const nextStatus = event.target.value;
-        if (nextStatus === 'غياب') {
-          pendingAbsenceChange = { item, select, previousStatus: String(item.Status || '').trim() || 'حضور' };
-          absenceTypeForm.reset();
-          absenceTypeDialog.showModal();
-          return;
+        if (nextStatus === 'استئذان') {
+          const permissionAllowed = await showPermissionSummary(item);
+          if (!permissionAllowed) {
+            select.value = String(item.Status || '').trim() || 'حضور';
+            return;
+          }
         }
 
         const payload = { Status: nextStatus };
@@ -1531,36 +1579,12 @@
 
         await saveRowChanges(item, payload, 'تم تحديث الحالة بنجاح.');
         applyNameFilterAndRender();
+        if (nextStatus === 'استئذان') {
+          await showPermissionSummary(item);
+        }
       });
 
       return select;
-    }
-
-    async function saveAbsenceType() {
-      const selectedType = absenceTypeForm.querySelector('input[name="absenceType"]:checked')?.value || '';
-      if (!selectedType || !pendingAbsenceChange) {
-        showStatus('اختر نوع الغياب أولاً.', true);
-        return;
-      }
-
-      const { item } = pendingAbsenceChange;
-      await saveRowChanges(item, {
-        Status: 'غياب',
-        Note: selectedType,
-        InTime: '',
-        OutTime: ''
-      }, 'تم حفظ الغياب ونوعه في الوصف بنجاح.');
-      pendingAbsenceChange = null;
-      absenceTypeDialog.close();
-      applyNameFilterAndRender();
-    }
-
-    function cancelAbsenceType() {
-      if (pendingAbsenceChange?.select) {
-        pendingAbsenceChange.select.value = pendingAbsenceChange.previousStatus;
-      }
-      pendingAbsenceChange = null;
-      absenceTypeDialog.close();
     }
 
     function findReductionForRow(item) {
@@ -1652,8 +1676,6 @@
           hasHighlightedRow = true;
         }
 
-        const description = String(item.Type || '').trim() || (String(item.Status || '').trim() === 'دورة' ? 'دورة' : '');
-
         tr.innerHTML = `
           <td class="mono">${index + 1}</td>
           <td>${item.Name ?? ''}</td>
@@ -1662,16 +1684,18 @@
           <td></td>
           <td class="mono">${formatDateYmdSlash(item.Startdate || '')}</td>
           <td class="mono">${formatDateYmdSlash(item.Enddate || '')}</td>
-          <td>${description}</td>
+          <td></td>
           <td>${item.Note ?? ''}</td>
         `;
 
         const statusCell = tr.children[2];
         const inCell = tr.children[3];
         const outCell = tr.children[4];
+        const descriptionCell = tr.children[7];
         statusCell.appendChild(createStatusSelect(item));
         inCell.appendChild(createTimeInput(item, 'InTime'));
         outCell.appendChild(createTimeInput(item, 'OutTime'));
+        descriptionCell.appendChild(createDescriptionSelect(item));
 
         tr.addEventListener('click', () => markSelectedRow(tr, item));
         rowsBody.appendChild(tr);
@@ -1695,7 +1719,7 @@
             <div class="mobile-daily-card-item"><span>بداية</span><span class="mono">${formatDateYmdSlash(item.Startdate || '')}</span></div>
             <div class="mobile-daily-card-item"><span>نهاية</span><span class="mono">${formatDateYmdSlash(item.Enddate || '')}</span></div>
           </div>
-          <div class="mobile-daily-card-note">${description || 'بدون وصف'}</div>
+          <div class="mobile-daily-card-note">${String(item.Type || '').trim() || 'بدون وصف'}</div>
         `;
 
         card.addEventListener('click', () => markSelectedRecord(item, card));
@@ -1901,7 +1925,10 @@
     }
 
     function printRecord() {
-      const rows = Array.isArray(visibleRows) ? visibleRows : [];
+      const selectedEmployeeName = normalizeText(selectedRecord?.Name || getExactEmployeeNameFromFilter());
+      const rows = selectedEmployeeName
+        ? currentRows.filter((item) => normalizeText(item.Name) === selectedEmployeeName)
+        : Array.isArray(currentRows) ? currentRows : [];
       if (!rows.length) {
         showStatus('لا توجد بيانات في الجدول للطباعة.', true);
         return;
@@ -2094,18 +2121,6 @@
     bulkEditForm.addEventListener('submit', (event) => {
       event.preventDefault();
       saveBulkDailyEdit().catch((error) => showStatus(error.message, true));
-    });
-
-    absenceTypeForm.addEventListener('submit', (event) => {
-      event.preventDefault();
-      saveAbsenceType().catch((error) => showStatus(error.message, true));
-    });
-
-    absenceTypeCancelBtn.addEventListener('click', cancelAbsenceType);
-
-    absenceTypeDialog.addEventListener('cancel', (event) => {
-      event.preventDefault();
-      cancelAbsenceType();
     });
 
     deleteBtn.addEventListener('click', () => {

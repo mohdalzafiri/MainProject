@@ -170,9 +170,36 @@
     .wide-panel {
       grid-column: span 2;
     }
-    .stat-card p { margin: 0; color: var(--muted); }
+    .stat-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      white-space: nowrap;
+    }
     .stat-card h3 { margin: 10px 0 0; font-size: 30px; }
+    .stat-number-link {
+      color: inherit;
+      text-decoration: underline;
+      text-decoration-thickness: 2px;
+      text-underline-offset: 5px;
+    }
     .table-wrap { overflow-x: auto; }
+    .daily-summary-wrap {
+      max-height: 538px;
+      overflow: auto;
+    }
+    .daily-summary-table th,
+    .daily-summary-table td {
+      box-sizing: border-box;
+      height: 40px;
+      white-space: nowrap;
+    }
+    .daily-summary-table th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: #ffffff;
+    }
     .mini-table {
       min-width: 560px;
     }
@@ -367,16 +394,16 @@
             <h3 id="totalTransfers">--</h3>
           </div>
           <div class="stat-card">
-            <p>الإجازات</p>
-            <h3 id="totalHolidays">--</h3>
-          </div>
-          <div class="stat-card" id="totalCoursesCard" style="display: none;">
-            <p>الدورات</p>
-            <h3 id="totalCourses">--</h3>
+            <p>الإجازات الحالية</p>
+            <h3><a class="stat-number-link" id="currentHolidays" href="/holidays.html?filter=current">--</a></h3>
           </div>
           <div class="stat-card">
-            <p>المستخدمون</p>
-            <h3 id="totalUsers">--</h3>
+            <p>الإجازات القريبة</p>
+            <h3><a class="stat-number-link" id="upcomingHolidays" href="/holidays.html?filter=upcoming">--</a></h3>
+          </div>
+          <div class="stat-card">
+            <p>إجمالي الإجازات</p>
+            <h3><a class="stat-number-link" id="totalHolidays" href="/holidays.html?filter=active">--</a></h3>
           </div>
         </div>
       </div>
@@ -399,9 +426,9 @@
 
     <div class="summary-row">
       <div class="panel">
-        <h2>ملخص الحضور اليومي</h2>
-        <div class="table-wrap">
-          <table class="mini-table">
+        <h2 id="dailySummaryTitle">ملخص الحضور اليومي</h2>
+        <div class="table-wrap daily-summary-wrap">
+          <table class="mini-table daily-summary-table">
             <thead>
               <tr>
                 <th>الاسم</th>
@@ -790,9 +817,9 @@
       document.getElementById('totalSystemEvents').textContent = data?.totals?.totalSystemEvents ?? '--';
       document.getElementById('monthRecords').textContent = data?.totals?.totalMonthlyRecords ?? '--';
       document.getElementById('totalTransfers').textContent = data?.totals?.totalTransfers ?? '--';
+      document.getElementById('currentHolidays').textContent = data?.totals?.currentHolidays ?? '--';
+      document.getElementById('upcomingHolidays').textContent = data?.totals?.upcomingHolidays ?? '--';
       document.getElementById('totalHolidays').textContent = data?.totals?.totalHolidays ?? '--';
-      document.getElementById('totalCourses').textContent = data?.totals?.totalCourses ?? '--';
-      document.getElementById('totalUsers').textContent = data?.totals?.totalUsers ?? '--';
     }
 
     function renderTodaySummary(items) {

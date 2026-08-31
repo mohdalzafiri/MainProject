@@ -102,14 +102,12 @@ function getPermissionSourceQuery() {
   `).join(' UNION ALL ');
 }
 
-function validateMonthlyPermissionLimit(record, excludedTable = '', excludedId = 0) {
-  if (String(record.Status || '').trim() !== 'استئذان') return '';
-
+function getMonthlyPermissionUsage(record, excludedTable = '', excludedId = 0) {
   const today = normalizeDateInput(record.Today);
   const name = String(record.Name || '').trim();
   const empId = String(record.EmpID || '').trim();
   const bounds = getMonthBounds(today);
-  if (!today || !bounds || (!empId && !name)) return '';
+  if (!today || !bounds || (!empId && !name)) return { count: 0, minutes: 0 };
 
   const records = db.prepare(`
     SELECT SourceTable, ID, InTime, OutTime
@@ -124,11 +122,18 @@ function validateMonthlyPermissionLimit(record, excludedTable = '', excludedId =
     String(item.SourceTable || '') !== excludedTable || Number(item.ID) !== Number(excludedId)
   );
 
-  const totalCount = records.length + 1;
-  const totalMinutes = records.reduce(
-    (sum, item) => sum + getPermissionMinutes(item.InTime, item.OutTime),
-    getPermissionMinutes(record.InTime, record.OutTime)
-  );
+  return {
+    count: records.length,
+    minutes: records.reduce((sum, item) => sum + getPermissionMinutes(item.InTime, item.OutTime), 0)
+  };
+}
+
+function validateMonthlyPermissionLimit(record, excludedTable = '', excludedId = 0) {
+  if (String(record.Status || '').trim() !== 'استئذان') return '';
+
+  const usage = getMonthlyPermissionUsage(record, excludedTable, excludedId);
+  const totalCount = usage.count + 1;
+  const totalMinutes = usage.minutes + getPermissionMinutes(record.InTime, record.OutTime);
 
   if (totalCount > 4) {
     return `لا يمكن تسجيل الاستئذان: الحد الشهري هو 4 استئذانات، والمستخدم حاليًا ${totalCount} استئذانات.`;
@@ -317,6 +322,29 @@ router.get('/filters', (req, res) => {
       periods,
       statuses: ['حضور', 'تأخير', 'تأخير+عقوبة', 'استئذان', 'غياب', 'حضور بعد غياب', 'طبية', 'اجازة', 'دورة', 'تكليف', 'عرضي', 'انقطاع عن العمل']
     });
+  }
+});
+
+router.get('/permission-summary', (req, res) => {
+  try {
+    const excludedTable = isValidDailyTable(req.query.table) ? req.query.table : '';
+    const excludedId = Number(req.query.id) || 0;
+    const usage = getMonthlyPermissionUsage({
+      Today: req.query.today,
+      EmpID: req.query.empId,
+      Name: req.query.name
+    }, excludedTable, excludedId);
+
+    res.json({
+      usedCount: usage.count,
+      usedMinutes: usage.minutes,
+      remainingCount: Math.max(0, 4 - usage.count),
+      remainingMinutes: Math.max(0, (12 * 60) - usage.minutes),
+      exceeded: usage.count >= 4 || usage.minutes >= (12 * 60)
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'تعذر حساب رصيد الاستئذان الشهري للموظف.' });
   }
 });
 

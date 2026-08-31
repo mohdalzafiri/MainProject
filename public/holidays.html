@@ -525,6 +525,10 @@
     }
 
     const isAdminUser = String(currentUser?.role || currentUser?.username || '').trim().toLowerCase() === 'admin';
+    const requestedHolidayFilter = new URLSearchParams(window.location.search).get('filter');
+    const holidayViewFilter = ['current', 'upcoming', 'active', 'all'].includes(requestedHolidayFilter)
+      ? requestedHolidayFilter
+      : 'all';
 
     const form = document.getElementById('holidayForm');
     const holidayIdInput = document.getElementById('holidayId');
@@ -1021,9 +1025,32 @@
         .trim();
 
       const sourceItems = Array.isArray(allHolidays) ? allHolidays : [];
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const upcomingDate = new Date(today);
+      upcomingDate.setDate(upcomingDate.getDate() + 3);
+      const periodItems = sourceItems.filter((item) => {
+        if (holidayViewFilter === 'all') return true;
+
+        const startDate = parseFlexibleDate(item.Startdate);
+        const endDate = parseFlexibleDate(item.Enddate);
+        if (!startDate || !endDate) return false;
+        startDate.setHours(0, 0, 0, 0);
+        endDate.setHours(0, 0, 0, 0);
+
+        if (holidayViewFilter === 'current') {
+          return startDate <= today && endDate >= today;
+        }
+
+        if (holidayViewFilter === 'active') {
+          return endDate >= today;
+        }
+
+        return startDate > today && startDate <= upcomingDate;
+      });
       const filtered = !keyword
-        ? sourceItems
-        : sourceItems.filter((item) =>
+        ? periodItems
+        : periodItems.filter((item) =>
             String(item.Name || '')
               .toLowerCase()
               .replace(/\s+/g, ' ')
@@ -1032,6 +1059,13 @@
           );
 
       renderRows(filtered);
+      const filterLabels = {
+        current: 'الإجازات الحالية',
+        upcoming: 'الإجازات التي ستبدأ بعد 3 أيام',
+        active: 'إجمالي الإجازات النشطة',
+        all: 'إجمالي الإجازات'
+      };
+      countLabel.textContent = `${filterLabels[holidayViewFilter]}: ${filtered.length}`;
     }
 
     document.querySelectorAll('.sortable-date-header').forEach((header) => {
