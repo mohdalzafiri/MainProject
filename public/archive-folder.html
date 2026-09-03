@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ملفات الأرشيف</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --card: #fff;
+      --primary: #1d4ed8;
+      --text: #0f172a;
+      --muted: #64748b;
+      --border: #dbe3ef;
+      --danger: #b91c1c;
+      --shadow: 0 14px 36px rgba(15, 23, 42, .08);
+    }
+    * { box-sizing: border-box; }
+    body { font-family: Tahoma, Arial, sans-serif; background: linear-gradient(180deg, #edf4ff 0%, #f8fafc 100%); color: var(--text); }
+    .page.app-page { max-width: 1600px; margin: 0 auto; padding: 20px 14px; }
+    .header { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 18px; flex-wrap: wrap; }
+    .header h1 { margin: 0; font-size: 2rem; }
+    .header p { margin: 6px 0 0; color: var(--muted); }
+    .btn { border: 0; border-radius: 8px; padding: 11px 16px; background: var(--primary); color: #fff; font-weight: 700; cursor: pointer; }
+    .btn.secondary { background: #e2e8f0; color: var(--text); }
+    .tools { display: flex; align-items: end; gap: 12px; margin-bottom: 18px; }
+    .field { display: grid; gap: 6px; width: min(420px, 100%); }
+    .field label { color: var(--muted); font-size: .85rem; font-weight: 700; }
+    .field input { border: 1px solid var(--border); border-radius: 8px; min-height: 42px; padding: 10px 12px; font: inherit; }
+    .status-box { display: none; margin-bottom: 18px; padding: 12px 14px; border-radius: 8px; font-weight: 700; }
+    .status-box.show { display: block; }
+    .status-box.error { background: #fee2e2; color: var(--danger); }
+    .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+    .subfolders-section { display: none; margin-bottom: 22px; }
+    .subfolders-section.show { display: block; }
+    .subfolders-section h2 { margin: 0 0 12px; font-size: 1.15rem; }
+    .folder-card { padding: 16px; display: grid; grid-template-columns: 42px 1fr auto; align-items: center; gap: 12px; color: inherit; text-decoration: none; background: #fff; border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow); }
+    .folder-card:hover { border-color: #93c5fd; }
+    .folder-card svg { width: 38px; height: 38px; color: #b45309; }
+    .folder-card h3 { margin: 0 0 4px; font-size: 1rem; }
+    .folder-card p { margin: 0; color: var(--muted); font-size: .85rem; }
+    .folder-card > span:last-child { color: var(--primary); font-size: 1.4rem; }
+    .archive-card { overflow: hidden; background: var(--card); border: 1px solid rgba(15,23,42,.08); border-radius: 8px; box-shadow: var(--shadow); }
+    .thumb { height: 210px; display: grid; place-items: center; overflow: hidden; background: #eef2f7; border-bottom: 1px solid var(--border); }
+    .thumb img, .thumb object, .thumb iframe { width: 100%; height: 100%; object-fit: contain; border: 0; pointer-events: none; background: #fff; }
+    .file-placeholder { display: grid; place-items: center; gap: 8px; color: #475569; font-weight: 700; }
+    .file-placeholder strong { font-size: 2.25rem; color: var(--primary); }
+    .card-body { padding: 14px; display: grid; gap: 9px; }
+    .file-name { margin: 0; font-size: 1.05rem; overflow-wrap: anywhere; }
+    .meta { display: flex; justify-content: space-between; gap: 10px; color: var(--muted); font-size: .88rem; }
+    .meta strong { color: var(--text); }
+    .file-actions { direction: rtl; display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; }
+    .file-action { min-height: 36px; padding: 7px 12px; border: 1px solid #bfdbfe; border-radius: 8px; color: var(--primary); background: #eff6ff; text-decoration: none; font: inherit; font-size: .85rem; font-weight: 700; cursor: pointer; }
+    .print-file-btn { margin-right: auto; border-color: #cbd5e1; color: #334155; background: #f8fafc; }
+    .empty-state { grid-column: 1 / -1; padding: 34px; border: 1px dashed #b8c5d6; border-radius: 8px; text-align: center; color: var(--muted); background: rgba(255,255,255,.75); }
+    @media (max-width: 700px) { .cards-grid { grid-template-columns: 1fr; } .tools { align-items: stretch; } }
+  </style>
+  <link rel="stylesheet" href="/layout-defaults.css" />
+</head>
+<body class="app-shell">
+  <main class="page app-page">
+    <header class="header">
+      <div>
+        <h1 id="folderTitle">ملفات الأرشيف</h1>
+        <p id="folderDescription">الملفات الرسمية المحفوظة داخل المجلد.</p>
+      </div>
+      <button class="btn secondary" id="backBtn" type="button">العودة إلى المجلدات</button>
+    </header>
+
+    <div class="status-box" id="statusBox"></div>
+    <section class="tools">
+      <div class="field">
+        <label for="searchInput">بحث في الملفات</label>
+        <input id="searchInput" type="search" placeholder="اسم الملف أو الامتداد" />
+      </div>
+    </section>
+    <section class="subfolders-section" id="subfoldersSection">
+      <h2>المجلدات الفرعية</h2>
+      <div class="cards-grid" id="subfoldersGrid"></div>
+    </section>
+    <section class="cards-grid" id="filesGrid"></section>
+  </main>
+
+  <script>
+    const authToken = localStorage.getItem('authToken');
+    if (!authToken) window.location.href = '/';
+
+    const categoryKey = new URLSearchParams(window.location.search).get('category') || '';
+    const folderTitle = document.getElementById('folderTitle');
+    const folderDescription = document.getElementById('folderDescription');
+    const filesGrid = document.getElementById('filesGrid');
+    const subfoldersSection = document.getElementById('subfoldersSection');
+    const subfoldersGrid = document.getElementById('subfoldersGrid');
+    const searchInput = document.getElementById('searchInput');
+    const statusBox = document.getElementById('statusBox');
+    let records = [];
+
+    function escapeHtml(value) {
+      return String(value || '').replace(/[&<>'"]/g, (character) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+      })[character]);
+    }
+
+    function setError(message) {
+      statusBox.textContent = message || '';
+      statusBox.className = message ? 'status-box show error' : 'status-box';
+    }
+
+    function fileTypeLabel(item) {
+      if (item.FileType === 'image') return 'صورة';
+      if (item.FileType === 'pdf') return 'PDF';
+      if (item.FileType === 'document') return 'مستند';
+      if (item.FileType === 'sheet') return 'جدول';
+      return 'ملف';
+    }
+
+    function previewMarkup(item) {
+      const source = escapeHtml(item.ThumbnailUrl);
+      const name = escapeHtml(item.FileName || 'ملف');
+      if (item.FileType === 'image' && source) {
+        return `<img src="${source}" alt="${name}" loading="lazy" />`;
+      }
+      if (item.FileType === 'pdf' && source) {
+        return `<object data="${source}#page=1&view=FitH" type="application/pdf" aria-label="${name}"></object>`;
+      }
+      if (['docx', 'xlsx'].includes(String(item.Extension || '').toLowerCase()) && item.PreviewUrl) {
+        return `<iframe data-preview-url="${escapeHtml(item.PreviewUrl)}" title="معاينة ${name}" loading="lazy" tabindex="-1"></iframe>`;
+      }
+      const extension = escapeHtml(String(item.Extension || 'FILE').toUpperCase());
+      return `<div class="file-placeholder"><strong>${extension}</strong><span>${fileTypeLabel(item)}</span></div>`;
+    }
+
+    function renderFiles() {
+      const term = searchInput.value.trim().toLowerCase();
+      const filtered = records.filter((item) => !term || [item.FileName, item.Extension, item.FileType]
+        .some((value) => String(value || '').toLowerCase().includes(term)));
+      filesGrid.innerHTML = '';
+      if (!filtered.length) {
+        filesGrid.innerHTML = '<div class="empty-state">لا توجد ملفات في هذا المجلد حاليًا.</div>';
+        return;
+      }
+
+      filtered.forEach((item) => {
+        const card = document.createElement('article');
+        card.className = 'archive-card';
+        const printableExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'pdf', 'docx', 'xlsx', 'txt', 'csv'];
+        const canPrint = printableExtensions.includes(String(item.Extension || '').toLowerCase());
+        card.innerHTML = `
+          <div class="thumb">${previewMarkup(item)}</div>
+          <div class="card-body">
+            <h2 class="file-name">${escapeHtml(item.FileName || 'ملف بدون اسم')}</h2>
+            <div class="meta"><span>النوع</span><strong>${fileTypeLabel(item)}</strong></div>
+            <div class="meta"><span>عدد الصفحات</span><strong>${Number(item.PageCount || 0) || 1}</strong></div>
+            <div class="meta"><span>تاريخ الرفع</span><strong>${escapeHtml(item.UploadedAt || '')}</strong></div>
+            <div class="file-actions">
+              <button class="file-action download-link" type="button">تحميل الملف</button>
+              <button class="file-action print-file-btn" type="button" data-print-url="${escapeHtml(item.PreviewUrl || item.DownloadUrl)}" ${canPrint ? '' : 'disabled title="الطباعة التلقائية غير متاحة لهذه الصيغة"'}>طباعة</button>
+            </div>
+          </div>`;
+        card.querySelector('.download-link').addEventListener('click', () => downloadFile(item));
+        card.querySelector('.print-file-btn').addEventListener('click', () => printFile(item));
+        filesGrid.appendChild(card);
+        loadGeneratedPreview(card).catch(() => {});
+      });
+    }
+
+    async function fetchAuthorizedBlob(url) {
+      const response = await fetch(url, { headers: { Authorization: `Bearer ${authToken}` } });
+      if (response.status === 401 || response.status === 403) {
+        localStorage.removeItem('authToken');
+        window.location.href = '/';
+        throw new Error('انتهت جلسة الدخول.');
+      }
+      if (!response.ok) throw new Error('تعذر تحميل الملف المطلوب.');
+      return response.blob();
+    }
+
+    async function loadGeneratedPreview(card) {
+      const frame = card.querySelector('iframe[data-preview-url]');
+      if (!frame) return;
+      const blob = await fetchAuthorizedBlob(frame.dataset.previewUrl);
+      frame.src = URL.createObjectURL(blob);
+    }
+
+    async function downloadFile(item) {
+      try {
+        const blob = await fetchAuthorizedBlob(item.DownloadUrl);
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `${item.FileName || 'archive-file'}.${item.Extension || 'file'}`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+      } catch (error) {
+        setError(error.message || 'تعذر تحميل الملف.');
+      }
+    }
+
+    async function printFile(item) {
+      const printPageUrl = `/archive-print.html?category=${encodeURIComponent(item.Category)}&id=${encodeURIComponent(item.ID)}`;
+      const printWindow = window.open(printPageUrl, '_blank');
+      if (!printWindow) {
+        setError('تعذر فتح نافذة الطباعة. تحقق من مانع النوافذ المنبثقة.');
+      }
+    }
+
+    function renderSubfolders(categories) {
+      subfoldersGrid.innerHTML = '';
+      subfoldersSection.classList.toggle('show', categories.length > 0);
+      categories.forEach((item) => {
+        const card = document.createElement('a');
+        card.className = 'folder-card';
+        card.href = `/archive-folder.html?category=${encodeURIComponent(item.KeyName)}`;
+        card.innerHTML = `
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 7.5a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 10h18"/></svg>
+          <div><h3>${escapeHtml(item.LabelAr)}</h3><p>${Number(item.FileCount || 0)} ملف</p></div>
+          <span aria-hidden="true">‹</span>`;
+        subfoldersGrid.appendChild(card);
+      });
+    }
+
+    async function authorizedJson(url) {
+      const response = await fetch(url, { headers: { Authorization: `Bearer ${authToken}` } });
+      if (response.status === 401 || response.status === 403) {
+        localStorage.removeItem('authToken');
+        window.location.href = '/';
+        return null;
+      }
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.message || 'تعذر تحميل بيانات الأرشيف.');
+      return payload;
+    }
+
+    async function initialize() {
+      if (!categoryKey) throw new Error('لم يتم تحديد مجلد الأرشيف.');
+      const categories = await authorizedJson('/api/archive/categories');
+      if (!categories) return;
+      const category = categories.find((item) => item.KeyName === categoryKey);
+      if (!category) throw new Error('مجلد الأرشيف المطلوب غير موجود أو غير نشط.');
+      folderTitle.textContent = category.LabelAr;
+      folderDescription.textContent = `ملفات مجلد ${category.LabelAr}`;
+      document.title = `${category.LabelAr} - الأرشيف`;
+      const [subfolders, folderRecords] = await Promise.all([
+        authorizedJson(`/api/archive/categories?parent=${encodeURIComponent(categoryKey)}`),
+        authorizedJson(`/api/archive?category=${encodeURIComponent(categoryKey)}`)
+      ]);
+      renderSubfolders(subfolders || []);
+      records = folderRecords || [];
+      renderFiles();
+    }
+
+    searchInput.addEventListener('input', renderFiles);
+    document.getElementById('backBtn').addEventListener('click', () => { window.location.href = '/archive.html'; });
+    initialize().catch((error) => setError(error.message));
+  </script>
+</body>
+</html>

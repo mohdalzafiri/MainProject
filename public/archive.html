@@ -89,143 +89,51 @@
     .status-box.success { background: #dcfce7; color: var(--success); }
     .status-box.error { background: #fee2e2; color: var(--danger); }
 
-    .filters {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      flex-wrap: wrap;
-      background: rgba(255,255,255,0.7);
-      border: 1px solid var(--border);
-      border-radius: 18px;
-      padding: 12px 14px;
-      box-shadow: var(--shadow);
-      margin-bottom: 18px;
-    }
-
-    .field {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      min-width: 180px;
-    }
-
-    .field label {
-      font-size: 0.83rem;
-      color: var(--muted);
-      font-weight: 700;
-    }
-
-    .field select,
-    .field input {
-      border: 1px solid #dbe3ef;
-      border-radius: 10px;
-      padding: 10px 12px;
-      font-size: 0.95rem;
-      background: white;
-      min-height: 42px;
-    }
-
     .cards-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
       gap: 18px;
     }
 
-    .archive-card {
+    .folder-card {
       background: var(--card);
       border: 1px solid var(--border);
-      border-radius: 18px;
-      overflow: hidden;
+      border-radius: 8px;
       box-shadow: var(--shadow);
-      display: flex;
-      flex-direction: column;
-    }
-
-    .thumb {
-      position: relative;
-      width: 100%;
-      height: 220px;
-      background: linear-gradient(135deg, #e2e8f0, #f8fafc);
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
-    }
-
-    .thumb img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-    }
-
-    .thumb .placeholder {
-      font-size: 3rem;
-      color: var(--muted);
-    }
-
-    .card-body {
-      padding: 14px 14px 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .file-name {
-      margin: 0;
-      font-size: 1.05rem;
-      font-weight: 700;
-      color: var(--secondary);
-      line-height: 1.5;
-      word-break: break-word;
-    }
-
-    .meta-list {
+      padding: 22px;
       display: grid;
-      gap: 6px;
-      font-size: 0.88rem;
-      color: var(--muted);
-    }
-
-    .meta-item {
-      display: flex;
-      justify-content: space-between;
-      gap: 10px;
+      grid-template-columns: 54px 1fr auto;
       align-items: center;
+      gap: 14px;
+      color: inherit;
+      text-decoration: none;
+      transition: transform .18s ease, border-color .18s ease;
     }
 
-    .meta-item strong {
+    .folder-card:hover {
+      transform: translateY(-2px);
+      border-color: #93c5fd;
+    }
+
+    .folder-icon {
+      width: 54px;
+      height: 46px;
+      display: grid;
+      place-items: center;
+      color: #b45309;
+    }
+
+    .folder-icon svg { width: 46px; height: 46px; }
+
+    .folder-name {
+      margin: 0 0 5px;
+      font-size: 1.1rem;
       color: var(--secondary);
       font-weight: 700;
     }
 
-    .tag {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 78px;
-      border-radius: 999px;
-      padding: 4px 8px;
-      background: #dbeafe;
-      color: #1d4ed8;
-      font-size: 0.76rem;
-      font-weight: 700;
-    }
-
-    .download-link {
-      display: inline-block;
-      width: 100%;
-      text-align: center;
-      text-decoration: none;
-      background: #eff6ff;
-      color: var(--primary);
-      border: 1px solid #bfdbfe;
-      border-radius: 12px;
-      padding: 10px 12px;
-      font-weight: 700;
-      margin-top: 4px;
-    }
+    .folder-meta { margin: 0; color: var(--muted); font-size: .9rem; }
+    .folder-arrow { color: var(--primary); font-size: 1.5rem; }
 
     .empty-state {
       text-align: center;
@@ -249,7 +157,7 @@
     <div class="header">
       <div>
         <h1>الأرشيف</h1>
-        <p>ملفات الإدارة المصنفة مع معاينة سريعة وتحميل مباشر.</p>
+        <p>اختر المجلد لعرض الملفات الرسمية المحفوظة داخله.</p>
       </div>
       <div class="top-actions">
         <button class="btn secondary" type="button" id="backBtn">العودة إلى الرئيسية</button>
@@ -257,21 +165,6 @@
     </div>
 
     <div class="status-box" id="archiveStatus"></div>
-
-    <div class="filters">
-      <div class="field">
-        <label for="categoryFilter">التصنيف</label>
-        <select id="categoryFilter">
-          <option value="all">الكل</option>
-          <option value="general">تعاميم</option>
-          <option value="reports">كشوف</option>
-        </select>
-      </div>
-      <div class="field">
-        <label for="searchInput">بحث</label>
-        <input id="searchInput" type="text" placeholder="اسم الملف أو النوع" />
-      </div>
-    </div>
 
     <div class="cards-grid" id="archiveGrid"></div>
   </div>
@@ -282,13 +175,9 @@
       window.location.href = '/';
     }
 
-    const categoryFilter = document.getElementById('categoryFilter');
-    const searchInput = document.getElementById('searchInput');
     const archiveGrid = document.getElementById('archiveGrid');
     const archiveStatus = document.getElementById('archiveStatus');
     const backBtn = document.getElementById('backBtn');
-
-    let records = [];
 
     function setStatus(message, type = 'success') {
       archiveStatus.textContent = message || '';
@@ -298,62 +187,25 @@
       archiveStatus.classList.add(type === 'error' ? 'error' : 'success');
     }
 
-    function isImage(ext) {
-      return ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(String(ext || '').toLowerCase());
-    }
-
-    function fileDisplayType(type, ext) {
-      if (type === 'image') return 'صورة';
-      if (type === 'pdf') return 'PDF';
-      if (type === 'document') return 'مستند';
-      if (type === 'sheet') return 'جدول';
-      return 'ملف';
-    }
-
-    function getCategoryLabel(category) {
-      return category === 'reports' ? 'كشوف' : 'تعاميم';
-    }
-
-    function thumbnailMarkup(item) {
-      const ext = String(item.Extension || '').toLowerCase();
-      const url = item.DownloadUrl || '#';
-
-      if (isImage(ext)) {
-        return `<img src="${url}" alt="${item.FileName || 'ملف'}" />`;
-      }
-
-      return `<div class="placeholder">📄</div>`;
-    }
-
-    function renderArchive(recordsList) {
+    function renderFolders(categories) {
       archiveGrid.innerHTML = '';
-      if (!recordsList.length) {
-        archiveGrid.innerHTML = '<div class="empty-state">لا توجد ملفات في هذا التصنيف حالياً.</div>';
+      if (!categories.length) {
+        archiveGrid.innerHTML = '<div class="empty-state">لا توجد مجلدات أرشيف مفعلة.</div>';
         return;
       }
 
-      recordsList.forEach((item) => {
-        const card = document.createElement('article');
-        card.className = 'archive-card';
-        const pageText = Number(item.PageCount || 0) > 0 ? `${item.PageCount} صفحة` : '1 عنصر';
-        const categoryLabel = getCategoryLabel(item.Category);
-        const fileTypeText = fileDisplayType(item.FileType, item.Extension);
-        const downloadUrl = item.DownloadUrl || '#';
-        const previewImageUrl = item.ThumbnailUrl || downloadUrl;
+      categories.forEach((item) => {
+        const card = document.createElement('a');
+        card.className = 'folder-card';
+        card.href = item.Url || `/archive-folder.html?category=${encodeURIComponent(item.KeyName)}`;
 
         card.innerHTML = `
-          <div class="thumb"><img src="${previewImageUrl}" alt="${item.FileName || 'ملف'}" onerror="this.style.display='none'; this.parentElement.innerHTML='<div class=\'placeholder\'>📄</div>'" /></div>
-          <div class="card-body">
-            <h3 class="file-name">${item.FileName || 'ملف بدون اسم'}</h3>
-            <div class="meta-list">
-              <div class="meta-item"><span>نوع الملف</span><strong>${fileTypeText}</strong></div>
-              <div class="meta-item"><span>عدد الصفحات</span><strong>${pageText}</strong></div>
-              <div class="meta-item"><span>تاريخ الرفع</span><strong>${item.UploadedAt || ''}</strong></div>
-              <div class="meta-item"><span>التصنيف</span><span class="tag">${categoryLabel}</span></div>
-              <div class="meta-item"><span>الامتداد</span><strong>.${String(item.Extension || '').toLowerCase() || 'file'}</strong></div>
-            </div>
-            <a class="download-link" href="${downloadUrl}" target="_blank" rel="noreferrer">تحميل الملف</a>
+          <span class="folder-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7.5a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 10h18"/></svg></span>
+          <div>
+            <h2 class="folder-name">${item.LabelAr}</h2>
+            <p class="folder-meta">${Number(item.FileCount || 0)} ملف · ${item.KeyName}</p>
           </div>
+          <span class="folder-arrow" aria-hidden="true">‹</span>
         `;
 
         archiveGrid.appendChild(card);
@@ -379,46 +231,23 @@
       return response;
     }
 
-    async function loadArchive() {
-      const response = await requestJson('/api/archive');
+    async function loadFolders() {
+      const response = await requestJson('/api/archive/categories');
       if (!response) return;
       if (!response.ok) {
         const payload = await response.json().catch(() => ({}));
-        setStatus(payload.message || 'تعذر تحميل أرشيف الملفات.', 'error');
+        setStatus(payload.message || 'تعذر تحميل مجلدات الأرشيف.', 'error');
         return;
       }
 
-      records = await response.json();
-      applyFilters();
+      renderFolders(await response.json());
     }
 
-    function applyFilters() {
-      const categoryValue = categoryFilter.value;
-      const term = searchInput.value.trim().toLowerCase();
-
-      const filtered = records.filter((item) => {
-        const categoryMatches = categoryValue === 'all' || String(item.Category || '') === categoryValue;
-        const searchMatches = !term || [
-          item.FileName,
-          item.FileType,
-          item.Extension,
-          item.Category,
-          getCategoryLabel(item.Category)
-        ].some((value) => String(value || '').toLowerCase().includes(term));
-
-        return categoryMatches && searchMatches;
-      });
-
-      renderArchive(filtered);
-    }
-
-    categoryFilter.addEventListener('change', applyFilters);
-    searchInput.addEventListener('input', applyFilters);
     backBtn.addEventListener('click', () => {
       window.location.href = '/dashboard.html';
     });
 
-    loadArchive();
+    loadFolders();
   </script>
 </body>
 </html>

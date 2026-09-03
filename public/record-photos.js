@@ -19,6 +19,7 @@
 
     const fileInput = document.getElementById('docImageInput');
     const uploadBtn = document.getElementById('docImageUploadBtn');
+    const deleteBtn = document.createElement('button');
     const prevBtn = document.getElementById('docImagePrevBtn');
     const nextBtn = document.getElementById('docImageNextBtn');
     const imageEl = document.getElementById('docImagePreview');
@@ -31,6 +32,13 @@
         clear: function () {}
       };
     }
+
+    deleteBtn.type = 'button';
+    deleteBtn.id = 'docImageDeleteBtn';
+    deleteBtn.className = 'btn danger';
+    deleteBtn.textContent = 'حذف الصورة';
+    deleteBtn.style.display = 'none';
+    uploadBtn.insertAdjacentElement('afterend', deleteBtn);
 
     var images = [];
     var index = 0;
@@ -69,6 +77,8 @@
 
       prevBtn.disabled = !hasImages || index <= 0;
       nextBtn.disabled = !hasImages || index >= images.length - 1;
+      deleteBtn.disabled = !hasImages;
+      deleteBtn.style.display = hasImages ? 'inline-flex' : 'none';
       setCountText();
     }
 
@@ -188,6 +198,38 @@
       if (index < images.length - 1) {
         index += 1;
         render();
+      }
+    });
+
+    deleteBtn.addEventListener('click', async function () {
+      var recordId = getRecordIdValue();
+      var current = images[index];
+      if (!recordId || !current || !current.fileName) return;
+
+      if (!window.confirm('هل تريد حذف صورة المستند الحالية نهائيًا؟')) return;
+
+      try {
+        var response = await fetch(apiUrl(recordId) + '/' + encodeURIComponent(current.fileName), {
+          method: 'DELETE',
+          headers: {
+            Authorization: 'Bearer ' + authToken
+          }
+        });
+
+        if (response.status === 401) {
+          handleAuthFail();
+          return;
+        }
+
+        var payload = await parseJsonSafe(response);
+        if (!response.ok) {
+          throw new Error(String(payload.message || '').trim() || 'تعذر حذف صورة المستند.');
+        }
+
+        await load();
+        onStatus(String(payload.message || '').trim() || 'تم حذف صورة المستند بنجاح.');
+      } catch (error) {
+        onStatus(safeMessage(error, 'تعذر حذف صورة المستند.'), true);
       }
     });
 

@@ -166,4 +166,49 @@ router.post('/:module/:recordId', upload.single('image'), (req, res) => {
   }
 });
 
+router.delete('/:module/:recordId/:fileName', (req, res) => {
+  const moduleKey = normalizeModule(req.params.module);
+  const recordId = parseRecordId(req.params.recordId);
+  const fileName = String(req.params.fileName || '').trim();
+
+  const access = ensureAllowed(req, moduleKey, 'DELETE');
+  if (!access.ok) {
+    return res.status(access.status).json({ message: access.message });
+  }
+
+  if (!recordId || !/^\d{3}\.jpg$/i.test(fileName)) {
+    return res.status(400).json({ message: 'بيانات صورة المستند غير صالحة.' });
+  }
+
+  if (!ensureRecordExists(access.config, recordId)) {
+    return res.status(404).json({ message: 'السجل المطلوب غير موجود.' });
+  }
+
+  const recordDirectory = getRecordDirectory(moduleKey, recordId);
+  const targetFile = path.join(recordDirectory, fileName);
+  if (!fs.existsSync(targetFile)) {
+    return res.status(404).json({ message: 'صورة المستند المطلوب حذفها غير موجودة.' });
+  }
+
+  try {
+    fs.unlinkSync(targetFile);
+    if (fs.existsSync(recordDirectory) && fs.readdirSync(recordDirectory).length === 0) {
+      fs.rmSync(recordDirectory, { recursive: true, force: true });
+    }
+
+    logSystem({
+      userName: req.user?.username || 'system',
+      role: req.user?.role || '',
+      action: 'Delete',
+      page: access.config.pageName,
+      details: `Deleted attachment ${moduleKey}/${recordId}/${fileName}`
+    });
+
+    return res.json({ message: 'تم حذف صورة المستند بنجاح.' });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'تعذر حذف صورة المستند من التخزين.' });
+  }
+});
+
 module.exports = router;

@@ -1,17 +1,76 @@
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 const Database = require('better-sqlite3');
 
+const LOCK_STALE_MS = 120000;
+const LOCK_HEARTBEAT_MS = 30000;
+
 function canOpenDatabase(candidatePath) {
+  let probe;
+
   try {
     if (!candidatePath || !fs.existsSync(candidatePath)) return false;
-    const probe = new Database(candidatePath, { readonly: true, fileMustExist: true });
+    probe = new Database(candidatePath, { readonly: true, fileMustExist: true });
     probe.prepare('SELECT 1 AS ok').get();
-    probe.close();
     return true;
   } catch {
     return false;
+  } finally {
+    if (probe?.open) probe.close();
   }
+}
+
+function acquireApplicationLock(databasePath) {
+  const lockPath = `${databasePath}.api-lock`;
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      fs.mkdirSync(lockPath);
+      const owner = {
+        machine: os.hostname(),
+        pid: process.pid,
+        startedAt: new Date().toISOString()
+      };
+      fs.writeFileSync(path.join(lockPath, 'owner.json'), JSON.stringify(owner, null, 2));
+
+      const heartbeat = setInterval(() => {
+        try {
+          fs.utimesSync(lockPath, new Date(), new Date());
+        } catch (error) {
+          console.error(`Database lock heartbeat failed: ${error.message}`);
+        }
+      }, LOCK_HEARTBEAT_MS);
+      heartbeat.unref();
+
+      return {
+        release() {
+          clearInterval(heartbeat);
+          fs.rmSync(lockPath, { recursive: true, force: true });
+        }
+      };
+    } catch (error) {
+      if (error.code !== 'EEXIST') throw error;
+
+      const lockAge = Date.now() - fs.statSync(lockPath).mtimeMs;
+      if (attempt === 0 && lockAge > LOCK_STALE_MS) {
+        fs.rmSync(lockPath, { recursive: true, force: true });
+        continue;
+      }
+
+      let owner = 'another machine';
+      try {
+        const details = JSON.parse(fs.readFileSync(path.join(lockPath, 'owner.json'), 'utf8'));
+        owner = `${details.machine || 'unknown machine'} (PID ${details.pid || 'unknown'})`;
+      } catch {
+        // Keep the fallback owner description.
+      }
+
+      throw new Error(`The shared database is already in use by the API server on ${owner}.`);
+    }
+  }
+
+  throw new Error('Could not acquire the shared database application lock.');
 }
 
 function resolveDatabasePath() {
@@ -20,16 +79,22 @@ function resolveDatabasePath() {
   const mappedPath = 'Z:\\database.db';
   const localPath = path.resolve(__dirname, 'database.db');
 
-  const normalizedConfiguredPath = configuredPath ? path.normalize(configuredPath).toLowerCase() : '';
-  const normalizedUncPath = path.normalize(uncPath).toLowerCase();
-  const preferMappedForNetworkDatabase = normalizedConfiguredPath === normalizedUncPath && canOpenDatabase(mappedPath);
+  if (configuredPath) {
+    const normalizedConfiguredPath = path.normalize(configuredPath).toLowerCase();
+    const normalizedUncPath = path.normalize(uncPath).toLowerCase();
 
-  const candidates = [
-    preferMappedForNetworkDatabase ? mappedPath : configuredPath,
-    preferMappedForNetworkDatabase ? configuredPath : mappedPath,
-    uncPath,
-    localPath
-  ].filter(Boolean);
+    if (normalizedConfiguredPath === normalizedUncPath && canOpenDatabase(mappedPath)) {
+      return mappedPath;
+    }
+
+    if (!fs.existsSync(configuredPath)) {
+      throw new Error(`Configured database is unavailable: ${configuredPath}`);
+    }
+
+    return configuredPath;
+  }
+
+  const candidates = [mappedPath, uncPath, localPath];
 
   for (const candidate of candidates) {
     if (canOpenDatabase(candidate)) {
@@ -37,11 +102,41 @@ function resolveDatabasePath() {
     }
   }
 
-  return configuredPath || localPath;
+  return localPath;
 }
 
 const dbPath = resolveDatabasePath();
-const db = new Database(dbPath, { readonly: false });
+const applicationLock = acquireApplicationLock(dbPath);
+let db;
+
+try {
+  db = new Database(dbPath, {
+    readonly: false,
+    fileMustExist: Boolean(process.env.DB_PATH && process.env.DB_PATH.trim()),
+    timeout: 15000
+  });
+} catch (error) {
+  applicationLock.release();
+  throw error;
+}
+
+try {
+  db.pragma('busy_timeout = 15000');
+  db.pragma('journal_mode = DELETE');
+  db.pragma('synchronous = FULL');
+} catch (error) {
+  db.close();
+  applicationLock.release();
+
+  if (error.code === 'SQLITE_BUSY' || error.code === 'SQLITE_LOCKED') {
+    throw new Error(
+      `Database is locked: ${dbPath}. Close the program using it on PC-SERVER, then start the application again.`,
+      { cause: error }
+    );
+  }
+
+  throw error;
+}
 
 const dailyTables = ['Daily1', 'Daily2', 'Daily3', 'Daily4'];
 
@@ -553,6 +648,13 @@ function logSystem({ userName = '', role = '', action = '', target = '', page = 
   }
 }
 
+function closeDatabase() {
+  if (db.open) {
+    db.close();
+  }
+  applicationLock.release();
+}
+
 ensureSystemLogTable();
 ensureLoginTable();
 ensureDepartmentSectionLookupTable();
@@ -574,4 +676,5 @@ module.exports = {
   isValidDailyTable,
   getCurrentTimestamp,
   logSystem,
+  closeDatabase,
 };

@@ -1,7 +1,15 @@
 const express = require('express');
+const fs = require('fs');
 const path = require('path');
 const { db, dailyTables, logSystem, getCurrentTimestamp } = require('../database');
 const { templatesRoot } = require('../services/wordTemplateService');
+const {
+  DEFAULT_ARCHIVE_CATEGORIES,
+  ensureArchiveCategoriesTable,
+  listArchiveCategories,
+  getArchiveCategoryPath,
+  isValidCategoryKey
+} = require('../services/archiveCategoryService');
 const {
   ROLE_VIEW_ONLY,
   normalizeRole,
@@ -10,6 +18,7 @@ const {
 } = require('../auth/permissions');
 
 const router = express.Router();
+ensureArchiveCategoriesTable(db, getCurrentTimestamp);
 
 function isAdminUser(req) {
   const role = String(req.user?.role || '').trim().toLowerCase();
@@ -77,6 +86,111 @@ function tableExists(name) {
   const row = db.prepare("SELECT 1 AS found FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1").get(name);
   return Boolean(row);
 }
+
+function getArchiveRoot() {
+  return fs.existsSync('\\\\PC-SERVER\\Database')
+    ? '\\\\PC-SERVER\\Database\\Archive'
+    : path.join(__dirname, '..', 'Archive');
+}
+
+router.get('/archive-categories', (req, res) => {
+  if (denyIfNotAdmin(req, res)) return;
+
+  try {
+    res.json(listArchiveCategories(db, { includeInactive: true }));
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'تعذر تحميل مجلدات الأرشيف.' });
+  }
+});
+
+router.post('/archive-categories', (req, res) => {
+  if (denyIfNotAdmin(req, res)) return;
+
+  const labelAr = normalize(req.body.LabelAr);
+  const keyName = normalize(req.body.KeyName).toLowerCase();
+  const parentId = Number(req.body.ParentID || 0) || null;
+  if (!labelAr) {
+    return res.status(400).json({ message: 'اسم المجلد بالعربية مطلوب.' });
+  }
+  if (!isValidCategoryKey(keyName)) {
+    return res.status(400).json({ message: 'اسم المجلد الإنجليزي يجب أن يبدأ بحرف ويحتوي على أحرف إنجليزية وأرقام وشرطة فقط.' });
+  }
+
+  const parent = parentId
+    ? db.prepare('SELECT ID, KeyName FROM ArchiveCategories WHERE ID = ? AND IsActive = 1 LIMIT 1').get(parentId)
+    : null;
+  if (parentId && !parent) {
+    return res.status(400).json({ message: 'المجلد الأساسي المحدد غير موجود أو غير نشط.' });
+  }
+
+  try {
+    const timestamp = getCurrentTimestamp();
+    const nextSortOrder = db.prepare('SELECT COALESCE(MAX(SortOrder), 0) + 1 AS value FROM ArchiveCategories').get().value;
+    const result = db.prepare(`
+      INSERT INTO ArchiveCategories (KeyName, LabelAr, ParentID, SortOrder, IsActive, CreatedAt, UpdatedAt)
+      VALUES (?, ?, ?, ?, 1, ?, ?)
+    `).run(keyName, labelAr, parentId, nextSortOrder, timestamp, timestamp);
+
+    fs.mkdirSync(path.join(getArchiveRoot(), ...getArchiveCategoryPath(db, keyName)), { recursive: true });
+    logSystem({
+      userName: req.user?.username || 'system',
+      role: req.user?.role || '',
+      action: 'Add',
+      page: 'Settings',
+      details: `Added archive category ${keyName}`
+    });
+    res.status(201).json({ ID: result.lastInsertRowid, KeyName: keyName, LabelAr: labelAr, ParentID: parentId });
+  } catch (error) {
+    console.error(error);
+    const message = String(error.message || '').includes('UNIQUE')
+      ? 'اسم المجلد العربي أو الإنجليزي مستخدم مسبقًا.'
+      : 'تعذر إضافة مجلد الأرشيف.';
+    res.status(String(error.message || '').includes('UNIQUE') ? 409 : 500).json({ message });
+  }
+});
+
+router.delete('/archive-categories/:id', (req, res) => {
+  if (denyIfNotAdmin(req, res)) return;
+
+  const id = Number(req.params.id || 0);
+  const category = db.prepare('SELECT ID, KeyName, LabelAr FROM ArchiveCategories WHERE ID = ? LIMIT 1').get(id);
+  if (!category) {
+    return res.status(404).json({ message: 'مجلد الأرشيف غير موجود.' });
+  }
+
+  const protectedKeys = new Set(DEFAULT_ARCHIVE_CATEGORIES.map((item) => item.key));
+  if (protectedKeys.has(category.KeyName)) {
+    return res.status(409).json({ message: 'لا يمكن حذف مجلدات الأرشيف الأساسية.' });
+  }
+
+  const linkedFiles = db.prepare('SELECT COUNT(*) AS count FROM Archive WHERE Category = ?').get(category.KeyName).count;
+  if (linkedFiles > 0) {
+    return res.status(409).json({ message: 'لا يمكن حذف المجلد لوجود ملفات أرشيف داخله.' });
+  }
+
+  const childFolders = db.prepare('SELECT COUNT(*) AS count FROM ArchiveCategories WHERE ParentID = ?').get(category.ID).count;
+  if (childFolders > 0) {
+    return res.status(409).json({ message: 'لا يمكن حذف المجلد لوجود مجلدات فرعية داخله.' });
+  }
+
+  try {
+    const categoryPath = getArchiveCategoryPath(db, category.KeyName);
+    db.prepare('DELETE FROM ArchiveCategories WHERE ID = ?').run(id);
+    fs.rmSync(path.join(getArchiveRoot(), ...categoryPath), { recursive: true, force: true });
+    logSystem({
+      userName: req.user?.username || 'system',
+      role: req.user?.role || '',
+      action: 'Delete',
+      page: 'Settings',
+      details: `Deleted archive category ${category.KeyName}`
+    });
+    res.json({ message: 'تم حذف مجلد الأرشيف بنجاح.' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'تعذر حذف مجلد الأرشيف.' });
+  }
+});
 
 router.get('/department-sections', (req, res) => {
   if (denyIfNotAdmin(req, res)) return;

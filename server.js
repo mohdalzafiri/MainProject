@@ -73,6 +73,7 @@ app.use('/mobile', express.static(path.join(__dirname, 'mobile')));
 
 // Routes
 const apiRoutes = require('./routes');
+const { closeDatabase } = require('./database');
 
 app.use('/api', apiRoutes);
 
@@ -88,10 +89,31 @@ app.get('/mobile', (req, res) => {
 const PORT = process.env.PORT || 5000;
 const HOST = process.env.HOST || '0.0.0.0';
 
-app.listen(PORT, HOST, () => {
+const server = app.listen(PORT, HOST, () => {
   console.log(`Server is running on ${HOST}:${PORT}`);
   console.log(`Local URL: http://localhost:${PORT}`);
   getLanIps().forEach((ip) => {
     console.log(`LAN URL: http://${ip}:${PORT}`);
   });
 });
+
+let isShuttingDown = false;
+
+function shutdown(signal) {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+  console.log(`${signal} received; closing server and database.`);
+
+  server.close(() => {
+    closeDatabase();
+    process.exit(0);
+  });
+
+  setTimeout(() => {
+    closeDatabase();
+    process.exit(1);
+  }, 10000).unref();
+}
+
+process.once('SIGINT', () => shutdown('SIGINT'));
+process.once('SIGTERM', () => shutdown('SIGTERM'));
