@@ -1195,10 +1195,14 @@
         if (!name) return;
 
         employeeSuggestionMap.set(normalizeText(name), name);
+        const inDaily = currentRows.some((row) => (
+          String(row?.EmpID || '').trim() && String(item?.EmpID || '').trim()
+            ? String(row.EmpID).trim() === String(item.EmpID).trim()
+            : normalizeText(row?.Name) === normalizeText(name)
+        ));
 
         const option = document.createElement('option');
         option.value = name;
-        const inDaily = Boolean(item?.inDaily);
         option.label = inDaily ? 'موجود في اليومية المعروضة' : 'غير موجود في اليومية المعروضة';
         employeeSuggestionsList.appendChild(option);
 
@@ -1257,19 +1261,17 @@
         return;
       }
 
-      if (!today || !department || !section) {
+      if (!department || !section) {
         clearEmployeeSuggestions();
-        showSuggestionHint('لازم تختار التاريخ والقسم والنوبة قبل اقتراح الأسماء.');
+        showSuggestionHint('لازم تختار القسم والنوبة قبل اقتراح أسماء الموظفين النشطين.');
         return;
       }
 
       const params = new URLSearchParams({
         q: keyword,
         department,
-        section,
-        today
+        section
       });
-      if (period) params.set('period', period);
 
       const requestToken = ++suggestionRequestToken;
       const data = await requestJson(`/api/daily-logs/employee-suggestions?${params.toString()}`, { headers: getHeaders() });
@@ -2037,10 +2039,6 @@
           }
           pickerInput.focus();
           pickerInput.click();
-          if (pickerInput.type === 'date') {
-            pickerInput.setAttribute('type', 'text');
-            pickerInput.setAttribute('type', 'date');
-          }
         };
         triggerDatePicker();
       });

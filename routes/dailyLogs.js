@@ -380,10 +380,8 @@ router.get('/employee-suggestions', (req, res) => {
     const keyword = String(req.query.q || '').trim();
     const department = normalizeDepartment(req.query.department);
     const section = String(req.query.section || '').trim();
-    const today = normalizeDateInput(req.query.today);
-    const period = String(req.query.period || '').trim();
 
-    if (!keyword || !department || !section || !today) {
+    if (!keyword || !department || !section) {
       return res.json({ items: [] });
     }
 
@@ -391,40 +389,10 @@ router.get('/employee-suggestions', (req, res) => {
       SELECT ID AS EmpID, Name, Department, Section
       FROM Main
       WHERE TRIM(Status) = 'نشط'
-        AND (
-          CASE WHEN TRIM(Department) = 'الإحصاء' THEN 'الاحصاء' ELSE TRIM(Department) END
-        ) = ?
-        AND TRIM(Section) = ?
         AND TRIM(Name) LIKE ?
       ORDER BY Name ASC
       LIMIT 60
-    `).all(department, section, `%${keyword}%`);
-
-    const table = resolveDailyTableByDepartment(department);
-    const existingRows = table
-      ? db.prepare(`
-          SELECT EmpID, Name
-          FROM ${table}
-          WHERE date(REPLACE(Today, '/', '-')) = date(?)
-            AND (
-              CASE WHEN TRIM(Department) = 'الإحصاء' THEN 'الاحصاء' ELSE TRIM(Department) END
-            ) = ?
-            AND TRIM(Section) = ?
-            ${period ? "AND TRIM(Period) = ?" : ''}
-        `).all(...(period ? [today, department, section, period] : [today, department, section]))
-      : [];
-
-    const existingByEmpID = new Set(
-      existingRows
-        .map((row) => String(row.EmpID || '').trim())
-        .filter(Boolean)
-    );
-
-    const existingByName = new Set(
-      existingRows
-        .map((row) => normalizeName(row.Name))
-        .filter(Boolean)
-    );
+    `).all(`%${keyword}%`);
 
     const items = [];
     const seenNames = new Set();
@@ -438,7 +406,6 @@ router.get('/employee-suggestions', (req, res) => {
       if (!normalizedName || seenNames.has(normalizedName)) return;
       seenNames.add(normalizedName);
 
-      const inDaily = (empID && existingByEmpID.has(empID)) || existingByName.has(normalizedName);
       const departmentMatch = normalizeDepartment(row.Department) === department;
       const sectionMatch = !section || String(row.Section || '').trim() === section;
       items.push({
@@ -446,15 +413,14 @@ router.get('/employee-suggestions', (req, res) => {
         Name: name,
         Department: normalizeDepartment(row.Department),
         Section: String(row.Section || '').trim(),
-        inDaily,
         departmentMatch,
         sectionMatch
       });
     });
 
     items.sort((left, right) => {
-      const rankLeft = (left.inDaily ? 4 : 0) + (left.departmentMatch ? 2 : 0) + (left.sectionMatch ? 1 : 0);
-      const rankRight = (right.inDaily ? 4 : 0) + (right.departmentMatch ? 2 : 0) + (right.sectionMatch ? 1 : 0);
+      const rankLeft = (left.departmentMatch ? 2 : 0) + (left.sectionMatch ? 1 : 0);
+      const rankRight = (right.departmentMatch ? 2 : 0) + (right.sectionMatch ? 1 : 0);
       if (rankLeft !== rankRight) return rankRight - rankLeft;
       return String(left.Name || '').localeCompare(String(right.Name || ''), 'ar');
     });
@@ -593,7 +559,10 @@ router.post('/generate', (req, res) => {
       return res.status(400).json({ message: 'النوبة المختارة لا تتبع القسم المحدد.' });
     }
 
-    const employees = filterEmployeesByExactName(findActiveEmployees(department, requestedSection), employeeName);
+    const employeePool = employeeName
+      ? findActiveEmployees()
+      : findActiveEmployees(department, requestedSection);
+    const employees = filterEmployeesByExactName(employeePool, employeeName);
 
     if (!employees.length) {
       return res.json({ added: 0, skipped: 0, message: employeeName ? 'الاسم غير موجود' : 'لا يوجد موظفون نشطون مطابقون للقسم/النوبة المحددة.' });
