@@ -197,6 +197,89 @@ function buildUpdateStatement(table, payload, id) {
   };
 }
 
+function normalizeLinkedRecordDate(value) {
+  const normalized = normalizeDateInput(value);
+  if (!normalized) return '';
+  const parts = normalized.split('-');
+  if (parts.length !== 3) return '';
+  return `${parts[0]}/${String(parts[1]).padStart(2, '0')}/${String(parts[2]).padStart(2, '0')}`;
+}
+
+function addLinkedHolidayIfNeeded(record, userName) {
+  if (String(record.Status || '').trim() !== 'اجازة') return false;
+
+  const date = normalizeLinkedRecordDate(record.Today);
+  const name = String(record.Name || '').trim();
+  const empId = Number(record.EmpID || 0) || null;
+  if (!date || (!empId && !name)) return false;
+
+  const type = String(record.Type || '').trim() || 'اجازة';
+  const existing = db.prepare(`
+    SELECT ID, Type FROM Holiday
+    WHERE Status = 'اجازة' AND Startdate = ? AND Enddate = ?
+      AND ((EmpID IS NOT NULL AND CAST(EmpID AS TEXT) = CAST(? AS TEXT)) OR TRIM(Name) = ?)
+    LIMIT 1
+  `).get(date, date, empId, name);
+  if (existing) {
+    if (String(existing.Type || '').trim() !== type) {
+      db.prepare('UPDATE Holiday SET Type = ?, Note = ?, UserName = ? WHERE ID = ?')
+        .run(type, String(record.Note || '').trim(), userName, existing.ID);
+      return true;
+    }
+    return false;
+  }
+
+  db.prepare(`
+    INSERT INTO Holiday (EmpID, Name, Department, Section, Status, Type, Startdate, Enddate, Days, Note, UserName)
+    VALUES (?, ?, ?, ?, 'اجازة', ?, ?, ?, 1, ?, ?)
+  `).run(
+    empId,
+    name,
+    String(record.Department || '').trim(),
+    String(record.Section || '').trim(),
+    type,
+    date,
+    date,
+    String(record.Note || '').trim(),
+    userName
+  );
+  return true;
+}
+
+function addLinkedReductionIfNeeded(record, userName) {
+  if (String(record.Status || '').trim() !== 'تخفيف عمل') return false;
+
+  const date = normalizeLinkedRecordDate(record.Today);
+  const name = String(record.Name || '').trim();
+  const empId = Number(record.EmpID || 0) || null;
+  const type = String(record.Type || '').trim();
+  if (!date || !type || !['بداية الدوام', 'نهاية الدوام'].includes(type) || (!empId && !name)) return false;
+
+  const duplicate = db.prepare(`
+    SELECT ID FROM Reduction
+    WHERE Status = 'تخفيف عمل' AND Type = ? AND Startdate = ? AND Enddate = ?
+      AND ((EmpID IS NOT NULL AND CAST(EmpID AS TEXT) = CAST(? AS TEXT)) OR TRIM(Name) = ?)
+    LIMIT 1
+  `).get(type, date, date, empId, name);
+  if (duplicate) return false;
+
+  db.prepare(`
+    INSERT INTO Reduction (EmpID, Name, Department, Section, Status, Type, Startdate, Enddate, Hours, Note, UserName)
+    VALUES (?, ?, ?, ?, 'تخفيف عمل', ?, ?, ?, 2, ?, ?)
+  `).run(
+    empId,
+    name,
+    String(record.Department || '').trim(),
+    String(record.Section || '').trim(),
+    type,
+    date,
+    date,
+    String(record.Note || '').trim(),
+    userName
+  );
+  return true;
+}
+
 function findActiveEmployees(department, section = '') {
   const normalizedDepartment = normalizeDepartment(department);
   const normalizedSection = String(section || '').trim();
@@ -789,12 +872,19 @@ router.put('/table/:table/:id', (req, res) => {
     return res.status(400).json({ message: 'البيانات المرسلة غير كاملة' });
   }
 
-  const result = db.prepare(statement.sql).run(statement.values);
+  const userName = req.body.userName || 'system';
+  const nextRecord = { ...current, ...payload };
+  const result = db.transaction(() => {
+    const updateResult = db.prepare(statement.sql).run(statement.values);
+    addLinkedHolidayIfNeeded(nextRecord, userName);
+    addLinkedReductionIfNeeded(nextRecord, userName);
+    return updateResult;
+  })();
   if (result.changes === 0) {
     return res.status(404).json({ message: 'السجل غير موجود للتعديل' });
   }
 
-  logSystem({ userName: req.body.userName || 'system', action: 'Update', page: table, details: `Updated daily record ID=${id}` });
+  logSystem({ userName, action: 'Update', page: table, details: `Updated daily record ID=${id}` });
   res.json({ changes: result.changes });
 });
 

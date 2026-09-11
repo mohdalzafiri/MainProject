@@ -32,6 +32,15 @@
       display: flex;
       align-items: flex-start;
       justify-content: flex-start;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .daily-shortcuts {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
     }
 
     .daily-layout {
@@ -155,6 +164,46 @@
     .bulk-edit-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
     .bulk-edit-actions { display: flex; gap: 8px; justify-content: flex-start; margin-top: 16px; }
 
+    .daily-page-dialog {
+      width: min(1500px, calc(100vw - 24px));
+      height: min(900px, calc(100vh - 24px));
+      max-width: none;
+      max-height: none;
+      padding: 0;
+      border: 1px solid var(--ui-border);
+      border-radius: 10px;
+      background: var(--ui-surface);
+      box-shadow: 0 24px 60px rgba(15, 23, 42, 0.3);
+      overflow: hidden;
+    }
+
+    .daily-page-dialog::backdrop { background: rgba(15, 23, 42, 0.55); }
+
+    .daily-page-dialog-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 52px;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--ui-border);
+      background: #f8fafc;
+    }
+
+    .daily-page-dialog-title {
+      margin: 0;
+      font-size: 16px;
+      color: var(--ui-text);
+    }
+
+    .daily-page-frame {
+      display: block;
+      width: 100%;
+      height: calc(100% - 53px);
+      border: 0;
+      background: #fff;
+    }
+
     .absence-type-options {
       display: grid;
       align-items: start;
@@ -274,6 +323,16 @@
 
     .table-wrap table {
       min-width: 1050px;
+    }
+
+    .table-wrap td {
+      font-size: 16px;
+    }
+
+    .table-wrap td .status-select,
+    .table-wrap td .time-input,
+    .table-wrap td .note-input {
+      font-size: 14px;
     }
 
     .mobile-daily-cards {
@@ -607,6 +666,12 @@
         <p>إدارة بيانات اليوميات: إضافة، تعديل، حذف، طباعة وعرض السجلات.</p>
       </div>
       <div class="actions">
+        <div class="daily-shortcuts" aria-label="واجهات مرتبطة">
+          <button type="button" class="btn primary" data-page-route="/employees.html" data-page-title="الموظفين">الموظفين</button>
+          <button type="button" class="btn primary" data-page-route="/holidays.html" data-page-title="الإجازات">الإجازات</button>
+          <button type="button" class="btn primary" data-page-route="/transfers.html" data-page-title="التنقلات">التنقلات</button>
+          <button type="button" class="btn primary" data-page-route="/reduction.html" data-page-title="تخفيف العمل">تخفيف العمل</button>
+        </div>
         <button type="button" class="btn dark" id="backBtn">العودة للرئيسية</button>
       </div>
     </header>
@@ -628,7 +693,7 @@
               <div class="field">
                 <label for="today">التاريخ</label>
                 <div class="date-picker-wrap">
-                  <input id="todayDisplay" class="date-display-input" type="text" placeholder="yyyy/mm/dd" readonly />
+                  <input id="todayDisplay" class="date-display-input" type="text" placeholder="yyyy/mm/dd" inputmode="numeric" aria-describedby="todayDateHint" />
                   <button type="button" class="date-picker-trigger" data-picker-id="today" aria-label="اختيار التاريخ"></button>
                   <input id="today" type="date" class="native-date-input" />
                 </div>
@@ -665,7 +730,8 @@
             <div class="toolbar">
               <button type="submit" class="btn success" id="addBtn">اضافة بيانات جديدة</button>
               <button type="button" class="btn warning" id="updateBtn">تعديل بيانات</button>
-              <button type="button" class="btn primary" id="bulkEditBtn">تعديل تاريخ / فترة اليومية</button>
+              <button type="button" class="btn primary" id="bulkDateEditBtn">تعديل تاريخ اليومية</button>
+              <button type="button" class="btn primary" id="bulkPeriodEditBtn">تعديل فترة اليومية</button>
               <button type="button" class="btn danger" id="deleteBtn">حذف بيانات</button>
               <button type="button" class="btn primary" id="printBtn">طباعة بيانات</button>
             </div>
@@ -729,25 +795,44 @@
         </aside>
       </section>
     </div>
-  <dialog id="bulkEditDialog" class="bulk-edit-dialog">
-    <form id="bulkEditForm">
-      <h2>تعديل تاريخ أو فترة اليومية</h2>
+  <dialog id="bulkDateEditDialog" class="bulk-edit-dialog">
+    <form id="bulkDateEditForm">
+      <h2>صندوق تعديل التاريخ</h2>
       <p>سيشمل التعديل جميع السجلات المطابقة للتاريخ والقسم والنوبة والفترة المختارة.</p>
       <div class="bulk-edit-grid">
         <div class="field">
           <label for="bulkToday">التاريخ الجديد</label>
           <input id="bulkToday" type="date" />
         </div>
+      </div>
+      <div class="bulk-edit-actions">
+        <button type="submit" class="btn success">حفظ تعديل التاريخ</button>
+        <button type="button" class="btn dark" id="bulkDateEditCancelBtn">إلغاء</button>
+      </div>
+    </form>
+  </dialog>
+  <dialog id="bulkPeriodEditDialog" class="bulk-edit-dialog">
+    <form id="bulkPeriodEditForm">
+      <h2>صندوق تعديل الفترة</h2>
+      <p>سيشمل التعديل جميع السجلات المطابقة للتاريخ والقسم والنوبة والفترة المختارة.</p>
+      <div class="bulk-edit-grid">
         <div class="field">
           <label for="bulkPeriod">الفترة الجديدة</label>
-          <select id="bulkPeriod"><option value="">بدون تغيير</option></select>
+          <select id="bulkPeriod"><option value="">-- اختر الفترة الجديدة --</option></select>
         </div>
       </div>
       <div class="bulk-edit-actions">
-        <button type="submit" class="btn success">حفظ التعديل</button>
-        <button type="button" class="btn dark" id="bulkEditCancelBtn">إلغاء</button>
+        <button type="submit" class="btn success">حفظ تعديل الفترة</button>
+        <button type="button" class="btn dark" id="bulkPeriodEditCancelBtn">إلغاء</button>
       </div>
     </form>
+  </dialog>
+  <dialog id="dailyPageDialog" class="daily-page-dialog" aria-labelledby="dailyPageDialogTitle">
+    <div class="daily-page-dialog-header">
+      <h2 id="dailyPageDialogTitle" class="daily-page-dialog-title">الواجهة</h2>
+      <button type="button" class="btn dark" id="dailyPageDialogCloseBtn">إغلاق</button>
+    </div>
+    <iframe id="dailyPageFrame" class="daily-page-frame" title="واجهة مرتبطة"></iframe>
   </dialog>
   <script>
     const form = document.getElementById('dailyForm');
@@ -773,10 +858,19 @@
     const updateBtn = document.getElementById('updateBtn');
     const deleteBtn = document.getElementById('deleteBtn');
     const printBtn = document.getElementById('printBtn');
-    const bulkEditBtn = document.getElementById('bulkEditBtn');
-    const bulkEditDialog = document.getElementById('bulkEditDialog');
-    const bulkEditForm = document.getElementById('bulkEditForm');
-    const bulkEditCancelBtn = document.getElementById('bulkEditCancelBtn');
+    const bulkDateEditBtn = document.getElementById('bulkDateEditBtn');
+    const bulkPeriodEditBtn = document.getElementById('bulkPeriodEditBtn');
+    const bulkDateEditDialog = document.getElementById('bulkDateEditDialog');
+    const bulkPeriodEditDialog = document.getElementById('bulkPeriodEditDialog');
+    const dailyPageDialog = document.getElementById('dailyPageDialog');
+    const dailyPageDialogTitle = document.getElementById('dailyPageDialogTitle');
+    const dailyPageFrame = document.getElementById('dailyPageFrame');
+    const dailyPageDialogCloseBtn = document.getElementById('dailyPageDialogCloseBtn');
+    const dailyPageShortcutButtons = document.querySelectorAll('[data-page-route]');
+    const bulkDateEditForm = document.getElementById('bulkDateEditForm');
+    const bulkPeriodEditForm = document.getElementById('bulkPeriodEditForm');
+    const bulkDateEditCancelBtn = document.getElementById('bulkDateEditCancelBtn');
+    const bulkPeriodEditCancelBtn = document.getElementById('bulkPeriodEditCancelBtn');
     const bulkTodayInput = document.getElementById('bulkToday');
     const bulkPeriodInput = document.getElementById('bulkPeriod');
     const sideDay = document.getElementById('sideDay');
@@ -865,7 +959,8 @@
       { Department: 'الخدمات المساندة', Section: 'صباحاً' }
     ];
 
-    const STATUS_OPTIONS = ['حضور', 'تأخير', 'تأخير+عقوبة', 'استئذان', 'غياب', 'حضور بعد غياب', 'طبية', 'اجازة', 'دورة', 'تكليف', 'عرضي', 'انقطاع عن العمل'];
+    const STATUS_OPTIONS = ['حضور', 'تأخير', 'تأخير+عقوبة', 'استئذان', 'غياب', 'حضور بعد غياب', 'اجازة', 'تخفيف عمل', 'دورة', 'تكليف', 'انقطاع عن العمل'];
+    const PRESERVE_TIMES_STATUSES = ['تأخير', 'حضور بعد غياب', 'استئذان'];
     const PERIOD_DEFAULTS = {
       'نوبة صبح': { inTime: '08:00', outTime: '16:00' },
       'نوبة عصر': { inTime: '16:00', outTime: '00:00' },
@@ -921,6 +1016,27 @@
       return `${date.getFullYear()}/${pad2(date.getMonth() + 1)}/${pad2(date.getDate())}`;
     }
 
+    function parseManualDate(value) {
+      const raw = String(value || '').trim();
+      const match = raw.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/);
+      if (!match) return null;
+
+      const year = Number(match[1]);
+      const month = Number(match[2]);
+      const day = Number(match[3]);
+      const date = new Date(year, month - 1, day);
+      if (
+        Number.isNaN(date.getTime())
+        || date.getFullYear() !== year
+        || date.getMonth() !== month - 1
+        || date.getDate() !== day
+      ) {
+        return null;
+      }
+
+      return `${year}-${pad2(month)}-${pad2(day)}`;
+    }
+
     function toDateInputValue(value) {
       const date = parseFlexibleDate(value);
       if (!date || Number.isNaN(date.getTime())) return '';
@@ -974,6 +1090,23 @@
       dayInput.value = formatArabicDay(todayInput.value);
       sideDay.textContent = dayInput.value || '--';
       sideDate.textContent = todayDisplayInput.value || '--';
+    }
+
+    async function applyManualDate() {
+      const manualValue = String(todayDisplayInput.value || '').trim();
+      const currentValue = formatDateYmdSlash(todayInput.value);
+      if (manualValue === currentValue) return;
+
+      const normalizedValue = parseManualDate(manualValue);
+      if (!normalizedValue) {
+        todayDisplayInput.value = currentValue;
+        showStatus('أدخل التاريخ بصيغة صحيحة yyyy/mm/dd، مثل 2026/09/11.', true);
+        return;
+      }
+
+      todayInput.value = normalizedValue;
+      syncDateDisplays();
+      await refreshDailyView();
     }
 
     function populateSelect(select, values) {
@@ -1080,14 +1213,16 @@
       return params.toString();
     }
 
-    function openBulkEditDialog() {
+    function validateBulkEditFilters() {
       if (!todayInput.value || !departmentInput.value || !sectionInput.value || !periodInput.value) {
         showStatus('اختر التاريخ والقسم والنوبة والفترة لليومية المطلوب تعديلها أولاً.', true);
-        return;
+        return false;
       }
+      return true;
+    }
 
-      bulkTodayInput.value = '';
-      bulkPeriodInput.innerHTML = '<option value="">بدون تغيير</option>';
+    function populateBulkPeriodOptions() {
+      bulkPeriodInput.innerHTML = '<option value="">-- اختر الفترة الجديدة --</option>';
       Array.from(periodInput.options)
         .map((option) => String(option.value || '').trim())
         .filter(Boolean)
@@ -1097,14 +1232,29 @@
           option.textContent = period;
           bulkPeriodInput.appendChild(option);
         });
-      bulkEditDialog.showModal();
     }
 
-    async function saveBulkDailyEdit() {
-      const nextToday = String(bulkTodayInput.value || '').trim();
-      const nextPeriod = String(bulkPeriodInput.value || '').trim();
-      if (!nextToday && !nextPeriod) {
-        showStatus('اختر تاريخًا جديدًا أو فترة جديدة واحدة على الأقل.', true);
+    function openBulkDateEditDialog() {
+      if (!validateBulkEditFilters()) return;
+      bulkTodayInput.value = '';
+      bulkDateEditDialog.showModal();
+    }
+
+    function openBulkPeriodEditDialog() {
+      if (!validateBulkEditFilters()) return;
+      populateBulkPeriodOptions();
+      bulkPeriodEditDialog.showModal();
+    }
+
+    async function saveBulkDailyEdit({ editDate = false, editPeriod = false } = {}) {
+      const nextToday = editDate ? String(bulkTodayInput.value || '').trim() : '';
+      const nextPeriod = editPeriod ? String(bulkPeriodInput.value || '').trim() : '';
+      if (editDate && !nextToday) {
+        showStatus('اختر التاريخ الجديد أولاً.', true);
+        return;
+      }
+      if (editPeriod && !nextPeriod) {
+        showStatus('اختر الفترة الجديدة أولاً.', true);
         return;
       }
 
@@ -1132,7 +1282,8 @@
       if (nextPeriod) {
         periodInput.value = nextPeriod;
       }
-      bulkEditDialog.close();
+      if (editDate) bulkDateEditDialog.close();
+      if (editPeriod) bulkPeriodEditDialog.close();
       selectedRecord = null;
       searchNameInput.value = '';
       await refreshDailyView();
@@ -1482,6 +1633,27 @@
       });
 
       Object.assign(item, payload);
+      if (
+        String(item.Status || '').trim() === 'تخفيف عمل'
+        && ['بداية الدوام', 'نهاية الدوام'].includes(String(item.Type || '').trim())
+      ) {
+        const reductionKey = `${normalizeText(item.Name)}|${formatDateYmdSlash(item.Today || todayInput.value)}|${String(item.Type).trim()}`;
+        const existingIndex = reductionSchedule.findIndex((row) => (
+          `${normalizeText(row.Name)}|${formatDateYmdSlash(row.Startdate)}|${String(row.Type || '').trim()}` === reductionKey
+        ));
+        const linkedReduction = {
+          Name: item.Name,
+          Department: item.Department,
+          Section: item.Section,
+          Status: 'تخفيف عمل',
+          Type: item.Type,
+          Startdate: item.Today || todayInput.value,
+          Enddate: item.Today || todayInput.value,
+          Hours: 2
+        };
+        if (existingIndex >= 0) reductionSchedule[existingIndex] = { ...reductionSchedule[existingIndex], ...linkedReduction };
+        else reductionSchedule.push(linkedReduction);
+      }
       if (successMessage) showStatus(successMessage);
       updateSummaryPanel(visibleRows);
     }
@@ -1520,19 +1692,38 @@
 
     function createDescriptionSelect(item) {
       const status = String(item.Status || '').trim();
-      if (status !== 'غياب') {
+      if (!['غياب', 'اجازة', 'تخفيف عمل'].includes(status)) {
         return document.createTextNode(String(item.Type || '').trim() || (status === 'دورة' ? 'دورة' : ''));
       }
 
       const select = document.createElement('select');
       select.className = 'status-select';
       const currentDescription = String(item.Type || '').trim() || String(item.Note || '').trim();
-      [
-        { value: '', label: '-- اختياري --' },
-        { value: 'طبية', label: 'طبية' },
-        { value: 'عرضي', label: 'عرضي' },
-        { value: 'انقطاع عن العمل (خصم)', label: 'انقطاع عن العمل (خصم)' }
-      ].forEach(({ value, label }) => {
+      const options = status === 'غياب'
+        ? [
+          { value: '', label: '-- اختياري --' },
+          { value: 'طبية', label: 'طبية' },
+          { value: 'عرضي', label: 'عرضي' },
+          { value: 'انقطاع عن العمل (خصم)', label: 'انقطاع عن العمل (خصم)' }
+        ]
+        : status === 'اجازة'
+          ? [
+            { value: '', label: '-- اختر نوع الاجازة --' },
+            { value: 'سنوية', label: 'سنوية' },
+            { value: 'مجلس طبي', label: 'مجلس طبي' },
+            { value: 'أمومة', label: 'أمومة' },
+            { value: 'وضع', label: 'وضع' },
+            { value: 'تفرغ دراسي', label: 'تفرغ دراسي' },
+            { value: 'تفرغ رياضي', label: 'تفرغ رياضي' },
+            { value: 'اجازة دورية', label: 'اجازة دورية' },
+            { value: 'اجازة طارئة', label: 'اجازة طارئة' }
+          ]
+          : [
+          { value: '', label: '-- اختر الوصف --' },
+          { value: 'بداية الدوام', label: 'بداية الدوام' },
+          { value: 'نهاية الدوام', label: 'نهاية الدوام' }
+          ];
+      options.forEach(({ value, label }) => {
         const option = document.createElement('option');
         option.value = value;
         option.textContent = label;
@@ -1541,7 +1732,12 @@
       });
       select.addEventListener('click', (event) => event.stopPropagation());
       select.addEventListener('change', async (event) => {
-        await saveRowChanges(item, { Type: event.target.value }, 'تم تحديث وصف الغياب بنجاح.');
+        const message = status === 'غياب'
+          ? 'تم تحديث وصف الغياب بنجاح.'
+          : status === 'اجازة'
+            ? 'تم تحديث نوع الاجازة وإضافتها للسجل المرتبط بنجاح.'
+            : 'تم تحديث وصف تخفيف العمل بنجاح.';
+        await saveRowChanges(item, { Type: event.target.value }, message);
       });
       return select;
     }
@@ -1570,7 +1766,7 @@
 
         const payload = { Status: nextStatus };
 
-        if (nextStatus !== 'حضور') {
+        if (!['حضور', ...PRESERVE_TIMES_STATUSES].includes(nextStatus)) {
           payload.InTime = '';
           payload.OutTime = '';
         } else {
@@ -1628,6 +1824,12 @@
 
       const reduction = findReductionForRow(item);
       if (reduction) {
+        const reductionType = String(reduction.Type || '').trim();
+        const currentType = key === 'InTime' ? 'بداية الدوام' : 'نهاية الدوام';
+        if (reductionType && reductionType !== currentType) {
+          input.disabled = true;
+          input.title = 'تم تسجيل تخفيف العمل للجهة الأخرى ولا يمكن تعديل الجهتين معًا.';
+        }
         const reductionHours = Number(reduction.Hours || 2);
         if (key === 'InTime' && String(reduction.Type || '').trim() === 'بداية الدوام') {
           const badge = document.createElement('div');
@@ -1649,7 +1851,19 @@
       input.addEventListener('click', (event) => event.stopPropagation());
       input.addEventListener('change', async (event) => {
         const value = String(event.target.value || '').trim();
-        await saveRowChanges(item, { [key]: value }, 'تم حفظ تعديل الوقت تلقائياً.');
+        const payload = { [key]: value };
+        const currentStatus = String(item.Status || '').trim();
+        const successMessage = value
+          ? PRESERVE_TIMES_STATUSES.includes(currentStatus)
+            ? 'تم حفظ تعديل وقت الحضور والانصراف.'
+            : 'تم حفظ تعديل الوقت وإضافة تخفيف العمل تلقائياً.'
+          : 'تم مسح تعديل الوقت وحفظ اليومية.';
+        if (value && !PRESERVE_TIMES_STATUSES.includes(currentStatus)) {
+          payload.Status = 'تخفيف عمل';
+          payload.Type = key === 'InTime' ? 'بداية الدوام' : 'نهاية الدوام';
+        }
+        await saveRowChanges(item, payload, successMessage);
+        applyNameFilterAndRender();
       });
 
       return wrapper;
@@ -2049,6 +2263,14 @@
       await refreshDailyView();
     });
 
+    todayDisplayInput.addEventListener('change', () => {
+      applyManualDate().catch((error) => showStatus(error.message, true));
+    });
+
+    todayDisplayInput.addEventListener('blur', () => {
+      applyManualDate().catch((error) => showStatus(error.message, true));
+    });
+
     departmentInput.addEventListener('change', async () => {
       populateSectionOptions();
       periodInput.value = '';
@@ -2112,13 +2334,37 @@
       showStatus('التعديل يتم مباشرة من الجدول مع حفظ تلقائي.', false);
     });
 
-    bulkEditBtn.addEventListener('click', openBulkEditDialog);
+    bulkDateEditBtn.addEventListener('click', openBulkDateEditDialog);
+    bulkPeriodEditBtn.addEventListener('click', openBulkPeriodEditDialog);
 
-    bulkEditCancelBtn.addEventListener('click', () => bulkEditDialog.close());
+    bulkDateEditCancelBtn.addEventListener('click', () => bulkDateEditDialog.close());
+    bulkPeriodEditCancelBtn.addEventListener('click', () => bulkPeriodEditDialog.close());
 
-    bulkEditForm.addEventListener('submit', (event) => {
+    dailyPageShortcutButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        dailyPageDialogTitle.textContent = button.dataset.pageTitle || 'الواجهة';
+        dailyPageFrame.title = button.dataset.pageTitle || 'واجهة مرتبطة';
+        dailyPageFrame.src = button.dataset.pageRoute || '';
+        dailyPageDialog.showModal();
+      });
+    });
+
+    dailyPageDialogCloseBtn.addEventListener('click', () => {
+      dailyPageDialog.close();
+    });
+
+    dailyPageDialog.addEventListener('close', () => {
+      dailyPageFrame.src = 'about:blank';
+    });
+
+    bulkDateEditForm.addEventListener('submit', (event) => {
       event.preventDefault();
-      saveBulkDailyEdit().catch((error) => showStatus(error.message, true));
+      saveBulkDailyEdit({ editDate: true }).catch((error) => showStatus(error.message, true));
+    });
+
+    bulkPeriodEditForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      saveBulkDailyEdit({ editPeriod: true }).catch((error) => showStatus(error.message, true));
     });
 
     deleteBtn.addEventListener('click', () => {
