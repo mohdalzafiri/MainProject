@@ -594,8 +594,8 @@
   </div>
 
   <script>
-    const authToken = localStorage.getItem('authToken');
-    const isMobileUiMode = localStorage.getItem('uiMode') === 'mobile';
+    const authToken = sessionStorage.getItem('authToken');
+    const isMobileUiMode = sessionStorage.getItem('uiMode') === 'mobile';
 
     if (isMobileUiMode) {
       document.body.classList.add('mobile-ui');
@@ -606,7 +606,7 @@
     if (!authToken) {
       window.location.href = '/';
     }
-    const homeRoute = localStorage.getItem('uiMode') === 'mobile' ? '/mobile-dashboard.html' : '/dashboard.html';
+    const homeRoute = sessionStorage.getItem('uiMode') === 'mobile' ? '/mobile-dashboard.html' : '/dashboard.html';
 
     function pad2(value) {
       return String(value).padStart(2, '0');
@@ -986,8 +986,8 @@
 
     async function requestJson(url, options = {}) {
       const response = await fetch(url, options);
-      if (response.status === 401 || response.status === 403) {
-        localStorage.removeItem('authToken');
+      if (response.status === 401) {
+        sessionStorage.removeItem('authToken');
         window.location.href = '/';
         return null;
       }

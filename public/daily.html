@@ -657,6 +657,7 @@
       }
     }
   </style>
+  <script src="/role-access.js" defer></script>
 </head>
 <body class="app-shell">
   <div class="page app-page daily-shell">
@@ -886,9 +887,9 @@
     const summaryCourses = document.getElementById('summaryCourses');
     const summaryDetention = document.getElementById('summaryDetention');
     const summaryFooter = document.getElementById('summaryFooter');
-    const authToken = localStorage.getItem('authToken');
-    const isMobileUiMode = localStorage.getItem('uiMode') === 'mobile';
-    const homeRoute = localStorage.getItem('uiMode') === 'mobile' ? '/mobile-dashboard.html' : '/dashboard.html';
+    const authToken = sessionStorage.getItem('authToken');
+    const isMobileUiMode = sessionStorage.getItem('uiMode') === 'mobile';
+    const homeRoute = sessionStorage.getItem('uiMode') === 'mobile' ? '/mobile-dashboard.html' : '/dashboard.html';
 
     if (isMobileUiMode) {
       document.body.classList.add('mobile-ui');
@@ -911,7 +912,7 @@
     const currentUser = parseJwtPayload(authToken);
 
     if (!authToken || !currentUser) {
-      localStorage.removeItem('authToken');
+      sessionStorage.removeItem('authToken');
       window.location.href = '/';
     }
 
@@ -1075,8 +1076,8 @@
 
     async function requestJson(url, options = {}) {
       const response = await fetch(url, options);
-      if (response.status === 401 || response.status === 403) {
-        localStorage.removeItem('authToken');
+      if (response.status === 401) {
+        sessionStorage.removeItem('authToken');
         window.location.href = '/';
         return null;
       }
@@ -1142,8 +1143,8 @@
           headers: getHeaders()
         });
 
-        if (response.status === 401 || response.status === 403) {
-          localStorage.removeItem('authToken');
+        if (response.status === 401) {
+          sessionStorage.removeItem('authToken');
           window.location.href = '/';
           return false;
         }

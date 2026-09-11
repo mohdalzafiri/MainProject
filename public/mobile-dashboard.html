@@ -226,7 +226,7 @@
 
   <script src="/install-shortcut.js"></script>
   <script>
-    const token = localStorage.getItem('authToken');
+    const token = sessionStorage.getItem('authToken');
     if (!token) {
       window.location.href = '/login.html';
     }
@@ -239,8 +239,8 @@
     }
 
     document.getElementById('logoutBtn').addEventListener('click', () => {
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('uiMode');
+      sessionStorage.removeItem('authToken');
+      sessionStorage.removeItem('uiMode');
       window.location.href = '/login.html';
     });
   </script>

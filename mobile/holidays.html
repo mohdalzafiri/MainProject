@@ -346,6 +346,7 @@
     }
   </style>
   <link rel="stylesheet" href="/layout-defaults.css" />
+  <script src="/role-access.js" defer></script>
 </head>
 <body class="app-shell">
   <div class="page app-page">
@@ -498,7 +499,7 @@
 
   <script src="/record-photos.js"></script>
   <script>
-    const authToken = localStorage.getItem('authToken');
+    const authToken = sessionStorage.getItem('authToken');
     if (!authToken) {
       window.location.href = '/';
     }
@@ -519,7 +520,7 @@
 
     const currentUser = parseJwtPayload(authToken);
     if (!currentUser) {
-      localStorage.removeItem('authToken');
+      sessionStorage.removeItem('authToken');
       window.location.href = '/';
     }
 
@@ -570,6 +571,9 @@
 
     if (userNameField) {
       userNameField.style.display = isAdminUser ? 'grid' : 'none';
+    }
+    if (userNameInput) {
+      userNameInput.value = String(currentUser?.name || currentUser?.username || 'system');
     }
 
     function syncUserNameColumnVisibility() {
@@ -688,8 +692,8 @@
 
     async function requestJson(url, options = {}) {
       const response = await fetch(url, options);
-      if (response.status === 401 || response.status === 403) {
-        localStorage.removeItem('authToken');
+      if (response.status === 401) {
+        sessionStorage.removeItem('authToken');
         window.location.href = '/';
         return null;
       }
@@ -827,8 +831,8 @@
       const otherType = String(otherTypeInput.value || '').trim();
       const finalType = holidayType === 'اخرى' ? otherType : holidayType;
       const userNameValue = isAdminUser
-        ? String(userNameInput.value || currentUser.username || 'system').trim()
-        : String(currentUser.username || 'system').trim();
+        ? String(userNameInput.value || currentUser.name || currentUser.username || 'system').trim()
+        : String(currentUser.name || currentUser.username || 'system').trim();
 
       return {
         EmpID: selectedEmployee?.ID || null,
@@ -889,7 +893,7 @@
       departmentInput.value = '';
       sectionInput.value = '';
       if (userNameInput) {
-        userNameInput.value = String(currentUser?.username || 'system');
+        userNameInput.value = String(currentUser?.name || currentUser?.username || 'system');
       }
       syncUserNameColumnVisibility();
       Array.from(rowsBody.querySelectorAll('tr')).forEach((row) => row.classList.remove('selected'));
@@ -922,7 +926,7 @@
 
       noteInput.value = item.Note || '';
       if (userNameInput) {
-        userNameInput.value = item.UserName || currentUser?.username || 'system';
+        userNameInput.value = item.UserName || currentUser?.name || currentUser?.username || 'system';
       }
       recordPhotos.load();
     }
@@ -1549,13 +1553,14 @@
     });
 
     backBtn.addEventListener('click', () => {
-      window.location.href = localStorage.getItem('uiMode') === 'mobile' ? '/mobile/dashboard.html' : '/dashboard.html';
+      window.location.href = sessionStorage.getItem('uiMode') === 'mobile' ? '/mobile/dashboard.html' : '/dashboard.html';
     });
 
     (async () => {
       try {
         await loadEmployees();
         await loadHolidays();
+        clearForm();
       } catch (error) {
         showStatus(error.message, true);
       }

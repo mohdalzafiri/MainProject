@@ -83,7 +83,7 @@
     }
 
     function handleAuthFail() {
-      localStorage.removeItem('authToken');
+      sessionStorage.removeItem('authToken');
       window.location.href = '/';
     }
 
@@ -104,7 +104,7 @@
           }
         });
 
-        if (response.status === 401 || response.status === 403) {
+        if (response.status === 401) {
           handleAuthFail();
           return;
         }
@@ -165,7 +165,7 @@
           body: formData
         });
 
-        if (response.status === 401 || response.status === 403) {
+        if (response.status === 401) {
           handleAuthFail();
           return;
         }

@@ -232,6 +232,7 @@
       }
     }
   </style>
+  <script src="/role-access.js" defer></script>
 </head>
 <body class="app-shell">
   <div class="page app-page">
@@ -451,7 +452,7 @@
   </div>
 
   <script>
-    const authToken = localStorage.getItem('authToken');
+    const authToken = sessionStorage.getItem('authToken');
     if (!authToken) {
       window.location.href = '/';
     }
@@ -529,13 +530,13 @@
 
     const currentUser = parseJwtPayload(authToken);
     if (!currentUser) {
-      localStorage.removeItem('authToken');
+      sessionStorage.removeItem('authToken');
       window.location.href = '/';
     }
 
     const username = String(currentUser?.username || '').trim().toLowerCase();
     if (username !== 'admin') {
-      localStorage.removeItem('authToken');
+      sessionStorage.removeItem('authToken');
       window.location.href = '/';
     }
 
@@ -681,8 +682,8 @@
         }
       });
 
-      if (response.status === 401 || response.status === 403) {
-        localStorage.removeItem('authToken');
+      if (response.status === 401) {
+        sessionStorage.removeItem('authToken');
         window.location.href = '/';
         return null;
       }
@@ -989,7 +990,7 @@
     });
 
     backBtn.addEventListener('click', () => {
-      window.location.href = localStorage.getItem('uiMode') === 'mobile' ? '/mobile/dashboard.html' : '/dashboard.html';
+      window.location.href = sessionStorage.getItem('uiMode') === 'mobile' ? '/mobile/dashboard.html' : '/dashboard.html';
     });
 
     document.querySelectorAll('.date-picker-trigger').forEach((btn) => {

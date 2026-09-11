@@ -170,7 +170,7 @@
   </div>
 
   <script>
-    const authToken = localStorage.getItem('authToken');
+    const authToken = sessionStorage.getItem('authToken');
     if (!authToken) {
       window.location.href = '/';
     }
@@ -222,8 +222,8 @@
         }
       });
 
-      if (response.status === 401 || response.status === 403) {
-        localStorage.removeItem('authToken');
+      if (response.status === 401) {
+        sessionStorage.removeItem('authToken');
         window.location.href = '/';
         return null;
       }

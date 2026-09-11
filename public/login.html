@@ -209,8 +209,8 @@
           } else {
             clearRememberedCredentials();
           }
-          localStorage.setItem('authToken', result.token);
-          localStorage.setItem('uiMode', isMobileLayout ? 'mobile' : 'desktop');
+          sessionStorage.setItem('authToken', result.token);
+          sessionStorage.setItem('uiMode', isMobileLayout ? 'mobile' : 'desktop');
           window.location.href = isMobileLayout ? '/mobile-dashboard.html' : '/dashboard.html';
           return;
         }

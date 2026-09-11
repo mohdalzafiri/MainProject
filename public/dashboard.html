@@ -520,7 +520,7 @@
     const incomingBtn = document.getElementById('newPage2Btn');
     const todaySummaryRows = document.getElementById('todaySummaryRows');
     const leaveDailySummaryRows = document.getElementById('leaveDailySummaryRows');
-    const authToken = localStorage.getItem('authToken');
+    const authToken = sessionStorage.getItem('authToken');
 
     if (!authToken) {
       window.location.href = '/';
@@ -550,7 +550,7 @@
 
     const currentUser = parseJwtPayload(authToken);
     if (!currentUser) {
-      localStorage.removeItem('authToken');
+      sessionStorage.removeItem('authToken');
       window.location.href = '/';
     }
 
@@ -929,7 +929,7 @@
     }
 
     logoutBtn.addEventListener('click', () => {
-      localStorage.removeItem('authToken');
+      sessionStorage.removeItem('authToken');
       window.location.href = '/';
     });
 
@@ -1003,8 +1003,8 @@
           headers: { Authorization: `Bearer ${authToken}` }
         });
         if (!response.ok) {
-          if (response.status === 401 || response.status === 403) {
-            localStorage.removeItem('authToken');
+          if (response.status === 401) {
+            sessionStorage.removeItem('authToken');
             window.location.href = '/';
           }
           return;

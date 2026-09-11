@@ -53,7 +53,7 @@ function ensureAllowed(req, moduleKey, method) {
   }
 
   if (isViewOnly && method !== 'GET' && method !== 'HEAD') {
-    return { ok: false, status: 403, message: 'صلاحيتك الحالية للعرض فقط ولا تسمح برفع الصور.' };
+    return { ok: false, status: 403, message: 'لا تملك صلاحية التعديل أو الحذف' };
   }
 
   return { ok: true, config };

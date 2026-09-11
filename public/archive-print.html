@@ -27,7 +27,7 @@
   <div class="status" id="status" hidden></div>
 
   <script>
-    const authToken = localStorage.getItem('authToken');
+    const authToken = sessionStorage.getItem('authToken');
     const params = new URLSearchParams(window.location.search);
     const category = params.get('category') || '';
     const recordId = Number(params.get('id') || 0);
@@ -61,8 +61,8 @@
       const response = await fetch(`/api/archive/preview/${encodeURIComponent(category)}/${encodeURIComponent(recordId)}`, {
         headers: { Authorization: `Bearer ${authToken}` }
       });
-      if (response.status === 401 || response.status === 403) {
-        localStorage.removeItem('authToken');
+      if (response.status === 401) {
+        sessionStorage.removeItem('authToken');
         window.location.href = '/';
         return;
       }

@@ -393,6 +393,7 @@
     }
   </style>
   <link rel="stylesheet" href="/layout-defaults.css" />
+  <script src="/role-access.js" defer></script>
 </head>
 <body class="app-shell">
   <div class="page app-page">
@@ -531,7 +532,7 @@
 
   <script src="/record-photos.js"></script>
   <script>
-    const authToken = localStorage.getItem('authToken');
+    const authToken = sessionStorage.getItem('authToken');
     if (!authToken) {
       window.location.href = '/';
     }
@@ -552,7 +553,7 @@
 
     const currentUser = parseJwtPayload(authToken);
     if (!currentUser) {
-      localStorage.removeItem('authToken');
+      sessionStorage.removeItem('authToken');
       window.location.href = '/';
     }
 
@@ -671,8 +672,8 @@
 
     async function requestJson(url, options = {}) {
       const response = await fetch(url, options);
-      if (response.status === 401 || response.status === 403) {
-        localStorage.removeItem('authToken');
+      if (response.status === 401) {
+        sessionStorage.removeItem('authToken');
         window.location.href = '/';
         return null;
       }
@@ -973,7 +974,7 @@
     printBtn.addEventListener('click', printRecord);
     refreshBtn.addEventListener('click', loadRecords);
     backBtn.addEventListener('click', () => {
-      window.location.href = localStorage.getItem('uiMode') === 'mobile' ? '/mobile/dashboard.html' : '/dashboard.html';
+      window.location.href = sessionStorage.getItem('uiMode') === 'mobile' ? '/mobile/dashboard.html' : '/dashboard.html';
     });
 
     setCurrentUser();

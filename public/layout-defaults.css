@@ -223,12 +223,12 @@ body.app-shell .date-display-input {
   width: 100%;
   max-width: 100%;
   padding-left: 44px;
-  cursor: pointer;
+  cursor: text;
   direction: ltr;
   text-align: right;
   position: relative;
   z-index: 1;
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 body.app-shell .date-picker-trigger {
@@ -264,7 +264,7 @@ body.app-shell .native-date-input {
   width: 100%;
   height: 100%;
   opacity: 0;
-  pointer-events: auto;
+  pointer-events: none;
   z-index: 2;
   cursor: pointer;
   appearance: none;

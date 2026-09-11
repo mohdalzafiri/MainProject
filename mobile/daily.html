@@ -341,6 +341,7 @@
       }
     }
   </style>
+  <script src="/role-access.js" defer></script>
 </head>
 <body class="app-shell">
   <div class="page app-page daily-shell">
@@ -369,7 +370,7 @@
           <div class="field">
             <label for="today">التاريخ</label>
             <div class="date-picker-wrap">
-              <input id="todayDisplay" class="date-display-input" type="text" placeholder="yyyy/mm/dd" readonly />
+              <input id="todayDisplay" class="date-display-input" type="text" placeholder="yyyy/mm/dd" inputmode="numeric" />
               <button type="button" class="date-picker-trigger" data-picker-id="today" aria-label="اختيار التاريخ"></button>
               <input id="today" type="date" class="native-date-input" />
             </div>
@@ -471,7 +472,7 @@
   </div>
 
   <script>
-    const authToken = localStorage.getItem('authToken');
+    const authToken = sessionStorage.getItem('authToken');
     if (!authToken) window.location.href = '/';
 
     function parseJwtPayload(token) {
@@ -488,7 +489,7 @@
 
     const currentUser = parseJwtPayload(authToken);
     if (!currentUser) {
-      localStorage.removeItem('authToken');
+      sessionStorage.removeItem('authToken');
       window.location.href = '/';
     }
 
@@ -588,6 +589,27 @@
       return `${date.getFullYear()}/${pad2(date.getMonth() + 1)}/${pad2(date.getDate())}`;
     }
 
+    function parseManualDate(value) {
+      const raw = String(value || '').trim();
+      const match = raw.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/);
+      if (!match) return null;
+
+      const year = Number(match[1]);
+      const month = Number(match[2]);
+      const day = Number(match[3]);
+      const date = new Date(year, month - 1, day);
+      if (
+        Number.isNaN(date.getTime())
+        || date.getFullYear() !== year
+        || date.getMonth() !== month - 1
+        || date.getDate() !== day
+      ) {
+        return null;
+      }
+
+      return `${year}-${pad2(month)}-${pad2(day)}`;
+    }
+
     function toDateInputValue(value) {
       const date = parseFlexibleDate(value);
       if (!date || Number.isNaN(date.getTime())) return '';
@@ -626,8 +648,8 @@
 
     async function requestJson(url, options = {}) {
       const response = await fetch(url, options);
-      if (response.status === 401 || response.status === 403) {
-        localStorage.removeItem('authToken');
+      if (response.status === 401) {
+        sessionStorage.removeItem('authToken');
         window.location.href = '/';
         return null;
       }
@@ -641,6 +663,23 @@
       dayInput.value = formatArabicDay(todayInput.value);
       sideDay.textContent = dayInput.value || '--';
       sideDate.textContent = todayDisplayInput.value || '--';
+    }
+
+    async function applyManualDate() {
+      const manualValue = String(todayDisplayInput.value || '').trim();
+      const currentValue = formatDateYmdSlash(todayInput.value);
+      if (manualValue === currentValue) return;
+
+      const normalizedValue = parseManualDate(manualValue);
+      if (!normalizedValue) {
+        todayDisplayInput.value = currentValue;
+        showStatus('أدخل التاريخ بصيغة صحيحة yyyy/mm/dd، مثل 2026/09/11.', true);
+        return;
+      }
+
+      todayInput.value = normalizedValue;
+      syncDateDisplays();
+      await refreshDailyView();
     }
 
     function populateSelect(select, values) {
@@ -1474,6 +1513,14 @@
       await refreshDailyView();
     });
 
+    todayDisplayInput.addEventListener('change', () => {
+      applyManualDate().catch((error) => showStatus(error.message, true));
+    });
+
+    todayDisplayInput.addEventListener('blur', () => {
+      applyManualDate().catch((error) => showStatus(error.message, true));
+    });
+
     departmentInput.addEventListener('change', async () => {
       populateSectionOptions();
       periodInput.value = '';
@@ -1517,7 +1564,7 @@
     });
 
     backBtn.addEventListener('click', () => {
-      window.location.href = localStorage.getItem('uiMode') === 'mobile' ? '/mobile/dashboard.html' : '/dashboard.html';
+      window.location.href = sessionStorage.getItem('uiMode') === 'mobile' ? '/mobile/dashboard.html' : '/dashboard.html';
     });
 
     form.addEventListener('submit', (event) => {

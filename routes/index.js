@@ -122,7 +122,7 @@ function enforceRouteAccess(req, res, next) {
 	}
 
 	if (isViewOnly && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method.toUpperCase())) {
-		return res.status(403).json({ message: 'صلاحيتك الحالية للعرض فقط ولا تسمح بالتعديل.' });
+		return res.status(403).json({ message: 'لا تملك صلاحية التعديل أو الحذف' });
 	}
 
 	return next();
