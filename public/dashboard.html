@@ -352,7 +352,7 @@
       <a class="action-item" id="statisticsBtn" href="/statistics.html"><span class="action-icon" aria-hidden="true">📊</span><span>الاحصائيات</span></a>
       <div class="action-item" id="holidaysBtn"><span class="action-icon" aria-hidden="true">🏖️</span><span>الاجازات</span></div>
       <div class="action-item" id="reductionBtn"><span class="action-icon" aria-hidden="true">⏱️</span><span>تخفيف العمل</span></div>
-      <div class="action-item" id="coursesBtn" style="display: none;"><span class="action-icon" aria-hidden="true">🎓</span><span>الدورات</span></div>
+      <div class="action-item" id="coursesBtn"><span class="action-icon" aria-hidden="true">🎓</span><span>الدورات</span></div>
       <div class="action-item" id="transfersBtn"><span class="action-icon" aria-hidden="true">🔄</span><span>التنقلات</span></div>
       <div class="action-item admin-only" id="evaluationsBtn"><span class="action-icon" aria-hidden="true">⭐</span><span>تقييم الاداء</span></div>
       <div class="action-item admin-only" id="adminFormsBtn"><span class="action-icon" aria-hidden="true">📝</span><span>النماذج الادارية</span></div>
@@ -556,7 +556,7 @@
 
     const currentRole = String(currentUser?.role || '').trim().toLowerCase();
     const isAdminUser = currentRole === 'admin';
-    const defaultAllowedPages = ['employees', 'daily', 'statistics', 'holidays', 'reduction', 'transfers', 'outsideEmployees', 'outgoing', 'incoming'];
+    const defaultAllowedPages = ['employees', 'daily', 'statistics', 'holidays', 'reduction', 'courses', 'transfers', 'outsideEmployees', 'outgoing', 'incoming', 'archive'];
     const allowedPages = Array.isArray(currentUser?.allowedPages) && currentUser.allowedPages.length
       ? currentUser.allowedPages
       : [];
@@ -573,15 +573,12 @@
       outsideEmployees: outsideAdminBtn,
       outgoing: outgoingBtn,
       incoming: incomingBtn,
+      archive: document.getElementById('archiveBtn'),
       evaluations: evaluationsBtn,
       administrative: adminFormsBtn,
       systemLog: systemLogBtn,
       settings: settingsBtn
     };
-
-    if (coursesBtn) {
-      coursesBtn.style.display = 'none';
-    }
 
     const totalCoursesCard = document.getElementById('totalCoursesCard');
     if (totalCoursesCard) {

@@ -1,7 +1,8 @@
 const DEFAULT_ARCHIVE_CATEGORIES = [
   { key: 'circulars', labelAr: 'التعاميم', sortOrder: 1 },
   { key: 'statements', labelAr: 'الكشوف', sortOrder: 2 },
-  { key: 'forms', labelAr: 'النماذج', sortOrder: 3 }
+  { key: 'forms', labelAr: 'النماذج', sortOrder: 3 },
+  { key: 'confidential-books', labelAr: 'الكتب السرية', sortOrder: 4 }
 ];
 
 const LEGACY_CATEGORY_ALIASES = {

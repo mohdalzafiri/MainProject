@@ -74,6 +74,7 @@ app.use('/mobile', express.static(path.join(__dirname, 'mobile')));
 // Routes
 const apiRoutes = require('./routes');
 const { closeDatabase } = require('./database');
+const { startDatabaseMaintenance, stopDatabaseMaintenance } = require('./services/databaseMaintenanceService');
 
 app.use('/api', apiRoutes);
 
@@ -95,6 +96,7 @@ const server = app.listen(PORT, HOST, () => {
   getLanIps().forEach((ip) => {
     console.log(`LAN URL: http://${ip}:${PORT}`);
   });
+  startDatabaseMaintenance();
 });
 
 let isShuttingDown = false;
@@ -104,7 +106,8 @@ function shutdown(signal) {
   isShuttingDown = true;
   console.log(`${signal} received; closing server and database.`);
 
-  server.close(() => {
+  server.close(async () => {
+    await stopDatabaseMaintenance();
     closeDatabase();
     process.exit(0);
   });

@@ -777,7 +777,7 @@
       departmentInput.value = '';
       sectionInput.value = '';
       if (userNameInput) {
-        userNameInput.value = String(currentUser?.username || 'system');
+        userNameInput.value = String(currentUser?.name || currentUser?.username || 'system');
       }
       syncUserNameColumnVisibility();
       Array.from(rowsBody.querySelectorAll('tr')).forEach((row) => row.classList.remove('selected'));
@@ -1358,6 +1358,7 @@
 
     (async () => {
       try {
+        clearForm();
         await loadEmployees();
         await loadCourses();
       } catch (error) {

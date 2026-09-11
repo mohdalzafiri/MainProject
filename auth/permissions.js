@@ -14,7 +14,8 @@ const CUSTOMIZABLE_NON_ADMIN_PAGE_KEYS = [
   'outsideEmployees',
   'outgoing',
   'incoming',
-  'archive'
+  'archive',
+  'confidentialBooks'
 ];
 
 function normalizeRole(value) {
@@ -42,6 +43,8 @@ function normalizePageKey(value) {
     outsideemployees: 'outsideEmployees',
     outgoing: 'outgoing',
     incoming: 'incoming',
+    archive: 'archive',
+    confidentialbooks: 'confidentialBooks',
     settings: 'settings',
     administrative: 'administrative',
     systemlog: 'systemLog',

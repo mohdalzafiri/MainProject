@@ -668,10 +668,12 @@
       </div>
       <div class="actions">
         <div class="daily-shortcuts" aria-label="واجهات مرتبطة">
-          <button type="button" class="btn primary" data-page-route="/employees.html" data-page-title="الموظفين">الموظفين</button>
-          <button type="button" class="btn primary" data-page-route="/holidays.html" data-page-title="الإجازات">الإجازات</button>
-          <button type="button" class="btn primary" data-page-route="/transfers.html" data-page-title="التنقلات">التنقلات</button>
-          <button type="button" class="btn primary" data-page-route="/reduction.html" data-page-title="تخفيف العمل">تخفيف العمل</button>
+          <button type="button" class="btn primary" data-page-key="employees" data-page-route="/employees.html" data-page-title="الموظفين">الموظفين</button>
+          <button type="button" class="btn primary" data-page-key="holidays" data-page-route="/holidays.html" data-page-title="الإجازات">الإجازات</button>
+          <button type="button" class="btn primary" data-page-key="courses" data-page-route="/courses.html" data-page-title="الدورات">الدورات</button>
+          <button type="button" class="btn primary" data-page-key="transfers" data-page-route="/transfers.html" data-page-title="التنقلات">التنقلات</button>
+          <button type="button" class="btn primary" data-page-key="reduction" data-page-route="/reduction.html" data-page-title="تخفيف العمل">تخفيف العمل</button>
+          <button type="button" class="btn primary" data-page-key="outsideEmployees" data-page-route="/outside-employees.html" data-page-title="خارج الإدارة">خارج الإدارة</button>
         </div>
         <button type="button" class="btn dark" id="backBtn">العودة للرئيسية</button>
       </div>
@@ -915,6 +917,13 @@
       sessionStorage.removeItem('authToken');
       window.location.href = '/';
     }
+
+    const currentRole = String(currentUser?.role || '').trim().toLowerCase();
+    const allowedPages = new Set(Array.isArray(currentUser?.allowedPages) ? currentUser.allowedPages : []);
+    dailyPageShortcutButtons.forEach((button) => {
+      const pageKey = String(button.dataset.pageKey || '').trim();
+      button.hidden = currentRole !== 'admin' && !allowedPages.has(pageKey);
+    });
 
     const dateOpenButtons = document.querySelectorAll('.date-picker-trigger');
     let departmentSectionRows = [];

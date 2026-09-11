@@ -134,6 +134,7 @@
 
     .folder-meta { margin: 0; color: var(--muted); font-size: .9rem; }
     .folder-arrow { color: var(--primary); font-size: 1.5rem; }
+    .folder-lock { color: #92400e; font-size: 1.1rem; margin-inline-start: 6px; }
 
     .empty-state {
       text-align: center;
@@ -179,6 +180,21 @@
     const archiveStatus = document.getElementById('archiveStatus');
     const backBtn = document.getElementById('backBtn');
 
+    function parseJwtPayload(token) {
+      try {
+        const payload = String(token || '').split('.')[1];
+        if (!payload) return null;
+        const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+        return JSON.parse(atob(normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=')));
+      } catch {
+        return null;
+      }
+    }
+
+    const currentUser = parseJwtPayload(authToken);
+    const canViewConfidentialBooks = String(currentUser?.role || '').toLowerCase() === 'admin'
+      || (Array.isArray(currentUser?.allowedPages) && currentUser.allowedPages.includes('confidentialBooks'));
+
     function setStatus(message, type = 'success') {
       archiveStatus.textContent = message || '';
       archiveStatus.className = 'status-box';
@@ -194,7 +210,9 @@
         return;
       }
 
-      categories.forEach((item) => {
+      categories
+        .filter((item) => item.KeyName !== 'confidential-books' || canViewConfidentialBooks)
+        .forEach((item) => {
         const card = document.createElement('a');
         card.className = 'folder-card';
         card.href = item.Url || `/archive-folder.html?category=${encodeURIComponent(item.KeyName)}`;
@@ -202,14 +220,14 @@
         card.innerHTML = `
           <span class="folder-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7.5a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 10h18"/></svg></span>
           <div>
-            <h2 class="folder-name">${item.LabelAr}</h2>
+            <h2 class="folder-name">${item.LabelAr}${item.KeyName === 'confidential-books' ? '<span class="folder-lock" aria-label="مجلد مقفل">🔒</span>' : ''}</h2>
             <p class="folder-meta">${Number(item.FileCount || 0)} ملف · ${item.KeyName}</p>
           </div>
           <span class="folder-arrow" aria-hidden="true">‹</span>
         `;
 
-        archiveGrid.appendChild(card);
-      });
+          archiveGrid.appendChild(card);
+        });
     }
 
     async function requestJson(url, options = {}) {

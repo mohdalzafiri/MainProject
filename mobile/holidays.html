@@ -572,9 +572,6 @@
     if (userNameField) {
       userNameField.style.display = isAdminUser ? 'grid' : 'none';
     }
-    if (userNameInput) {
-      userNameInput.value = String(currentUser?.name || currentUser?.username || 'system');
-    }
 
     function syncUserNameColumnVisibility() {
       userNameColumnCells().forEach((cell) => {
@@ -1558,9 +1555,9 @@
 
     (async () => {
       try {
+        clearForm();
         await loadEmployees();
         await loadHolidays();
-        clearForm();
       } catch (error) {
         showStatus(error.message, true);
       }

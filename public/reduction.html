@@ -600,7 +600,7 @@
       sectionInput.value = String(item.Section || '').trim();
       hoursInput.value = Number(item.Hours || 2);
       noteInput.value = String(item.Note || '').trim();
-      if (userNameInput) userNameInput.value = item.UserName || currentUser?.username || 'system';
+      if (userNameInput) userNameInput.value = item.UserName || currentUser?.name || currentUser?.username || 'system';
       startDateInput.value = toDateInputValue(item.Startdate || '');
       endDateInput.value = toDateInputValue(item.Enddate || '');
       syncDateInputs();
@@ -620,7 +620,7 @@
       startDateInput.value = '';
       endDateInput.value = '';
       syncDateInputs();
-      if (userNameInput) userNameInput.value = currentUser?.username || 'system';
+      if (userNameInput) userNameInput.value = currentUser?.name || currentUser?.username || 'system';
       recordPhotos.clear();
     }
 
@@ -823,9 +823,9 @@
     endDateInput.addEventListener('change', syncDateInputs);
 
     (async function init() {
+      resetForm();
       await loadEmployees();
       await loadReduction();
-      resetForm();
     })();
   </script>
 </body>

@@ -95,6 +95,26 @@
     const statusBox = document.getElementById('statusBox');
     let records = [];
 
+    function parseJwtPayload(token) {
+      try {
+        const payload = String(token || '').split('.')[1];
+        if (!payload) return null;
+        const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+        return JSON.parse(atob(normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=')));
+      } catch {
+        return null;
+      }
+    }
+
+    const currentUser = parseJwtPayload(authToken);
+    const canViewConfidentialBooks = String(currentUser?.role || '').toLowerCase() === 'admin'
+      || (Array.isArray(currentUser?.allowedPages) && currentUser.allowedPages.includes('confidentialBooks'));
+    const isConfidentialAccessDenied = categoryKey === 'confidential-books' && !canViewConfidentialBooks;
+
+    if (isConfidentialAccessDenied) {
+      window.location.replace('/archive.html');
+    }
+
     function escapeHtml(value) {
       return String(value || '').replace(/[&<>'"]/g, (character) => ({
         '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
@@ -208,7 +228,9 @@
     function renderSubfolders(categories) {
       subfoldersGrid.innerHTML = '';
       subfoldersSection.classList.toggle('show', categories.length > 0);
-      categories.forEach((item) => {
+      categories
+        .filter((item) => item.KeyName !== 'confidential-books' || canViewConfidentialBooks)
+        .forEach((item) => {
         const card = document.createElement('a');
         card.className = 'folder-card';
         card.href = `/archive-folder.html?category=${encodeURIComponent(item.KeyName)}`;
@@ -216,8 +238,8 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 7.5a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 10h18"/></svg>
           <div><h3>${escapeHtml(item.LabelAr)}</h3><p>${Number(item.FileCount || 0)} ملف</p></div>
           <span aria-hidden="true">‹</span>`;
-        subfoldersGrid.appendChild(card);
-      });
+          subfoldersGrid.appendChild(card);
+        });
     }
 
     async function authorizedJson(url) {
@@ -252,7 +274,9 @@
 
     searchInput.addEventListener('input', renderFiles);
     document.getElementById('backBtn').addEventListener('click', () => { window.location.href = '/archive.html'; });
-    initialize().catch((error) => setError(error.message));
+    if (!isConfidentialAccessDenied) {
+      initialize().catch((error) => setError(error.message));
+    }
   </script>
 </body>
 </html>

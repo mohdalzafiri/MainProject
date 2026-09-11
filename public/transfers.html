@@ -467,6 +467,7 @@
     </section>
   </div>
 
+  <script src="/record-photos.js"></script>
   <script>
     const authToken = sessionStorage.getItem('authToken');
     if (!authToken) {
@@ -529,6 +530,13 @@
     let allEmployees = [];
     let selectedEmployee = null;
     let departmentSectionRows = [];
+    const recordPhotos = initRecordPhotos({
+      moduleKey: 'transfers',
+      authToken,
+      getRecordId: () => selectedId,
+      onStatus: showStatus
+    });
+
     if (userNameField) {
       userNameField.style.display = isAdminUser ? 'grid' : 'none';
     }
@@ -762,6 +770,7 @@
       syncUserNameColumnVisibility();
       Array.from(rowsBody.querySelectorAll('tr')).forEach((row) => row.classList.remove('selected'));
       applyNameFilter();
+      recordPhotos.clear();
     }
 
     function fillForm(item) {
@@ -781,6 +790,7 @@
       if (userNameInput) {
         userNameInput.value = item.UserName || currentUser?.name || currentUser?.username || 'system';
       }
+      recordPhotos.load();
     }
 
     function renderRows(items) {
@@ -1324,10 +1334,10 @@
 
     (async () => {
       try {
+        clearForm();
         await loadDepartmentSections();
         await loadEmployees();
         await loadTransfers();
-        clearForm();
       } catch (error) {
         showStatus(error.message, true);
       }

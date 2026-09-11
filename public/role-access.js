@@ -49,10 +49,6 @@
       control.setAttribute('aria-hidden', 'true');
     });
 
-    document.querySelectorAll('.daily-shortcuts [data-page-route]').forEach((control) => {
-      control.hidden = true;
-      control.setAttribute('aria-hidden', 'true');
-    });
   }
 
   if (document.readyState === 'loading') {

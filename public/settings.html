@@ -410,6 +410,16 @@
           </div>
         </div>
 
+        <div class="single-row" id="confidentialBooksSection">
+          <div class="field">
+            <label for="confidentialBooksAccess">الكتب السرية</label>
+            <select id="confidentialBooksAccess">
+              <option value="no" selected>لا</option>
+              <option value="yes">نعم</option>
+            </select>
+          </div>
+        </div>
+
         <div class="single-row">
           <div class="field">
             <label for="userIsActive">الحالة</label>
@@ -701,6 +711,8 @@
     const usernameInput = document.getElementById('username');
     const passwordInput = document.getElementById('password');
     const permissionSelect = document.getElementById('permission');
+    const confidentialBooksSection = document.getElementById('confidentialBooksSection');
+    const confidentialBooksAccess = document.getElementById('confidentialBooksAccess');
     const pagePermissionsContainer = document.getElementById('pagePermissions');
     const departmentPermissionsContainer = document.getElementById('departmentPermissions');
     const sectionPermissionsContainer = document.getElementById('sectionPermissions');
@@ -775,7 +787,8 @@
       { key: 'transfers', label: 'التنقلات' },
       { key: 'outsideEmployees', label: 'خارج الإدارة' },
       { key: 'outgoing', label: 'الصادر' },
-      { key: 'incoming', label: 'الوارد' }
+      { key: 'incoming', label: 'الوارد' },
+      { key: 'archive', label: 'الأرشيف' }
     ];
 
     function uniqueValues(items) {
@@ -1051,6 +1064,8 @@
       const role = String(permissionSelect.value || '').trim().toLowerCase();
       const isAdminRole = role === 'admin';
       pagePermissionsSection.style.display = isAdminRole ? 'none' : 'block';
+      confidentialBooksSection.style.display = isAdminRole ? 'none' : 'block';
+      confidentialBooksAccess.disabled = isAdminRole;
 
       document.querySelectorAll('input[data-group]').forEach((checkbox) => {
         checkbox.disabled = isAdminRole;
@@ -1060,6 +1075,10 @@
 
     function getPayloadFromForm() {
       const selectedPermission = String(permissionSelect.value || '').trim();
+      const allowedPages = getSelectedGroupValues('pages');
+      if (confidentialBooksAccess.value === 'yes') {
+        allowedPages.push('confidentialBooks');
+      }
       return {
         Name: String(fullNameSelect.value || '').trim(),
         Department: String(departmentInput.value || '').trim(),
@@ -1068,7 +1087,7 @@
         Username: String(usernameInput.value || '').trim(),
         Password: String(passwordInput.value || '').trim(),
         Permission: selectedPermission,
-        AllowedPages: selectedPermission.toLowerCase() === 'admin' ? [] : getSelectedGroupValues('pages'),
+        AllowedPages: selectedPermission.toLowerCase() === 'admin' ? [] : allowedPages,
         AllowedDepartments: selectedPermission.toLowerCase() === 'admin' ? [] : getSelectedGroupValues('departments'),
         AllowedSections: selectedPermission.toLowerCase() === 'admin' ? [] : getSelectedGroupValues('sections'),
         AllowedSubSections: selectedPermission.toLowerCase() === 'admin' ? [] : getSelectedGroupValues('subSections'),
@@ -1084,6 +1103,7 @@
       usernameInput.value = '';
       passwordInput.value = '';
       permissionSelect.value = '';
+      confidentialBooksAccess.value = 'no';
       userIsActiveInput.value = '';
       selectedUserId = null;
       const protectedOption = userIsActiveInput.querySelector('option[value="protected"]');
@@ -1249,7 +1269,9 @@
       usernameInput.value = String(target.Username || '').trim();
       passwordInput.value = String(target.Password || '');
       permissionSelect.value = String(target.Permission || '').trim();
-      setSelectedGroupValues('pages', Array.isArray(target.AllowedPages) ? target.AllowedPages : []);
+      const allowedPages = Array.isArray(target.AllowedPages) ? target.AllowedPages : [];
+      setSelectedGroupValues('pages', allowedPages);
+      confidentialBooksAccess.value = allowedPages.includes('confidentialBooks') ? 'yes' : 'no';
       setSelectedGroupValues('departments', Array.isArray(target.AllowedDepartments) ? target.AllowedDepartments : []);
       setSelectedGroupValues('sections', Array.isArray(target.AllowedSections) ? target.AllowedSections : []);
       setSelectedGroupValues('subSections', Array.isArray(target.AllowedSubSections) ? target.AllowedSubSections : []);

@@ -672,6 +672,7 @@ console.log(`Database path: ${dbPath}`);
 
 module.exports = {
   db,
+  dbPath,
   dailyTables,
   isValidDailyTable,
   getCurrentTimestamp,
