@@ -11,12 +11,12 @@ function resolveTemplatesRoot() {
     return path.normalize(configuredPath);
   }
 
-  const mappedPath = 'Z:\\AdministrativeTemplates';
+  const mappedPath = 'Z:\\Templates';
   if (fs.existsSync(mappedPath)) {
     return path.normalize(mappedPath);
   }
 
-  return path.normalize('\\\\PC-SERVER\\Database\\AdministrativeTemplates');
+  return path.normalize('\\\\PC-SERVER\\Database\\Templates');
 }
 
 const templatesRoot = resolveTemplatesRoot();

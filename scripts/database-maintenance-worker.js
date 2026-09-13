@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const Database = require('better-sqlite3');
+const { removeSync } = require('../utils/fsCompat');
 
 function assertIntegrity(database) {
   const results = database.pragma('quick_check');
@@ -16,7 +17,7 @@ function removeExpiredBackups(backupDirectory, retentionCount) {
     .sort((left, right) => right.localeCompare(left));
 
   backupFiles.slice(retentionCount).forEach((name) => {
-    fs.rmSync(path.join(backupDirectory, name), { force: true });
+    removeSync(path.join(backupDirectory, name), { force: true });
   });
 }
 
@@ -24,7 +25,7 @@ function removeStaleTemporaryBackups(backupDirectory) {
   fs.readdirSync(backupDirectory)
     .filter((name) => /^database-\d{4}-\d{2}-\d{2}\.db\.tmp-\d+$/i.test(name))
     .forEach((name) => {
-      fs.rmSync(path.join(backupDirectory, name), { force: true });
+      removeSync(path.join(backupDirectory, name), { force: true });
     });
 }
 
@@ -49,7 +50,7 @@ async function run() {
     assertIntegrity(sourceDb);
 
     if (!fs.existsSync(backupPath)) {
-      fs.rmSync(temporaryPath, { force: true });
+      removeSync(temporaryPath, { force: true });
       await sourceDb.backup(temporaryPath);
       const backupDb = new Database(temporaryPath, { readonly: true, fileMustExist: true });
       try {
@@ -72,7 +73,7 @@ async function run() {
     removeExpiredBackups(backupDirectory, retentionCount);
   } finally {
     sourceDb.close();
-    fs.rmSync(temporaryPath, { force: true });
+    removeSync(temporaryPath, { force: true });
   }
 }
 

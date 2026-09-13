@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
 const { db, logSystem } = require('../database');
+const { removeSync } = require('../utils/fsCompat');
 
 const router = express.Router();
 
@@ -59,8 +60,8 @@ function ensureAllowed(req, moduleKey, method) {
   return { ok: true, config };
 }
 
-function ensureRecordExists(config, recordId) {
-  const row = db.prepare(`SELECT ID FROM ${config.table} WHERE ID = ? LIMIT 1`).get(recordId);
+async function ensureRecordExists(config, recordId) {
+  const row = (await db.prepare(`SELECT ID FROM ${config.table} WHERE ID = ? LIMIT 1`).get(recordId));
   return Boolean(row);
 }
 
@@ -93,7 +94,7 @@ function getNextFileName(moduleKey, recordId) {
   return `${String(nextIndex).padStart(3, '0')}.jpg`;
 }
 
-router.get('/:module/:recordId', (req, res) => {
+router.get('/:module/:recordId', async (req, res) => {
   const moduleKey = normalizeModule(req.params.module);
   const recordId = parseRecordId(req.params.recordId);
 
@@ -106,7 +107,7 @@ router.get('/:module/:recordId', (req, res) => {
     return res.status(400).json({ message: 'معرّف السجل غير صالح.' });
   }
 
-  if (!ensureRecordExists(access.config, recordId)) {
+  if (!(await ensureRecordExists(access.config, recordId))) {
     return res.status(404).json({ message: 'السجل المطلوب غير موجود.' });
   }
 
@@ -114,7 +115,7 @@ router.get('/:module/:recordId', (req, res) => {
   return res.json({ images, total: images.length });
 });
 
-router.post('/:module/:recordId', upload.single('image'), (req, res) => {
+router.post('/:module/:recordId', upload.single('image'), async (req, res) => {
   const moduleKey = normalizeModule(req.params.module);
   const recordId = parseRecordId(req.params.recordId);
 
@@ -127,7 +128,7 @@ router.post('/:module/:recordId', upload.single('image'), (req, res) => {
     return res.status(400).json({ message: 'معرّف السجل غير صالح.' });
   }
 
-  if (!ensureRecordExists(access.config, recordId)) {
+  if (!(await ensureRecordExists(access.config, recordId))) {
     return res.status(404).json({ message: 'السجل المطلوب غير موجود.' });
   }
 
@@ -148,13 +149,13 @@ router.post('/:module/:recordId', upload.single('image'), (req, res) => {
     const targetFile = path.join(targetDir, fileName);
     fs.writeFileSync(targetFile, req.file.buffer);
 
-    logSystem({
+    (await logSystem({
       userName: req.user?.username || 'system',
       role: req.user?.role || '',
       action: 'Upload',
       page: access.config.pageName,
       details: `Uploaded attachment ${moduleKey}/${recordId}/${fileName}`
-    });
+    }));
 
     return res.json({
       fileName,
@@ -166,7 +167,7 @@ router.post('/:module/:recordId', upload.single('image'), (req, res) => {
   }
 });
 
-router.delete('/:module/:recordId/:fileName', (req, res) => {
+router.delete('/:module/:recordId/:fileName', async (req, res) => {
   const moduleKey = normalizeModule(req.params.module);
   const recordId = parseRecordId(req.params.recordId);
   const fileName = String(req.params.fileName || '').trim();
@@ -180,7 +181,7 @@ router.delete('/:module/:recordId/:fileName', (req, res) => {
     return res.status(400).json({ message: 'بيانات صورة المستند غير صالحة.' });
   }
 
-  if (!ensureRecordExists(access.config, recordId)) {
+  if (!(await ensureRecordExists(access.config, recordId))) {
     return res.status(404).json({ message: 'السجل المطلوب غير موجود.' });
   }
 
@@ -193,16 +194,16 @@ router.delete('/:module/:recordId/:fileName', (req, res) => {
   try {
     fs.unlinkSync(targetFile);
     if (fs.existsSync(recordDirectory) && fs.readdirSync(recordDirectory).length === 0) {
-      fs.rmSync(recordDirectory, { recursive: true, force: true });
+      removeSync(recordDirectory, { recursive: true, force: true });
     }
 
-    logSystem({
+    (await logSystem({
       userName: req.user?.username || 'system',
       role: req.user?.role || '',
       action: 'Delete',
       page: access.config.pageName,
       details: `Deleted attachment ${moduleKey}/${recordId}/${fileName}`
-    });
+    }));
 
     return res.json({ message: 'تم حذف صورة المستند بنجاح.' });
   } catch (error) {

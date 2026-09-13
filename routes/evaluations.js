@@ -581,27 +581,27 @@ function shiftDateYear(dateText, targetYear) {
   return `${String(targetYear).trim()}-${parts[1]}-${parts[2]}`;
 }
 
-router.get('/filters', (req, res) => {
+router.get('/filters', async (req, res) => {
   try {
     const currentYear = String(new Date().getFullYear());
 
-    const periods = db.prepare(`
+    const periods = (await db.prepare(`
       SELECT DISTINCT TRIM(Period) AS value
       FROM (
         ${buildDailySourceQuery()}
       ) AS DailyUnion
       WHERE Period IS NOT NULL AND TRIM(Period) <> ''
       ORDER BY value ASC
-    `).all().map((row) => row.value);
+    `).all()).map((row) => row.value);
 
-    const years = db.prepare(`
+    const years = (await db.prepare(`
       SELECT DISTINCT strftime('%Y', date(REPLACE(Today, '/', '-'))) AS value
       FROM (
         ${buildDailySourceQuery()}
       ) AS DailyUnion
       WHERE Today IS NOT NULL AND TRIM(Today) <> '' AND strftime('%Y', date(REPLACE(Today, '/', '-'))) < ?
       ORDER BY value DESC
-    `).all(currentYear).map((row) => row.value).filter(Boolean);
+    `).all(currentYear)).map((row) => row.value).filter(Boolean);
 
     res.json({ periods, years });
   } catch (error) {
@@ -610,7 +610,7 @@ router.get('/filters', (req, res) => {
   }
 });
 
-router.get('/report', (req, res) => {
+router.get('/report', async (req, res) => {
   try {
     const department = String(req.query.department || '').trim();
     const section = String(req.query.section || '').trim();
@@ -633,7 +633,7 @@ router.get('/report', (req, res) => {
       compareYear: ''
     });
 
-    const rows = db.prepare(`
+    const rows = (await db.prepare(`
       SELECT EmpID, Name, Status, Type, Note, Today, Department, Section, Period, InTime, OutTime, ID
       FROM (
         ${buildDailySourceQuery()}
@@ -641,7 +641,7 @@ router.get('/report', (req, res) => {
       ${whereClause}
       ORDER BY Name ASC, date(REPLACE(Today, '/', '-')) DESC, ID DESC
       LIMIT 10000
-    `).all(...params);
+    `).all(...params));
 
     const reportRows = applyAllModeFilters(summarizeRows(rows, reportScope), mode);
 
@@ -660,7 +660,7 @@ router.get('/report', (req, res) => {
           compareYear: ''
         });
 
-        const previousRows = db.prepare(`
+        const previousRows = (await db.prepare(`
           SELECT EmpID, Name, Status, Type, Note, Today, Department, Section, Period, InTime, OutTime, ID
           FROM (
             ${buildDailySourceQuery()}
@@ -668,7 +668,7 @@ router.get('/report', (req, res) => {
           ${previousQuery.whereClause}
           ORDER BY Name ASC, date(REPLACE(Today, '/', '-')) DESC, ID DESC
           LIMIT 10000
-        `).all(...previousQuery.params);
+        `).all(...previousQuery.params));
 
         const previousReportRows = applyAllModeFilters(summarizeRows(previousRows, reportScope), mode);
         const previousByKey = new Map(previousReportRows.map((item) => [item.GroupKey, item]));
@@ -687,17 +687,17 @@ router.get('/report', (req, res) => {
   }
 });
 
-router.get('/daily-base', (req, res) => {
-  const records = db.prepare('SELECT * FROM EmpEval_DailyBase ORDER BY Today DESC LIMIT 1000').all();
+router.get('/daily-base', async (req, res) => {
+  const records = (await db.prepare('SELECT * FROM EmpEval_DailyBase ORDER BY Today DESC LIMIT 1000').all());
   res.json(records);
 });
 
-router.get('/daily-base-p', (req, res) => {
-  const records = db.prepare('SELECT * FROM EmpEval_DailyBase_P ORDER BY Today DESC LIMIT 1000').all();
+router.get('/daily-base-p', async (req, res) => {
+  const records = (await db.prepare('SELECT * FROM EmpEval_DailyBase_P ORDER BY Today DESC LIMIT 1000').all());
   res.json(records);
 });
 
-router.get('/summary/:period', (req, res) => {
+router.get('/summary/:period', async (req, res) => {
   const period = String(req.params.period || '').toLowerCase();
   if (!validSummaries.has(period)) {
     return res.status(400).json({ message: 'الفترة غير مدعومة' });
@@ -712,7 +712,7 @@ router.get('/summary/:period', (req, res) => {
     year: 'EmpSummary_ThisYear'
   }[period];
 
-  const records = db.prepare(`SELECT * FROM ${viewName} ORDER BY Name LIMIT 1000`).all();
+  const records = (await db.prepare(`SELECT * FROM ${viewName} ORDER BY Name LIMIT 1000`).all());
   res.json(records);
 });
 

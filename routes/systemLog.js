@@ -8,7 +8,7 @@ function normalizeDateInput(value) {
   return text.replace(/\//g, '-');
 }
 
-function replaceEmployeeIdWithName(record) {
+async function replaceEmployeeIdWithName(record) {
   if (!record || !record.Details) {
     return record;
   }
@@ -34,7 +34,7 @@ function replaceEmployeeIdWithName(record) {
     }
 
     try {
-      const source = db.prepare(`SELECT Name FROM "${String(mapping.table || '').replace(/"/g, '""')}" WHERE ID = ? LIMIT 1`).get(rowId);
+      const source = (await db.prepare(`SELECT Name FROM "${String(mapping.table || '').replace(/"/g, '""')}" WHERE ID = ? LIMIT 1`).get(rowId));
       const name = String(source?.Name || '').trim();
       if (!name) {
         return record;
@@ -172,7 +172,7 @@ function localizeRecord(record) {
   };
 }
 
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   const filters = [];
   const params = [];
 
@@ -204,7 +204,7 @@ router.get('/', (req, res) => {
 
   const whereClause = filters.length ? `WHERE ${filters.join(' AND ')}` : '';
   const sql = `SELECT * FROM SystemLog ${whereClause} ORDER BY Timestamp DESC`;
-  const records = db.prepare(sql).all(...params).map(replaceEmployeeIdWithName).map(localizeRecord);
+  const records = (await db.prepare(sql).all(...params)).map(replaceEmployeeIdWithName).map(localizeRecord);
   res.json(records);
 });
 

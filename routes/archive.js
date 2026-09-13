@@ -4,7 +4,8 @@ const path = require('path');
 const multer = require('multer');
 const mammoth = require('mammoth');
 const ExcelJS = require('exceljs');
-const { db, logSystem, getCurrentTimestamp } = require('../database');
+const { db, logSystem, getCurrentTimestamp, registerDatabaseInitializer } = require('../database');
+const { removeSync } = require('../utils/fsCompat');
 const {
   LEGACY_CATEGORY_ALIASES,
   ensureArchiveCategoriesTable,
@@ -93,8 +94,8 @@ function countPagesForFile(fileBuffer, extension) {
   return 1;
 }
 
-function ensureArchiveTable() {
-  db.prepare(`
+async function ensureArchiveTable() {
+  (await db.prepare(`
     CREATE TABLE IF NOT EXISTS Archive (
       ID INTEGER PRIMARY KEY AUTOINCREMENT,
       FileName TEXT NOT NULL,
@@ -106,11 +107,8 @@ function ensureArchiveTable() {
       StoragePath TEXT NOT NULL,
       OriginalName TEXT NOT NULL
     )
-  `).run();
+  `).run());
 }
-
-ensureArchiveTable();
-ensureArchiveCategoriesTable(db, getCurrentTimestamp);
 
 function mergeArchiveDirectory(sourceDirectory, targetDirectory) {
   if (!fs.existsSync(sourceDirectory)) return;
@@ -130,39 +128,43 @@ function mergeArchiveDirectory(sourceDirectory, targetDirectory) {
   });
 
   if (fs.readdirSync(sourceDirectory).length === 0) {
-    fs.rmSync(sourceDirectory, { recursive: true, force: true });
+    removeSync(sourceDirectory, { recursive: true, force: true });
   }
 }
 
-function migrateLegacyArchiveCategories() {
-  Object.entries(LEGACY_CATEGORY_ALIASES).forEach(([legacyKey, categoryKey]) => {
+async function migrateLegacyArchiveCategories() {
+  for (const [legacyKey, categoryKey] of Object.entries(LEGACY_CATEGORY_ALIASES)) {
     mergeArchiveDirectory(path.join(archiveRoot, legacyKey), path.join(archiveRoot, categoryKey));
-    db.prepare(`
+    (await db.prepare(`
       UPDATE Archive
       SET Category = ?, StoragePath = REPLACE(StoragePath, ?, ?)
       WHERE Category = ?
-    `).run(categoryKey, `${legacyKey}${path.sep}`, `${categoryKey}${path.sep}`, legacyKey);
-  });
+    `).run(categoryKey, `${legacyKey}${path.sep}`, `${categoryKey}${path.sep}`, legacyKey));
+  }
 
-  listArchiveCategories(db).forEach((category) => {
-    fs.mkdirSync(path.join(archiveRoot, ...getArchiveCategoryPath(db, category.KeyName)), { recursive: true });
-  });
+  for (const category of await listArchiveCategories(db)) {
+    fs.mkdirSync(path.join(archiveRoot, ...(await getArchiveCategoryPath(db, category.KeyName))), { recursive: true });
+  }
 }
 
-migrateLegacyArchiveCategories();
+registerDatabaseInitializer(async () => {
+  await ensureArchiveTable();
+  await ensureArchiveCategoriesTable(db, getCurrentTimestamp);
+  await migrateLegacyArchiveCategories();
+});
 
-function getCategoryDirectory(category) {
-  const categoryPath = getArchiveCategoryPath(db, category);
+async function getCategoryDirectory(category) {
+  const categoryPath = (await getArchiveCategoryPath(db, category));
   return path.join(archiveRoot, ...categoryPath);
 }
 
-function buildFileUrl(category, id, fileName) {
-  const categoryPath = getArchiveCategoryPath(db, category).map(encodeURIComponent).join('/');
+async function buildFileUrl(category, id, fileName) {
+  const categoryPath = (await getArchiveCategoryPath(db, category)).map(encodeURIComponent).join('/');
   return `/archive-files/${categoryPath}/${encodeURIComponent(String(id))}/${encodeURIComponent(fileName)}`;
 }
 
-function listFilesForRecord(category, recordId) {
-  const recordDirectory = path.join(getCategoryDirectory(category), String(recordId));
+async function listFilesForRecord(category, recordId) {
+  const recordDirectory = path.join((await getCategoryDirectory(category)), String(recordId));
   if (!fs.existsSync(recordDirectory)) {
     return [];
   }
@@ -172,17 +174,17 @@ function listFilesForRecord(category, recordId) {
     .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 }
 
-function getPrimaryFileForRecord(category, recordId) {
-  const files = listFilesForRecord(category, recordId);
+async function getPrimaryFileForRecord(category, recordId) {
+  const files = (await listFilesForRecord(category, recordId));
   return files[0] || '';
 }
 
-function serializeRow(row) {
+async function serializeRow(row) {
   const category = String(row.Category || 'circulars');
   const normalizedCategory = normalizeCategory(category);
-  const categoryRecord = getArchiveCategory(db, normalizedCategory, { includeInactive: true });
+  const categoryRecord = (await getArchiveCategory(db, normalizedCategory, { includeInactive: true }));
   const fileName = String(row.FileName || '').trim() || String(row.OriginalName || '').trim();
-  const primaryFile = getPrimaryFileForRecord(normalizedCategory, row.ID);
+  const primaryFile = (await getPrimaryFileForRecord(normalizedCategory, row.ID));
   const primaryExtension = path.extname(primaryFile).replace(/^\./, '').toLowerCase();
   const url = `/api/archive/download/${encodeURIComponent(normalizedCategory)}/${encodeURIComponent(String(row.ID))}`;
   const previewUrl = `/api/archive/preview/${encodeURIComponent(normalizedCategory)}/${encodeURIComponent(String(row.ID))}`;
@@ -199,26 +201,26 @@ function serializeRow(row) {
     DownloadUrl: url,
     PreviewUrl: previewUrl,
     ThumbnailUrl: primaryFile && ['image', 'pdf'].includes(fileTypeFromExtension(primaryExtension))
-      ? buildFileUrl(normalizedCategory, row.ID, primaryFile)
+      ? (await buildFileUrl(normalizedCategory, row.ID, primaryFile))
       : '',
     StoragePath: row.StoragePath || '',
     PrimaryFile: primaryFile
   };
 }
 
-router.get('/categories', (req, res) => {
+router.get('/categories', async (req, res) => {
   try {
     const requestedParent = normalizeCategory(req.query.parent);
-    const allCategories = listArchiveCategories(db);
-    const parent = requestedParent ? getArchiveCategory(db, requestedParent) : null;
-    const categories = allCategories
+    const allCategories = (await listArchiveCategories(db));
+    const parent = requestedParent ? (await getArchiveCategory(db, requestedParent)) : null;
+    const categories = await Promise.all(allCategories
       .filter((category) => parent ? Number(category.ParentID) === Number(parent.ID) : !category.ParentID)
-      .map((category) => ({
+      .map(async (category) => ({
       ...category,
-      FileCount: db.prepare('SELECT COUNT(*) AS count FROM Archive WHERE Category = ?').get(category.KeyName).count,
-      ChildCount: db.prepare('SELECT COUNT(*) AS count FROM ArchiveCategories WHERE ParentID = ? AND IsActive = 1').get(category.ID).count,
+      FileCount: (await db.prepare('SELECT COUNT(*) AS count FROM Archive WHERE Category = ?').get(category.KeyName)).count,
+      ChildCount: (await db.prepare('SELECT COUNT(*) AS count FROM ArchiveCategories WHERE ParentID = ? AND IsActive = 1').get(category.ID)).count,
       Url: `/archive-folder.html?category=${encodeURIComponent(category.KeyName)}`
-      }));
+      })));
     return res.json(categories);
   } catch (error) {
     console.error(error);
@@ -226,30 +228,30 @@ router.get('/categories', (req, res) => {
   }
 });
 
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const requestedCategory = normalizeCategory(req.query.category);
     const rows = requestedCategory
-      ? db.prepare(`
+      ? (await db.prepare(`
           SELECT ID, FileName, FileType, PageCount, UploadedAt, Category, Extension, StoragePath, OriginalName
           FROM Archive
           WHERE Category = ?
           ORDER BY ID DESC
-        `).all(requestedCategory)
-      : db.prepare(`
+        `).all(requestedCategory))
+      : (await db.prepare(`
       SELECT ID, FileName, FileType, PageCount, UploadedAt, Category, Extension, StoragePath, OriginalName
       FROM Archive
       ORDER BY ID DESC
-    `).all();
+    `).all());
 
-    return res.json(rows.map(serializeRow));
+    return res.json(await Promise.all(rows.map(serializeRow)));
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: 'تعذر قراءة ملفات الأرشيف.' });
   }
 });
 
-router.post('/upload', upload.array('files', 20), (req, res) => {
+router.post('/upload', upload.array('files', 20), async (req, res) => {
   const userName = normalize(req.user?.username || req.user?.name || 'admin');
   const role = String(req.user?.role || '').trim().toLowerCase();
   if (role !== 'admin') {
@@ -262,11 +264,11 @@ router.post('/upload', upload.array('files', 20), (req, res) => {
   }
 
   const category = normalizeCategory(req.body.category || req.body.Category || 'circulars');
-  if (!getArchiveCategory(db, category)) {
+  if (!(await getArchiveCategory(db, category))) {
     return res.status(400).json({ message: 'مجلد الأرشيف المحدد غير موجود أو غير نشط.' });
   }
   const displayName = normalize(req.body.name || req.body.fileName || uploadedFiles[0].originalname.replace(/\.[^.]+$/, ''));
-  const folderBase = getCategoryDirectory(category);
+  const folderBase = (await getCategoryDirectory(category));
   fs.mkdirSync(folderBase, { recursive: true });
 
   try {
@@ -284,7 +286,7 @@ router.post('/upload', upload.array('files', 20), (req, res) => {
     const extension = path.extname(uploadedFiles[0].originalname || '').replace(/^\./, '').toLowerCase();
     const fileType = fileTypeFromExtension(extension);
     const displayBaseName = displayName || path.basename(uploadedFiles[0].originalname, path.extname(uploadedFiles[0].originalname));
-    const insertResult = row.run(displayBaseName, fileType, totalPageCount, uploadedAt, category, extension || 'file', path.join(category, String(0)), uploadedFiles[0].originalname);
+    const insertResult = (await row.run(displayBaseName, fileType, totalPageCount, uploadedAt, category, extension || 'file', path.join(category, String(0)), uploadedFiles[0].originalname));
 
     const recordId = Number(insertResult.lastInsertRowid);
     const recordDir = path.join(folderBase, String(recordId));
@@ -297,28 +299,28 @@ router.post('/upload', upload.array('files', 20), (req, res) => {
       fs.writeFileSync(targetPath, file.buffer || Buffer.alloc(0));
     });
 
-    db.prepare(`
+    (await db.prepare(`
       UPDATE Archive
       SET StoragePath = ?, OriginalName = ?, FileName = ?
       WHERE ID = ?
-    `).run(path.join(category, String(recordId)), uploadedFiles[0].originalname, displayBaseName, recordId);
+    `).run(path.join(category, String(recordId)), uploadedFiles[0].originalname, displayBaseName, recordId));
 
-    logSystem({
+    (await logSystem({
       userName,
       role,
       action: 'Add',
       page: 'Archive',
       details: `Uploaded archive ID=${recordId} category=${category}`
-    });
+    }));
 
-    const serialized = db.prepare(`
+    const serialized = (await db.prepare(`
       SELECT ID, FileName, FileType, PageCount, UploadedAt, Category, Extension, StoragePath, OriginalName
       FROM Archive WHERE ID = ? LIMIT 1
-    `).get(recordId);
+    `).get(recordId));
 
     return res.status(201).json({
       message: 'تم رفع الملف إلى الأرشيف بنجاح.',
-      record: serializeRow(serialized)
+      record: (await serializeRow(serialized))
     });
   } catch (error) {
     console.error(error);
@@ -329,17 +331,17 @@ router.post('/upload', upload.array('files', 20), (req, res) => {
 router.get('/preview/:category/:id', async (req, res) => {
   const category = normalizeCategory(req.params.category || 'circulars');
   const recordId = Number(req.params.id || 0);
-  const row = recordId ? db.prepare(`
+  const row = recordId ? (await db.prepare(`
     SELECT ID, FileName, FileType, Extension
     FROM Archive WHERE ID = ? AND Category = ? LIMIT 1
-  `).get(recordId, category) : null;
+  `).get(recordId, category)) : null;
 
   if (!row) {
     return res.status(404).send('ملف الأرشيف غير موجود.');
   }
 
-  const primaryFile = getPrimaryFileForRecord(category, recordId);
-  const actualPath = primaryFile ? path.join(getCategoryDirectory(category), String(recordId), primaryFile) : '';
+  const primaryFile = (await getPrimaryFileForRecord(category, recordId));
+  const actualPath = primaryFile ? path.join((await getCategoryDirectory(category)), String(recordId), primaryFile) : '';
   if (!actualPath || !fs.existsSync(actualPath)) {
     return res.status(404).send('الملف الفعلي غير موجود.');
   }
@@ -347,7 +349,7 @@ router.get('/preview/:category/:id', async (req, res) => {
   const extension = path.extname(primaryFile).replace(/^\./, '').toLowerCase();
   try {
     if (fileTypeFromExtension(extension) === 'image') {
-      const source = buildFileUrl(category, recordId, primaryFile);
+      const source = (await buildFileUrl(category, recordId, primaryFile));
       return res.type('html').send(previewDocument(row.FileName, `<img src="${escapeHtml(source)}" alt="${escapeHtml(row.FileName)}">`));
     }
 
@@ -395,31 +397,31 @@ router.get('/preview/:category/:id', async (req, res) => {
   }
 });
 
-router.get('/download/:category/:id', (req, res) => {
+router.get('/download/:category/:id', async (req, res) => {
   const category = normalizeCategory(req.params.category || 'circulars');
   const recordId = Number(req.params.id || 0);
   if (!recordId) {
     return res.status(400).json({ message: 'معرّف الملف غير صالح.' });
   }
 
-  const row = db.prepare(`
+  const row = (await db.prepare(`
     SELECT ID, FileName, FileType, PageCount, UploadedAt, Category, Extension, StoragePath, OriginalName
     FROM Archive
     WHERE ID = ? AND Category = ?
     LIMIT 1
-  `).get(recordId, category);
+  `).get(recordId, category));
 
   if (!row) {
     return res.status(404).json({ message: 'ملف الأرشيف غير موجود.' });
   }
 
-  const files = listFilesForRecord(category, recordId);
+  const files = (await listFilesForRecord(category, recordId));
   const primaryFile = files[0];
   if (!primaryFile) {
     return res.status(404).json({ message: 'لا يوجد ملف فعلي لهذا السجل.' });
   }
 
-  const actualPath = path.join(getCategoryDirectory(category), String(recordId), primaryFile);
+  const actualPath = path.join((await getCategoryDirectory(category)), String(recordId), primaryFile);
   if (!fs.existsSync(actualPath)) {
     return res.status(404).json({ message: 'الملف غير موجود في المجلد المحلي.' });
   }

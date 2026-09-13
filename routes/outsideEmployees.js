@@ -7,9 +7,9 @@ function isActiveStatus(status) {
   return String(status || '').trim() === 'نشط';
 }
 
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
-    const records = db.prepare('SELECT * FROM Main ORDER BY ID DESC').all();
+    const records = (await db.prepare('SELECT * FROM Main ORDER BY ID DESC').all());
     const outsideRecords = records.filter((item) => !isActiveStatus(item.Status));
     res.json(outsideRecords);
   } catch (error) {

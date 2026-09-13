@@ -120,7 +120,7 @@
     </form>
 
     <div id="message" class="message"></div>
-    <div class="hint">يتم الاتصال بقاعدة البيانات: Z:\database.db</div>
+    <div class="hint">متصل بقاعدة البيانات المركزية على<br>PC-SERVER</div>
   </div>
 
   <script>
@@ -129,16 +129,18 @@
     const usernameInput = document.getElementById('username');
     const passwordInput = document.getElementById('password');
     const rememberCheckbox = document.getElementById('remember');
+    const refreshTokenKey = 'refreshToken';
 
     function clearSessionLocalState() {
       localStorage.removeItem('activityLog');
       localStorage.removeItem('loggedInUser');
     }
 
-    function clearRememberedCredentials() {
+    function clearRememberedSession() {
       localStorage.removeItem('rememberLogin');
       localStorage.removeItem('loginUsername');
       localStorage.removeItem('loginPassword');
+      localStorage.removeItem(refreshTokenKey);
     }
 
     function updateRememberedState() {
@@ -147,23 +149,72 @@
         localStorage.setItem('loginUsername', usernameInput.value);
         localStorage.setItem('loginPassword', passwordInput.value);
       } else {
-        clearRememberedCredentials();
+        clearRememberedSession();
       }
     }
 
-    function loadRememberedCredentials() {
+    function getDestination() {
+      const isMobileLayout = window.matchMedia('(max-width: 900px)').matches || window.matchMedia('(pointer: coarse)').matches;
+      return {
+        mode: isMobileLayout ? 'mobile' : 'desktop',
+        path: isMobileLayout ? '/mobile-dashboard.html' : '/dashboard.html'
+      };
+    }
+
+    function completeLogin(result) {
+      const destination = getDestination();
+      clearSessionLocalState();
+      sessionStorage.setItem('authToken', result.token);
+      sessionStorage.setItem('uiMode', destination.mode);
+      window.location.href = destination.path;
+    }
+
+    async function restoreRememberedSession() {
       const remembered = localStorage.getItem('rememberLogin') === 'true';
+      const refreshToken = localStorage.getItem(refreshTokenKey);
+
       if (!remembered) {
+        if (!remembered) clearRememberedSession();
         return;
       }
 
       rememberCheckbox.checked = true;
       usernameInput.value = localStorage.getItem('loginUsername') || '';
       passwordInput.value = localStorage.getItem('loginPassword') || '';
+
+      if (!refreshToken) {
+        return;
+      }
+
+      messageBox.className = 'message';
+      messageBox.textContent = 'جاري استعادة جلسة الدخول...';
+      messageBox.style.display = 'block';
+
+      try {
+        const response = await fetch('/api/auth/refresh', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refreshToken })
+        });
+        const result = await response.json();
+
+        if (response.ok) {
+          localStorage.setItem(refreshTokenKey, result.refreshToken);
+          completeLogin(result);
+          return;
+        }
+      } catch {
+        messageBox.className = 'message error';
+        messageBox.textContent = 'تعذر الاتصال بالخادم لاستعادة الجلسة';
+        return;
+      }
+
+      localStorage.removeItem(refreshTokenKey);
+      messageBox.style.display = 'none';
     }
 
     clearSessionLocalState();
-    loadRememberedCredentials();
+    restoreRememberedSession();
 
     usernameInput.addEventListener('input', () => {
       if (rememberCheckbox.checked) {
@@ -185,7 +236,7 @@
       e.preventDefault();
       const formData = new FormData(form);
       const payload = Object.fromEntries(formData.entries());
-      const isMobileLayout = window.matchMedia('(max-width: 900px)').matches || window.matchMedia('(pointer: coarse)').matches;
+      payload.rememberMe = rememberCheckbox.checked;
 
       messageBox.className = 'message';
       messageBox.textContent = 'جاري التحقق...';
@@ -203,15 +254,13 @@
         messageBox.textContent = result.message || 'تمت العملية';
 
         if (response.ok) {
-          clearSessionLocalState();
-          if (rememberCheckbox.checked) {
+          if (rememberCheckbox.checked && result.refreshToken) {
             updateRememberedState();
+            localStorage.setItem(refreshTokenKey, result.refreshToken);
           } else {
-            clearRememberedCredentials();
+            clearRememberedSession();
           }
-          sessionStorage.setItem('authToken', result.token);
-          sessionStorage.setItem('uiMode', isMobileLayout ? 'mobile' : 'desktop');
-          window.location.href = isMobileLayout ? '/mobile-dashboard.html' : '/dashboard.html';
+          completeLogin(result);
           return;
         }
       } catch (err) {

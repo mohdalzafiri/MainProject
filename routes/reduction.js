@@ -1,11 +1,11 @@
 const express = require('express');
-const { db, logSystem } = require('../database');
+const { db, logSystem, registerDatabaseInitializer } = require('../database');
 
 const router = express.Router();
 const columns = ['EmpID', 'Name', 'Department', 'Section', 'Status', 'Type', 'Startdate', 'Enddate', 'Hours', 'Note', 'UserName'];
 
-function ensureReductionTable() {
-  db.prepare(`
+async function ensureReductionTable() {
+  (await db.prepare(`
     CREATE TABLE IF NOT EXISTS Reduction (
       ID INTEGER PRIMARY KEY AUTOINCREMENT,
       EmpID INTEGER,
@@ -20,21 +20,23 @@ function ensureReductionTable() {
       Note TEXT,
       UserName TEXT
     )
-  `).run();
+  `).run());
 }
 
-function ensureColumn(tableName, columnName, columnType, defaultValue = null) {
-  const columnsInfo = db.prepare(`PRAGMA table_info(${tableName})`).all();
+async function ensureColumn(tableName, columnName, columnType, defaultValue = null) {
+  const columnsInfo = (await db.prepare(`PRAGMA table_info(${tableName})`).all());
   const hasColumn = columnsInfo.some((column) => String(column.name || '').toLowerCase() === String(columnName || '').toLowerCase());
   if (hasColumn) return;
 
   const defaultClause = defaultValue === null ? '' : ` DEFAULT ${defaultValue}`;
-  db.prepare(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${columnType}${defaultClause}`).run();
+  (await db.prepare(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${columnType}${defaultClause}`).run());
 }
 
-ensureReductionTable();
-ensureColumn('Reduction', 'UserName', 'TEXT');
-ensureColumn('Reduction', 'Hours', 'INTEGER', '2');
+registerDatabaseInitializer(async () => {
+  await ensureReductionTable();
+  await ensureColumn('Reduction', 'UserName', 'TEXT');
+  await ensureColumn('Reduction', 'Hours', 'INTEGER', '2');
+});
 
 function normalizeText(value) {
   return String(value || '').trim();
@@ -70,22 +72,22 @@ function buildUpdateStatement(payload, id) {
   };
 }
 
-router.get('/', (req, res) => {
-  const records = db.prepare('SELECT * FROM Reduction ORDER BY Startdate DESC, ID DESC').all();
+router.get('/', async (req, res) => {
+  const records = (await db.prepare('SELECT * FROM Reduction ORDER BY Startdate DESC, ID DESC').all());
   res.json(records);
 });
 
-router.get('/:id', (req, res) => {
+router.get('/:id', async (req, res) => {
   const id = Number(req.params.id);
   if (!id) {
     return res.status(400).json({ message: 'معرّف غير صالح' });
   }
 
-  const record = db.prepare('SELECT * FROM Reduction WHERE ID = ?').get(id);
+  const record = (await db.prepare('SELECT * FROM Reduction WHERE ID = ?').get(id));
   return record ? res.json(record) : res.status(404).json({ message: 'السجل غير موجود' });
 });
 
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   const payload = { ...req.body };
   const status = normalizeText(payload.Status);
   const type = normalizeText(payload.Type);
@@ -120,12 +122,12 @@ router.post('/', (req, res) => {
     return res.status(400).json({ message: 'البيانات المرسلة غير كافية' });
   }
 
-  const result = db.prepare(statement.sql).run(statement.values);
-  logSystem({ userName: payload.UserName || 'system', action: 'Add', page: 'Reduction', details: `Added work reduction ID=${result.lastInsertRowid}` });
+  const result = (await db.prepare(statement.sql).run(statement.values));
+  (await logSystem({ userName: payload.UserName || 'system', action: 'Add', page: 'Reduction', details: `Added work reduction ID=${result.lastInsertRowid}` }));
   res.json({ id: result.lastInsertRowid });
 });
 
-router.put('/:id', (req, res) => {
+router.put('/:id', async (req, res) => {
   const id = Number(req.params.id);
   if (!id) {
     return res.status(400).json({ message: 'معرّف غير صالح' });
@@ -159,7 +161,7 @@ router.put('/:id', (req, res) => {
   }
 
   if (!empId && !employeeName && !payload.EmpID && !payload.Name) {
-    const current = db.prepare('SELECT EmpID, Name FROM Reduction WHERE ID = ?').get(id);
+    const current = (await db.prepare('SELECT EmpID, Name FROM Reduction WHERE ID = ?').get(id));
     if (current) {
       payload.EmpID = current.EmpID;
       payload.Name = current.Name;
@@ -175,27 +177,27 @@ router.put('/:id', (req, res) => {
     return res.status(400).json({ message: 'البيانات المرسلة غير كافية' });
   }
 
-  const result = db.prepare(statement.sql).run(statement.values);
+  const result = (await db.prepare(statement.sql).run(statement.values));
   if (result.changes === 0) {
     return res.status(404).json({ message: 'السجل غير موجود للتعديل' });
   }
 
-  logSystem({ userName: payload.UserName || 'system', action: 'Update', page: 'Reduction', details: `Updated work reduction ID=${id}` });
+  (await logSystem({ userName: payload.UserName || 'system', action: 'Update', page: 'Reduction', details: `Updated work reduction ID=${id}` }));
   res.json({ changes: result.changes });
 });
 
-router.delete('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
   const id = Number(req.params.id);
   if (!id) {
     return res.status(400).json({ message: 'معرّف غير صالح' });
   }
 
-  const result = db.prepare('DELETE FROM Reduction WHERE ID = ?').run(id);
+  const result = (await db.prepare('DELETE FROM Reduction WHERE ID = ?').run(id));
   if (result.changes === 0) {
     return res.status(404).json({ message: 'السجل غير موجود للحذف' });
   }
 
-  logSystem({ userName: req.body.userName || 'system', action: 'Delete', page: 'Reduction', details: `Deleted work reduction ID=${id}` });
+  (await logSystem({ userName: req.body.userName || 'system', action: 'Delete', page: 'Reduction', details: `Deleted work reduction ID=${id}` }));
   res.json({ changes: result.changes });
 });
 

@@ -102,14 +102,14 @@ function getPermissionSourceQuery() {
   `).join(' UNION ALL ');
 }
 
-function getMonthlyPermissionUsage(record, excludedTable = '', excludedId = 0) {
+async function getMonthlyPermissionUsage(record, excludedTable = '', excludedId = 0) {
   const today = normalizeDateInput(record.Today);
   const name = String(record.Name || '').trim();
   const empId = String(record.EmpID || '').trim();
   const bounds = getMonthBounds(today);
   if (!today || !bounds || (!empId && !name)) return { count: 0, minutes: 0 };
 
-  const records = db.prepare(`
+  const records = (await db.prepare(`
     SELECT SourceTable, ID, InTime, OutTime
     FROM (${getPermissionSourceQuery()}) AS DailyPermissions
     WHERE TRIM(Status) = 'استئذان'
@@ -118,7 +118,7 @@ function getMonthlyPermissionUsage(record, excludedTable = '', excludedId = 0) {
         (EmpID IS NOT NULL AND CAST(EmpID AS TEXT) = ?)
         OR TRIM(Name) = ?
       )
-  `).all(bounds.from, bounds.to, empId, name).filter((item) =>
+  `).all(bounds.from, bounds.to, empId, name)).filter((item) =>
     String(item.SourceTable || '') !== excludedTable || Number(item.ID) !== Number(excludedId)
   );
 
@@ -128,10 +128,10 @@ function getMonthlyPermissionUsage(record, excludedTable = '', excludedId = 0) {
   };
 }
 
-function validateMonthlyPermissionLimit(record, excludedTable = '', excludedId = 0) {
+async function validateMonthlyPermissionLimit(record, excludedTable = '', excludedId = 0) {
   if (String(record.Status || '').trim() !== 'استئذان') return '';
 
-  const usage = getMonthlyPermissionUsage(record, excludedTable, excludedId);
+  const usage = (await getMonthlyPermissionUsage(record, excludedTable, excludedId));
   const totalCount = usage.count + 1;
   const totalMinutes = usage.minutes + getPermissionMinutes(record.InTime, record.OutTime);
 
@@ -166,13 +166,13 @@ function resolveDailyTableByDepartment(department) {
   return '';
 }
 
-function getLookupDepartments() {
-  const departments = db.prepare(`
+async function getLookupDepartments() {
+  const departments = (await db.prepare(`
     SELECT DISTINCT TRIM(Department) AS value
     FROM DepartmentSectionLookup
     WHERE IsActive = 1 AND TRIM(Department) <> ''
     ORDER BY SortOrder ASC, ID ASC
-  `).all().map((row) => normalizeDepartment(row.value));
+  `).all()).map((row) => normalizeDepartment(row.value));
 
   const known = departmentOrder.filter((department) => departments.includes(department));
   const extra = departments.filter((department) => !departmentOrder.includes(department));
@@ -205,7 +205,7 @@ function normalizeLinkedRecordDate(value) {
   return `${parts[0]}/${String(parts[1]).padStart(2, '0')}/${String(parts[2]).padStart(2, '0')}`;
 }
 
-function addLinkedHolidayIfNeeded(record, userName) {
+async function addLinkedHolidayIfNeeded(record, userName) {
   if (String(record.Status || '').trim() !== 'اجازة') return false;
 
   const date = normalizeLinkedRecordDate(record.Today);
@@ -214,22 +214,22 @@ function addLinkedHolidayIfNeeded(record, userName) {
   if (!date || (!empId && !name)) return false;
 
   const type = String(record.Type || '').trim() || 'اجازة';
-  const existing = db.prepare(`
+  const existing = (await db.prepare(`
     SELECT ID, Type FROM Holiday
     WHERE Status = 'اجازة' AND Startdate = ? AND Enddate = ?
       AND ((EmpID IS NOT NULL AND CAST(EmpID AS TEXT) = CAST(? AS TEXT)) OR TRIM(Name) = ?)
     LIMIT 1
-  `).get(date, date, empId, name);
+  `).get(date, date, empId, name));
   if (existing) {
     if (String(existing.Type || '').trim() !== type) {
-      db.prepare('UPDATE Holiday SET Type = ?, Note = ?, UserName = ? WHERE ID = ?')
-        .run(type, String(record.Note || '').trim(), userName, existing.ID);
+      (await db.prepare('UPDATE Holiday SET Type = ?, Note = ?, UserName = ? WHERE ID = ?')
+        .run(type, String(record.Note || '').trim(), userName, existing.ID));
       return true;
     }
     return false;
   }
 
-  db.prepare(`
+  (await db.prepare(`
     INSERT INTO Holiday (EmpID, Name, Department, Section, Status, Type, Startdate, Enddate, Days, Note, UserName)
     VALUES (?, ?, ?, ?, 'اجازة', ?, ?, ?, 1, ?, ?)
   `).run(
@@ -242,11 +242,11 @@ function addLinkedHolidayIfNeeded(record, userName) {
     date,
     String(record.Note || '').trim(),
     userName
-  );
+  ));
   return true;
 }
 
-function addLinkedReductionIfNeeded(record, userName) {
+async function addLinkedReductionIfNeeded(record, userName) {
   if (String(record.Status || '').trim() !== 'تخفيف عمل') return false;
 
   const date = normalizeLinkedRecordDate(record.Today);
@@ -255,15 +255,15 @@ function addLinkedReductionIfNeeded(record, userName) {
   const type = String(record.Type || '').trim();
   if (!date || !type || !['بداية الدوام', 'نهاية الدوام'].includes(type) || (!empId && !name)) return false;
 
-  const duplicate = db.prepare(`
+  const duplicate = (await db.prepare(`
     SELECT ID FROM Reduction
     WHERE Status = 'تخفيف عمل' AND Type = ? AND Startdate = ? AND Enddate = ?
       AND ((EmpID IS NOT NULL AND CAST(EmpID AS TEXT) = CAST(? AS TEXT)) OR TRIM(Name) = ?)
     LIMIT 1
-  `).get(type, date, date, empId, name);
+  `).get(type, date, date, empId, name));
   if (duplicate) return false;
 
-  db.prepare(`
+  (await db.prepare(`
     INSERT INTO Reduction (EmpID, Name, Department, Section, Status, Type, Startdate, Enddate, Hours, Note, UserName)
     VALUES (?, ?, ?, ?, 'تخفيف عمل', ?, ?, ?, 2, ?, ?)
   `).run(
@@ -276,21 +276,21 @@ function addLinkedReductionIfNeeded(record, userName) {
     date,
     String(record.Note || '').trim(),
     userName
-  );
+  ));
   return true;
 }
 
-function findActiveEmployees(department, section = '') {
+async function findActiveEmployees(department, section = '') {
   const normalizedDepartment = normalizeDepartment(department);
   const normalizedSection = String(section || '').trim();
 
   if (!normalizedDepartment) {
-    return db.prepare(`
+    return (await db.prepare(`
       SELECT ID AS EmpID, Name, Department, Section
       FROM Main
       WHERE TRIM(Status) = 'نشط'
       ORDER BY Name ASC
-    `).all();
+    `).all());
   }
 
   const baseSql = `
@@ -303,10 +303,10 @@ function findActiveEmployees(department, section = '') {
   `;
 
   if (!normalizedSection) {
-    return db.prepare(`${baseSql} ORDER BY Name ASC`).all(normalizedDepartment);
+    return (await db.prepare(`${baseSql} ORDER BY Name ASC`).all(normalizedDepartment));
   }
 
-  return db.prepare(`${baseSql} AND TRIM(Section) = ? ORDER BY Name ASC`).all(normalizedDepartment, normalizedSection);
+  return (await db.prepare(`${baseSql} AND TRIM(Section) = ? ORDER BY Name ASC`).all(normalizedDepartment, normalizedSection));
 }
 
 function filterEmployeesByExactName(employees, employeeName) {
@@ -319,8 +319,8 @@ function normalizeName(value) {
   return String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
-function findLeaveForDate(empID, name, dateValue) {
-  return db.prepare(`
+async function findLeaveForDate(empID, name, dateValue) {
+  return (await db.prepare(`
     SELECT Type, Startdate, Enddate, Note
     FROM Holiday
     WHERE (
@@ -331,11 +331,11 @@ function findLeaveForDate(empID, name, dateValue) {
       AND date(REPLACE(Enddate, '/', '-')) >= date(?)
     ORDER BY date(REPLACE(Enddate, '/', '-')) DESC, ID DESC
     LIMIT 1
-  `).get(empID, String(name || '').trim(), dateValue, dateValue);
+  `).get(empID, String(name || '').trim(), dateValue, dateValue));
 }
 
-function findCourseForDate(empID, name, dateValue) {
-  return db.prepare(`
+async function findCourseForDate(empID, name, dateValue) {
+  return (await db.prepare(`
     SELECT CourseName, Startdate, Enddate, Note
     FROM Course
     WHERE (
@@ -346,11 +346,11 @@ function findCourseForDate(empID, name, dateValue) {
       AND date(REPLACE(Enddate, '/', '-')) >= date(?)
     ORDER BY date(REPLACE(Enddate, '/', '-')) DESC, ID DESC
     LIMIT 1
-  `).get(empID, String(name || '').trim(), dateValue, dateValue);
+  `).get(empID, String(name || '').trim(), dateValue, dateValue));
 }
 
-function hasSameEmployeeInDaily(table, empID, name, dateValue, period) {
-  const row = db.prepare(`
+async function hasSameEmployeeInDaily(table, empID, name, dateValue, period) {
+  const row = (await db.prepare(`
     SELECT ID
     FROM ${table}
     WHERE date(REPLACE(Today, '/', '-')) = date(?)
@@ -360,18 +360,18 @@ function hasSameEmployeeInDaily(table, empID, name, dateValue, period) {
         OR TRIM(Name) = ?
       )
     LIMIT 1
-  `).get(dateValue, String(period || '').trim(), empID, String(name || '').trim());
+  `).get(dateValue, String(period || '').trim(), empID, String(name || '').trim()));
 
   return Boolean(row);
 }
 
-router.get('/', (req, res) => {
-  const records = db.prepare(`
+router.get('/', async (req, res) => {
+  const records = (await db.prepare(`
     SELECT ID, EmpID, Day, Today, Name, Department, Section, Status, Period, InTime, OutTime, Startdate, Enddate, Type, Note
     FROM DailyAll
     ORDER BY date(REPLACE(Today, '/', '-')) DESC, Name ASC, ID DESC
     LIMIT 1000
-  `).all();
+  `).all());
   res.json(records);
 });
 
@@ -379,16 +379,16 @@ router.get('/tables', (req, res) => {
   res.json(dailyTables);
 });
 
-router.get('/filters', (req, res) => {
+router.get('/filters', async (req, res) => {
   try {
     res.json({
-      departments: getLookupDepartments(),
-      departmentSections: db.prepare(`
+      departments: (await getLookupDepartments()),
+      departmentSections: (await db.prepare(`
         SELECT Department, Section, SortOrder
         FROM DepartmentSectionLookup
         WHERE IsActive = 1
         ORDER BY SortOrder ASC, ID ASC
-      `).all().map((row) => ({
+      `).all()).map((row) => ({
         Department: normalizeDepartment(row.Department),
         Section: String(row.Section || '').trim(),
         SortOrder: row.SortOrder
@@ -408,15 +408,15 @@ router.get('/filters', (req, res) => {
   }
 });
 
-router.get('/permission-summary', (req, res) => {
+router.get('/permission-summary', async (req, res) => {
   try {
     const excludedTable = isValidDailyTable(req.query.table) ? req.query.table : '';
     const excludedId = Number(req.query.id) || 0;
-    const usage = getMonthlyPermissionUsage({
+    const usage = (await getMonthlyPermissionUsage({
       Today: req.query.today,
       EmpID: req.query.empId,
       Name: req.query.name
-    }, excludedTable, excludedId);
+    }, excludedTable, excludedId));
 
     res.json({
       usedCount: usage.count,
@@ -431,7 +431,7 @@ router.get('/permission-summary', (req, res) => {
   }
 });
 
-router.get('/recorded-sections', (req, res) => {
+router.get('/recorded-sections', async (req, res) => {
   try {
     const dateValue = normalizeDateInput(req.query.today);
     const department = normalizeDepartment(req.query.department);
@@ -439,7 +439,7 @@ router.get('/recorded-sections', (req, res) => {
       return res.json({ sections: [] });
     }
 
-    const sections = db.prepare(`
+    const sections = (await db.prepare(`
       SELECT TRIM(Section) AS Section
       FROM DailyAll
       WHERE date(REPLACE(Today, '/', '-')) = date(?)
@@ -449,7 +449,7 @@ router.get('/recorded-sections', (req, res) => {
         AND TRIM(Section) <> ''
       GROUP BY TRIM(Section)
       ORDER BY MIN(ID) ASC
-    `).all(dateValue, department).map((row) => String(row.Section || '').trim()).filter(Boolean);
+    `).all(dateValue, department)).map((row) => String(row.Section || '').trim()).filter(Boolean);
 
     res.json({ sections });
   } catch (error) {
@@ -458,7 +458,7 @@ router.get('/recorded-sections', (req, res) => {
   }
 });
 
-router.get('/employee-suggestions', (req, res) => {
+router.get('/employee-suggestions', async (req, res) => {
   try {
     const keyword = String(req.query.q || '').trim();
     const department = normalizeDepartment(req.query.department);
@@ -468,14 +468,14 @@ router.get('/employee-suggestions', (req, res) => {
       return res.json({ items: [] });
     }
 
-    const suggestions = db.prepare(`
+    const suggestions = (await db.prepare(`
       SELECT ID AS EmpID, Name, Department, Section
       FROM Main
       WHERE TRIM(Status) = 'نشط'
         AND TRIM(Name) LIKE ?
       ORDER BY Name ASC
       LIMIT 60
-    `).all(`%${keyword}%`);
+    `).all(`%${keyword}%`));
 
     const items = [];
     const seenNames = new Set();
@@ -515,28 +515,28 @@ router.get('/employee-suggestions', (req, res) => {
   }
 });
 
-router.get('/table/:table', (req, res) => {
+router.get('/table/:table', async (req, res) => {
   const table = req.params.table;
   if (!isValidDailyTable(table)) {
     return res.status(400).json({ message: 'اسم جدول غير صالح' });
   }
 
-  const records = db.prepare(`SELECT * FROM ${table} ORDER BY date(REPLACE(Today, '/', '-')) DESC, Name ASC, ID DESC`).all();
+  const records = (await db.prepare(`SELECT * FROM ${table} ORDER BY date(REPLACE(Today, '/', '-')) DESC, Name ASC, ID DESC`).all());
   res.json(records);
 });
 
-router.get('/table/:table/:id', (req, res) => {
+router.get('/table/:table/:id', async (req, res) => {
   const table = req.params.table;
   const id = Number(req.params.id);
   if (!isValidDailyTable(table) || !id) {
     return res.status(400).json({ message: 'معرّف غير صالح أو جدول غير صالح' });
   }
 
-  const record = db.prepare(`SELECT * FROM ${table} WHERE ID = ?`).get(id);
+  const record = (await db.prepare(`SELECT * FROM ${table} WHERE ID = ?`).get(id));
   return record ? res.json(record) : res.status(404).json({ message: 'السجل غير موجود' });
 });
 
-router.get('/search', (req, res) => {
+router.get('/search', async (req, res) => {
   try {
     const filters = [];
     const params = [];
@@ -612,7 +612,7 @@ router.get('/search', (req, res) => {
       LIMIT 5000
     `;
 
-    const records = db.prepare(sql).all(...params);
+    const records = (await db.prepare(sql).all(...params));
     res.json(records);
   } catch (error) {
     console.error(error);
@@ -620,7 +620,7 @@ router.get('/search', (req, res) => {
   }
 });
 
-router.post('/generate', (req, res) => {
+router.post('/generate', async (req, res) => {
   try {
     const today = normalizeDateInput(req.body.today);
     const department = normalizeDepartment(req.body.department);
@@ -643,8 +643,8 @@ router.post('/generate', (req, res) => {
     }
 
     const employeePool = employeeName
-      ? findActiveEmployees()
-      : findActiveEmployees(department, requestedSection);
+      ? (await findActiveEmployees())
+      : (await findActiveEmployees(department, requestedSection));
     const employees = filterEmployeesByExactName(employeePool, employeeName);
 
     if (!employees.length) {
@@ -662,7 +662,7 @@ router.post('/generate', (req, res) => {
     let added = 0;
     let skipped = 0;
 
-    employees.forEach((employee) => {
+    for (const employee of employees) {
       const empID = String(employee.EmpID || '').trim();
       const name = String(employee.Name || '').trim();
       const employeeSection = employeeName && requestedSection
@@ -671,16 +671,16 @@ router.post('/generate', (req, res) => {
 
       if (!name) {
         skipped += 1;
-        return;
+        continue;
       }
 
-      if (hasSameEmployeeInDaily(table, empID, name, today, period)) {
+      if ((await hasSameEmployeeInDaily(table, empID, name, today, period))) {
         skipped += 1;
-        return;
+        continue;
       }
 
-      const leave = findLeaveForDate(empID, name, today);
-      const course = leave ? null : findCourseForDate(empID, name, today);
+      const leave = (await findLeaveForDate(empID, name, today));
+      const course = leave ? null : (await findCourseForDate(empID, name, today));
 
       let status = 'حضور';
       let inTime = defaults.inTime;
@@ -708,7 +708,7 @@ router.post('/generate', (req, res) => {
         note = course.Note || '';
       }
 
-      insert.run(
+      (await insert.run(
         empID,
         day,
         todaySlash,
@@ -723,12 +723,12 @@ router.post('/generate', (req, res) => {
         endDate,
         type,
         note
-      );
+      ));
 
       added += 1;
-    });
+    }
 
-    logSystem({ userName, action: 'Add', page: table, details: employeeName ? `Generated single daily record for ${employeeName} on ${todaySlash}` : `Generated daily records (${added}) for ${todaySlash}` });
+    (await logSystem({ userName, action: 'Add', page: table, details: employeeName ? `Generated single daily record for ${employeeName} on ${todaySlash}` : `Generated daily records (${added}) for ${todaySlash}` }));
     res.json({ added, skipped, message: employeeName ? (added ? `تمت إضافة بيانات اليومية للموظف ${employeeName}.` : `الموظف ${employeeName} موجود مسبقاً في اليومية.`) : `تمت إضافة ${added} سجل وتخطي ${skipped} سجل مكرر.` });
   } catch (error) {
     console.error(error);
@@ -736,7 +736,7 @@ router.post('/generate', (req, res) => {
   }
 });
 
-router.post('/table/:table', (req, res) => {
+router.post('/table/:table', async (req, res) => {
   const table = req.params.table;
   if (!isValidDailyTable(table)) {
     return res.status(400).json({ message: 'اسم جدول غير صالح' });
@@ -751,14 +751,14 @@ router.post('/table/:table', (req, res) => {
     return res.status(400).json({ message: 'البيانات الأساسية غير مكتملة لإضافة سجل اليومية.' });
   }
 
-  if (hasSameEmployeeInDaily(table, payload.EmpID, payload.Name, normalizeDateInput(todayValue), period)) {
+  if ((await hasSameEmployeeInDaily(table, payload.EmpID, payload.Name, normalizeDateInput(todayValue), period))) {
     return res.status(409).json({ message: 'لا يمكن تكرار نفس الموظف في اليومية الواحدة.' });
   }
 
   payload.Day = day;
   payload.Today = todayValue;
 
-  const permissionLimitError = validateMonthlyPermissionLimit(payload);
+  const permissionLimitError = (await validateMonthlyPermissionLimit(payload));
   if (permissionLimitError) {
     return res.status(400).json({ message: permissionLimitError });
   }
@@ -768,12 +768,12 @@ router.post('/table/:table', (req, res) => {
     return res.status(400).json({ message: 'البيانات المرسلة غير كاملة' });
   }
 
-  const result = db.prepare(statement.sql).run(statement.values);
-  logSystem({ userName: req.body.userName || 'system', action: 'Add', page: table, details: `Added daily record ID=${result.lastInsertRowid}` });
+  const result = (await db.prepare(statement.sql).run(statement.values));
+  (await logSystem({ userName: req.body.userName || 'system', action: 'Add', page: table, details: `Added daily record ID=${result.lastInsertRowid}` }));
   res.json({ id: result.lastInsertRowid });
 });
 
-router.put('/bulk', (req, res) => {
+router.put('/bulk', async (req, res) => {
   try {
     const sourceToday = normalizeDateInput(req.body.today);
     const sourceDepartment = normalizeDepartment(req.body.department);
@@ -795,14 +795,14 @@ router.put('/bulk', (req, res) => {
       return res.status(400).json({ message: 'تعذر تحديد جدول اليومية للقسم المحدد.' });
     }
 
-    const sourceRows = db.prepare(`
+    const sourceRows = (await db.prepare(`
       SELECT * FROM ${table}
       WHERE date(REPLACE(Today, '/', '-')) = date(?)
         AND TRIM(Department) = ?
         AND TRIM(Section) = ?
         AND TRIM(Period) = ?
       ORDER BY ID ASC
-    `).all(sourceToday, sourceDepartment, sourceSection, sourcePeriod);
+    `).all(sourceToday, sourceDepartment, sourceSection, sourcePeriod));
 
     if (!sourceRows.length) {
       return res.status(404).json({ message: 'لا توجد سجلات مطابقة لليومية المحددة لتعديلها.' });
@@ -820,21 +820,25 @@ router.put('/bulk', (req, res) => {
     `);
 
     for (const row of sourceRows) {
-      const duplicate = findDuplicate.get(nextToday, nextPeriod, row.ID, String(row.EmpID || '').trim(), String(row.Name || '').trim());
+      const duplicate = (await findDuplicate.get(nextToday, nextPeriod, row.ID, String(row.EmpID || '').trim(), String(row.Name || '').trim()));
       if (duplicate) {
         return res.status(409).json({ message: `لا يمكن تعديل اليومية لأن الموظف ${row.Name || ''} موجود مسبقًا في التاريخ والفترة الجديدة.` });
       }
 
-      const permissionLimitError = validateMonthlyPermissionLimit({ ...row, Today: targetToday, Day: targetDay, Period: nextPeriod }, table, row.ID);
+      const permissionLimitError = (await validateMonthlyPermissionLimit({ ...row, Today: targetToday, Day: targetDay, Period: nextPeriod }, table, row.ID));
       if (permissionLimitError) {
         return res.status(400).json({ message: `${permissionLimitError} الموظف: ${row.Name || ''}.` });
       }
     }
 
     const update = db.prepare(`UPDATE ${table} SET Today = ?, Day = ?, Period = ? WHERE ID = ?`);
-    db.transaction(() => sourceRows.forEach((row) => update.run(targetToday, targetDay, nextPeriod, row.ID)))();
+    await db.transaction(async () => {
+      for (const row of sourceRows) {
+        await update.run(targetToday, targetDay, nextPeriod, row.ID);
+      }
+    })();
 
-    logSystem({ userName: req.body.userName || 'system', action: 'Update', page: table, details: `Bulk updated ${sourceRows.length} daily records to ${targetToday} / ${nextPeriod}` });
+    (await logSystem({ userName: req.body.userName || 'system', action: 'Update', page: table, details: `Bulk updated ${sourceRows.length} daily records to ${targetToday} / ${nextPeriod}` }));
     return res.json({ changes: sourceRows.length, message: `تم تعديل ${sourceRows.length} سجلًا في اليومية بنجاح.` });
   } catch (error) {
     console.error(error);
@@ -842,7 +846,7 @@ router.put('/bulk', (req, res) => {
   }
 });
 
-router.put('/table/:table/:id', (req, res) => {
+router.put('/table/:table/:id', async (req, res) => {
   const table = req.params.table;
   const id = Number(req.params.id);
   if (!isValidDailyTable(table) || !id) {
@@ -857,12 +861,12 @@ router.put('/table/:table/:id', (req, res) => {
     payload.Day = getArabicDay(payload.Today);
   }
 
-  const current = db.prepare(`SELECT * FROM ${table} WHERE ID = ?`).get(id);
+  const current = (await db.prepare(`SELECT * FROM ${table} WHERE ID = ?`).get(id));
   if (!current) {
     return res.status(404).json({ message: 'السجل غير موجود للتعديل' });
   }
 
-  const permissionLimitError = validateMonthlyPermissionLimit({ ...current, ...payload }, table, id);
+  const permissionLimitError = (await validateMonthlyPermissionLimit({ ...current, ...payload }, table, id));
   if (permissionLimitError) {
     return res.status(400).json({ message: permissionLimitError });
   }
@@ -874,33 +878,33 @@ router.put('/table/:table/:id', (req, res) => {
 
   const userName = req.body.userName || 'system';
   const nextRecord = { ...current, ...payload };
-  const result = db.transaction(() => {
-    const updateResult = db.prepare(statement.sql).run(statement.values);
-    addLinkedHolidayIfNeeded(nextRecord, userName);
-    addLinkedReductionIfNeeded(nextRecord, userName);
+  const result = (await db.transaction(async () => {
+    const updateResult = (await db.prepare(statement.sql).run(statement.values));
+    (await addLinkedHolidayIfNeeded(nextRecord, userName));
+    (await addLinkedReductionIfNeeded(nextRecord, userName));
     return updateResult;
-  })();
+  })());
   if (result.changes === 0) {
     return res.status(404).json({ message: 'السجل غير موجود للتعديل' });
   }
 
-  logSystem({ userName, action: 'Update', page: table, details: `Updated daily record ID=${id}` });
+  (await logSystem({ userName, action: 'Update', page: table, details: `Updated daily record ID=${id}` }));
   res.json({ changes: result.changes });
 });
 
-router.delete('/table/:table/:id', (req, res) => {
+router.delete('/table/:table/:id', async (req, res) => {
   const table = req.params.table;
   const id = Number(req.params.id);
   if (!isValidDailyTable(table) || !id) {
     return res.status(400).json({ message: 'معرّف غير صالح أو جدول غير صالح' });
   }
 
-  const result = db.prepare(`DELETE FROM ${table} WHERE ID = ?`).run(id);
+  const result = (await db.prepare(`DELETE FROM ${table} WHERE ID = ?`).run(id));
   if (result.changes === 0) {
     return res.status(404).json({ message: 'السجل غير موجود للحذف' });
   }
 
-  logSystem({ userName: req.body.userName || 'system', action: 'Delete', page: table, details: `Deleted daily record ID=${id}` });
+  (await logSystem({ userName: req.body.userName || 'system', action: 'Delete', page: table, details: `Deleted daily record ID=${id}` }));
   res.json({ changes: result.changes });
 });
 

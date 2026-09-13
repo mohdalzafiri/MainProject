@@ -1,8 +1,9 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
-const { db, dailyTables, logSystem, getCurrentTimestamp } = require('../database');
+const { db, dailyTables, logSystem, getCurrentTimestamp, registerDatabaseInitializer } = require('../database');
 const { templatesRoot } = require('../services/wordTemplateService');
+const { removeSync } = require('../utils/fsCompat');
 const {
   DEFAULT_ARCHIVE_CATEGORIES,
   ensureArchiveCategoriesTable,
@@ -18,7 +19,7 @@ const {
 } = require('../auth/permissions');
 
 const router = express.Router();
-ensureArchiveCategoriesTable(db, getCurrentTimestamp);
+registerDatabaseInitializer(() => ensureArchiveCategoriesTable(db, getCurrentTimestamp));
 
 function isAdminUser(req) {
   const role = String(req.user?.role || '').trim().toLowerCase();
@@ -82,8 +83,8 @@ function deriveTemplateNameFromFileName(fileName) {
   return raw.replace(/\.[^.]+$/, '').trim();
 }
 
-function tableExists(name) {
-  const row = db.prepare("SELECT 1 AS found FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1").get(name);
+async function tableExists(name) {
+  const row = (await db.prepare("SELECT 1 AS found FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1").get(name));
   return Boolean(row);
 }
 
@@ -93,18 +94,18 @@ function getArchiveRoot() {
     : path.join(__dirname, '..', 'Archive');
 }
 
-router.get('/archive-categories', (req, res) => {
+router.get('/archive-categories', async (req, res) => {
   if (denyIfNotAdmin(req, res)) return;
 
   try {
-    res.json(listArchiveCategories(db, { includeInactive: true }));
+    res.json((await listArchiveCategories(db, { includeInactive: true })));
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'تعذر تحميل مجلدات الأرشيف.' });
   }
 });
 
-router.post('/archive-categories', (req, res) => {
+router.post('/archive-categories', async (req, res) => {
   if (denyIfNotAdmin(req, res)) return;
 
   const labelAr = normalize(req.body.LabelAr);
@@ -118,7 +119,7 @@ router.post('/archive-categories', (req, res) => {
   }
 
   const parent = parentId
-    ? db.prepare('SELECT ID, KeyName FROM ArchiveCategories WHERE ID = ? AND IsActive = 1 LIMIT 1').get(parentId)
+    ? (await db.prepare('SELECT ID, KeyName FROM ArchiveCategories WHERE ID = ? AND IsActive = 1 LIMIT 1').get(parentId))
     : null;
   if (parentId && !parent) {
     return res.status(400).json({ message: 'المجلد الأساسي المحدد غير موجود أو غير نشط.' });
@@ -126,20 +127,20 @@ router.post('/archive-categories', (req, res) => {
 
   try {
     const timestamp = getCurrentTimestamp();
-    const nextSortOrder = db.prepare('SELECT COALESCE(MAX(SortOrder), 0) + 1 AS value FROM ArchiveCategories').get().value;
-    const result = db.prepare(`
+    const nextSortOrder = (await db.prepare('SELECT COALESCE(MAX(SortOrder), 0) + 1 AS value FROM ArchiveCategories').get()).value;
+    const result = (await db.prepare(`
       INSERT INTO ArchiveCategories (KeyName, LabelAr, ParentID, SortOrder, IsActive, CreatedAt, UpdatedAt)
       VALUES (?, ?, ?, ?, 1, ?, ?)
-    `).run(keyName, labelAr, parentId, nextSortOrder, timestamp, timestamp);
+    `).run(keyName, labelAr, parentId, nextSortOrder, timestamp, timestamp));
 
-    fs.mkdirSync(path.join(getArchiveRoot(), ...getArchiveCategoryPath(db, keyName)), { recursive: true });
-    logSystem({
+    fs.mkdirSync(path.join(getArchiveRoot(), ...(await getArchiveCategoryPath(db, keyName))), { recursive: true });
+    (await logSystem({
       userName: req.user?.username || 'system',
       role: req.user?.role || '',
       action: 'Add',
       page: 'Settings',
       details: `Added archive category ${keyName}`
-    });
+    }));
     res.status(201).json({ ID: result.lastInsertRowid, KeyName: keyName, LabelAr: labelAr, ParentID: parentId });
   } catch (error) {
     console.error(error);
@@ -150,11 +151,11 @@ router.post('/archive-categories', (req, res) => {
   }
 });
 
-router.delete('/archive-categories/:id', (req, res) => {
+router.delete('/archive-categories/:id', async (req, res) => {
   if (denyIfNotAdmin(req, res)) return;
 
   const id = Number(req.params.id || 0);
-  const category = db.prepare('SELECT ID, KeyName, LabelAr FROM ArchiveCategories WHERE ID = ? LIMIT 1').get(id);
+  const category = (await db.prepare('SELECT ID, KeyName, LabelAr FROM ArchiveCategories WHERE ID = ? LIMIT 1').get(id));
   if (!category) {
     return res.status(404).json({ message: 'مجلد الأرشيف غير موجود.' });
   }
@@ -164,27 +165,27 @@ router.delete('/archive-categories/:id', (req, res) => {
     return res.status(409).json({ message: 'لا يمكن حذف مجلدات الأرشيف الأساسية.' });
   }
 
-  const linkedFiles = db.prepare('SELECT COUNT(*) AS count FROM Archive WHERE Category = ?').get(category.KeyName).count;
+  const linkedFiles = (await db.prepare('SELECT COUNT(*) AS count FROM Archive WHERE Category = ?').get(category.KeyName)).count;
   if (linkedFiles > 0) {
     return res.status(409).json({ message: 'لا يمكن حذف المجلد لوجود ملفات أرشيف داخله.' });
   }
 
-  const childFolders = db.prepare('SELECT COUNT(*) AS count FROM ArchiveCategories WHERE ParentID = ?').get(category.ID).count;
+  const childFolders = (await db.prepare('SELECT COUNT(*) AS count FROM ArchiveCategories WHERE ParentID = ?').get(category.ID)).count;
   if (childFolders > 0) {
     return res.status(409).json({ message: 'لا يمكن حذف المجلد لوجود مجلدات فرعية داخله.' });
   }
 
   try {
-    const categoryPath = getArchiveCategoryPath(db, category.KeyName);
-    db.prepare('DELETE FROM ArchiveCategories WHERE ID = ?').run(id);
-    fs.rmSync(path.join(getArchiveRoot(), ...categoryPath), { recursive: true, force: true });
-    logSystem({
+    const categoryPath = (await getArchiveCategoryPath(db, category.KeyName));
+    (await db.prepare('DELETE FROM ArchiveCategories WHERE ID = ?').run(id));
+    removeSync(path.join(getArchiveRoot(), ...categoryPath), { recursive: true, force: true });
+    (await logSystem({
       userName: req.user?.username || 'system',
       role: req.user?.role || '',
       action: 'Delete',
       page: 'Settings',
       details: `Deleted archive category ${category.KeyName}`
-    });
+    }));
     res.json({ message: 'تم حذف مجلد الأرشيف بنجاح.' });
   } catch (error) {
     console.error(error);
@@ -192,15 +193,15 @@ router.delete('/archive-categories/:id', (req, res) => {
   }
 });
 
-router.get('/department-sections', (req, res) => {
+router.get('/department-sections', async (req, res) => {
   if (denyIfNotAdmin(req, res)) return;
 
   try {
-    const rows = db.prepare(`
+    const rows = (await db.prepare(`
       SELECT ID, Department, Section, SubSection, SortOrder, IsActive, CreatedAt, UpdatedAt
       FROM DepartmentSectionLookup
       ORDER BY SortOrder ASC, ID ASC
-    `).all();
+    `).all());
 
     res.json(rows);
   } catch (error) {
@@ -209,7 +210,7 @@ router.get('/department-sections', (req, res) => {
   }
 });
 
-router.post('/department-sections', (req, res) => {
+router.post('/department-sections', async (req, res) => {
   if (denyIfNotAdmin(req, res)) return;
 
   const department = normalize(req.body.Department);
@@ -225,11 +226,11 @@ router.post('/department-sections', (req, res) => {
     return res.status(400).json({ message: 'اسم النوبة مطلوب.' });
   }
 
-  const duplicate = db.prepare(`
+  const duplicate = (await db.prepare(`
     SELECT ID FROM DepartmentSectionLookup
     WHERE Department = ? AND Section = ? AND IFNULL(SubSection, '') = ?
     LIMIT 1
-  `).get(department, section, subSection);
+  `).get(department, section, subSection));
 
   if (duplicate) {
     return res.status(409).json({ message: 'هذا القسم مع هذه النوبة موجود مسبقًا.' });
@@ -237,19 +238,19 @@ router.post('/department-sections', (req, res) => {
 
   try {
     const timestamp = getCurrentTimestamp();
-    const nextSortOrder = db.prepare('SELECT COALESCE(MAX(SortOrder), 0) + 1 AS value FROM DepartmentSectionLookup').get().value;
-    const result = db.prepare(`
+    const nextSortOrder = (await db.prepare('SELECT COALESCE(MAX(SortOrder), 0) + 1 AS value FROM DepartmentSectionLookup').get()).value;
+    const result = (await db.prepare(`
       INSERT INTO DepartmentSectionLookup (Department, Section, SubSection, SortOrder, IsActive, CreatedAt, UpdatedAt)
       VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(department, section, subSection, nextSortOrder, isActive, timestamp, timestamp);
+    `).run(department, section, subSection, nextSortOrder, isActive, timestamp, timestamp));
 
-    logSystem({
+    (await logSystem({
       userName: req.user?.username || 'system',
       role: req.user?.role || '',
       action: 'Add',
       page: 'Settings',
       details: `Added department-section ID=${result.lastInsertRowid}`
-    });
+    }));
 
     res.json({ id: result.lastInsertRowid });
   } catch (error) {
@@ -258,7 +259,7 @@ router.post('/department-sections', (req, res) => {
   }
 });
 
-router.put('/department-sections/:id', (req, res) => {
+router.put('/department-sections/:id', async (req, res) => {
   if (denyIfNotAdmin(req, res)) return;
 
   const id = Number(req.params.id);
@@ -279,11 +280,11 @@ router.put('/department-sections/:id', (req, res) => {
     return res.status(400).json({ message: 'اسم النوبة مطلوب.' });
   }
 
-  const duplicate = db.prepare(`
+  const duplicate = (await db.prepare(`
     SELECT ID FROM DepartmentSectionLookup
     WHERE Department = ? AND Section = ? AND IFNULL(SubSection, '') = ? AND ID <> ?
     LIMIT 1
-  `).get(department, section, subSection, id);
+  `).get(department, section, subSection, id));
 
   if (duplicate) {
     return res.status(409).json({ message: 'يوجد سجل آخر بنفس القسم والنوبة.' });
@@ -291,23 +292,23 @@ router.put('/department-sections/:id', (req, res) => {
 
   try {
     const timestamp = getCurrentTimestamp();
-    const result = db.prepare(`
+    const result = (await db.prepare(`
       UPDATE DepartmentSectionLookup
       SET Department = ?, Section = ?, SubSection = ?, IsActive = ?, UpdatedAt = ?
       WHERE ID = ?
-    `).run(department, section, subSection, isActive, timestamp, id);
+    `).run(department, section, subSection, isActive, timestamp, id));
 
     if (result.changes === 0) {
       return res.status(404).json({ message: 'السجل غير موجود للتعديل.' });
     }
 
-    logSystem({
+    (await logSystem({
       userName: req.user?.username || 'system',
       role: req.user?.role || '',
       action: 'Update',
       page: 'Settings',
       details: `Updated department-section ID=${id}`
-    });
+    }));
 
     res.json({ changes: result.changes });
   } catch (error) {
@@ -316,7 +317,7 @@ router.put('/department-sections/:id', (req, res) => {
   }
 });
 
-router.delete('/department-sections/:id', (req, res) => {
+router.delete('/department-sections/:id', async (req, res) => {
   if (denyIfNotAdmin(req, res)) return;
 
   const id = Number(req.params.id);
@@ -324,7 +325,7 @@ router.delete('/department-sections/:id', (req, res) => {
     return res.status(400).json({ message: 'معرّف السجل غير صالح.' });
   }
 
-  const target = db.prepare('SELECT ID, Department, Section, SubSection FROM DepartmentSectionLookup WHERE ID = ? LIMIT 1').get(id);
+  const target = (await db.prepare('SELECT ID, Department, Section, SubSection FROM DepartmentSectionLookup WHERE ID = ? LIMIT 1').get(id));
   if (!target) {
     return res.status(404).json({ message: 'السجل غير موجود للحذف.' });
   }
@@ -362,29 +363,29 @@ router.delete('/department-sections/:id', (req, res) => {
   });
 
   for (const check of linkedTableChecks) {
-    if (!tableExists(check.table)) {
+    if (!(await tableExists(check.table))) {
       continue;
     }
 
-    const linkedRow = db.prepare(check.sql).get(...(check.args || [target.Department, target.Section, target.SubSection || '']));
+    const linkedRow = (await db.prepare(check.sql).get(...(check.args || [target.Department, target.Section, target.SubSection || ''])));
     if (linkedRow) {
       return res.status(409).json({ message: `لا يمكن حذف هذا السجل لوجود بيانات مرتبطة به في ${check.label}.` });
     }
   }
 
   try {
-    const result = db.prepare('DELETE FROM DepartmentSectionLookup WHERE ID = ?').run(id);
+    const result = (await db.prepare('DELETE FROM DepartmentSectionLookup WHERE ID = ?').run(id));
     if (result.changes === 0) {
       return res.status(404).json({ message: 'السجل غير موجود للحذف.' });
     }
 
-    logSystem({
+    (await logSystem({
       userName: req.user?.username || 'system',
       role: req.user?.role || '',
       action: 'Delete',
       page: 'Settings',
       details: `Deleted department-section ID=${id}`
-    });
+    }));
 
     res.json({ changes: result.changes });
   } catch (error) {
@@ -393,16 +394,16 @@ router.delete('/department-sections/:id', (req, res) => {
   }
 });
 
-router.get('/employees-active', (req, res) => {
+router.get('/employees-active', async (req, res) => {
   if (denyIfNotAdmin(req, res)) return;
 
   try {
-    const rows = db.prepare(`
+    const rows = (await db.prepare(`
       SELECT ID, Name, Department, Section, IFNULL(SubSection, '') AS SubSection
       FROM Main
       WHERE TRIM(Status) = 'نشط' AND TRIM(Name) <> ''
       ORDER BY Name ASC
-    `).all();
+    `).all());
 
     res.json(rows);
   } catch (error) {
@@ -411,15 +412,15 @@ router.get('/employees-active', (req, res) => {
   }
 });
 
-router.get('/users', (req, res) => {
+router.get('/users', async (req, res) => {
   if (denyIfNotAdmin(req, res)) return;
 
   try {
-    const rows = db.prepare(`
+    const rows = (await db.prepare(`
       SELECT ID, Username, Password, Permission, Name, Department, Section, IFNULL(SubSection, '') AS SubSection, IFNULL(AllowedPages, '[]') AS AllowedPages, IFNULL(AllowedDepartments, '[]') AS AllowedDepartments, IFNULL(AllowedSections, '[]') AS AllowedSections, IFNULL(AllowedSubSections, '[]') AS AllowedSubSections, IsActive, CreatedAt, UpdatedAt, LastLogin
       FROM Login
       ORDER BY ID ASC
-    `).all();
+    `).all());
     const users = rows.map((row) => {
       const normalizedRole = normalizeRole(row.Permission);
       const isAdmin = normalizedRole === 'admin';
@@ -440,7 +441,7 @@ router.get('/users', (req, res) => {
   }
 });
 
-router.post('/users', (req, res) => {
+router.post('/users', async (req, res) => {
   if (denyIfNotAdmin(req, res)) return;
 
   const rawPermission = normalize(req.body.Permission);
@@ -471,7 +472,7 @@ router.post('/users', (req, res) => {
     return res.status(400).json({ message: 'الصلاحية مطلوبة.' });
   }
 
-  const existingUser = db.prepare('SELECT ID FROM Login WHERE Username = ? COLLATE NOCASE LIMIT 1').get(payload.Username);
+  const existingUser = (await db.prepare('SELECT ID FROM Login WHERE Username = ? COLLATE NOCASE LIMIT 1').get(payload.Username));
   if (existingUser) {
     return res.status(409).json({ message: 'اسم المستخدم مستخدم مسبقًا.' });
   }
@@ -479,18 +480,18 @@ router.post('/users', (req, res) => {
   const timestamp = getCurrentTimestamp();
 
   try {
-    const result = db.prepare(`
+    const result = (await db.prepare(`
       INSERT INTO Login (Username, Password, Permission, Department, Section, SubSection, AllowedPages, AllowedDepartments, AllowedSections, AllowedSubSections, Name, IsActive, CreatedAt, UpdatedAt)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(payload.Username, payload.Password, payload.Permission, payload.Department, payload.Section, payload.SubSection, payload.AllowedPages, payload.AllowedDepartments, payload.AllowedSections, payload.AllowedSubSections, payload.Name, payload.IsActive, timestamp, timestamp);
+    `).run(payload.Username, payload.Password, payload.Permission, payload.Department, payload.Section, payload.SubSection, payload.AllowedPages, payload.AllowedDepartments, payload.AllowedSections, payload.AllowedSubSections, payload.Name, payload.IsActive, timestamp, timestamp));
 
-    logSystem({
+    (await logSystem({
       userName: req.user?.username || 'system',
       role: req.user?.role || '',
       action: 'Add',
       page: 'Settings',
       details: `Added login user ID=${result.lastInsertRowid}`
-    });
+    }));
 
     return res.json({ id: result.lastInsertRowid });
   } catch (error) {
@@ -499,7 +500,7 @@ router.post('/users', (req, res) => {
   }
 });
 
-router.put('/users/:id', (req, res) => {
+router.put('/users/:id', async (req, res) => {
   if (denyIfNotAdmin(req, res)) return;
 
   const id = Number(req.params.id);
@@ -507,12 +508,12 @@ router.put('/users/:id', (req, res) => {
     return res.status(400).json({ message: 'معرّف المستخدم غير صالح.' });
   }
 
-  const targetUser = db.prepare(`
+  const targetUser = (await db.prepare(`
     SELECT ID, Username, Password, Permission, Name, Department, Section, IFNULL(SubSection, '') AS SubSection, IFNULL(AllowedPages, '[]') AS AllowedPages, IFNULL(AllowedDepartments, '[]') AS AllowedDepartments, IFNULL(AllowedSections, '[]') AS AllowedSections, IFNULL(AllowedSubSections, '[]') AS AllowedSubSections, IsActive
     FROM Login
     WHERE ID = ?
     LIMIT 1
-  `).get(id);
+  `).get(id));
 
   if (!targetUser) {
     return res.status(404).json({ message: 'المستخدم غير موجود للتعديل.' });
@@ -529,19 +530,19 @@ router.put('/users/:id', (req, res) => {
     const timestamp = getCurrentTimestamp();
 
     try {
-      const result = db.prepare(`
+      const result = (await db.prepare(`
         UPDATE Login
         SET Password = ?, UpdatedAt = ?
         WHERE ID = ?
-      `).run(passwordOnly, timestamp, id);
+      `).run(passwordOnly, timestamp, id));
 
-      logSystem({
+      (await logSystem({
         userName: req.user?.username || 'system',
         role: req.user?.role || '',
         action: 'Update',
         page: 'Settings',
         details: `Updated admin password ID=${id}`
-      });
+      }));
 
       return res.json({ changes: result.changes });
     } catch (error) {
@@ -578,7 +579,7 @@ router.put('/users/:id', (req, res) => {
     return res.status(400).json({ message: 'الصلاحية مطلوبة.' });
   }
 
-  const existingUser = db.prepare('SELECT ID FROM Login WHERE Username = ? COLLATE NOCASE AND ID <> ? LIMIT 1').get(payload.Username, id);
+  const existingUser = (await db.prepare('SELECT ID FROM Login WHERE Username = ? COLLATE NOCASE AND ID <> ? LIMIT 1').get(payload.Username, id));
   if (existingUser) {
     return res.status(409).json({ message: 'اسم المستخدم مستخدم مسبقًا من حساب آخر.' });
   }
@@ -586,23 +587,23 @@ router.put('/users/:id', (req, res) => {
   const timestamp = getCurrentTimestamp();
 
   try {
-    const result = db.prepare(`
+    const result = (await db.prepare(`
       UPDATE Login
       SET Username = ?, Password = ?, Permission = ?, Department = ?, Section = ?, SubSection = ?, AllowedPages = ?, AllowedDepartments = ?, AllowedSections = ?, AllowedSubSections = ?, Name = ?, IsActive = ?, UpdatedAt = ?
       WHERE ID = ?
-    `).run(payload.Username, payload.Password, payload.Permission, payload.Department, payload.Section, payload.SubSection, payload.AllowedPages, payload.AllowedDepartments, payload.AllowedSections, payload.AllowedSubSections, payload.Name, payload.IsActive, timestamp, id);
+    `).run(payload.Username, payload.Password, payload.Permission, payload.Department, payload.Section, payload.SubSection, payload.AllowedPages, payload.AllowedDepartments, payload.AllowedSections, payload.AllowedSubSections, payload.Name, payload.IsActive, timestamp, id));
 
     if (result.changes === 0) {
       return res.status(404).json({ message: 'المستخدم غير موجود للتعديل.' });
     }
 
-    logSystem({
+    (await logSystem({
       userName: req.user?.username || 'system',
       role: req.user?.role || '',
       action: 'Update',
       page: 'Settings',
       details: `Updated login user ID=${id}`
-    });
+    }));
 
     return res.json({ changes: result.changes });
   } catch (error) {
@@ -611,7 +612,7 @@ router.put('/users/:id', (req, res) => {
   }
 });
 
-router.delete('/users/:id', (req, res) => {
+router.delete('/users/:id', async (req, res) => {
   if (denyIfNotAdmin(req, res)) return;
 
   const id = Number(req.params.id);
@@ -619,7 +620,7 @@ router.delete('/users/:id', (req, res) => {
     return res.status(400).json({ message: 'معرّف المستخدم غير صالح.' });
   }
 
-  const target = db.prepare('SELECT ID, Username FROM Login WHERE ID = ? LIMIT 1').get(id);
+  const target = (await db.prepare('SELECT ID, Username FROM Login WHERE ID = ? LIMIT 1').get(id));
   if (!target) {
     return res.status(404).json({ message: 'المستخدم غير موجود للحذف.' });
   }
@@ -629,18 +630,18 @@ router.delete('/users/:id', (req, res) => {
   }
 
   try {
-    const result = db.prepare('DELETE FROM Login WHERE ID = ?').run(id);
+    const result = (await db.prepare('DELETE FROM Login WHERE ID = ?').run(id));
     if (result.changes === 0) {
       return res.status(404).json({ message: 'المستخدم غير موجود للحذف.' });
     }
 
-    logSystem({
+    (await logSystem({
       userName: req.user?.username || 'system',
       role: req.user?.role || '',
       action: 'Delete',
       page: 'Settings',
       details: `Deleted login user ID=${id}`
-    });
+    }));
 
     return res.json({ changes: result.changes });
   } catch (error) {
@@ -649,15 +650,15 @@ router.delete('/users/:id', (req, res) => {
   }
 });
 
-router.get('/administrative-templates', (req, res) => {
+router.get('/administrative-templates', async (req, res) => {
   if (denyIfNotAdmin(req, res)) return;
 
   try {
-    const rows = db.prepare(`
+    const rows = (await db.prepare(`
       SELECT ID, TemplateName, TemplateFileName, Coordinates, CreatedAt, UpdatedAt
       FROM AdministrativeTemplateConfigs
       ORDER BY TemplateName ASC
-    `).all();
+    `).all());
 
     const payload = rows.map((row) => {
       const templateFileName = normalize(row.TemplateFileName);
@@ -677,7 +678,7 @@ router.get('/administrative-templates', (req, res) => {
   }
 });
 
-router.post('/administrative-templates', (req, res) => {
+router.post('/administrative-templates', async (req, res) => {
   if (denyIfNotAdmin(req, res)) return;
 
   const templateFileName = normalize(req.body.TemplateFileName);
@@ -692,25 +693,25 @@ router.post('/administrative-templates', (req, res) => {
     return res.status(400).json({ message: 'رابط/ملف النموذج مطلوب.' });
   }
 
-  const exists = db.prepare('SELECT ID FROM AdministrativeTemplateConfigs WHERE TemplateName = ? COLLATE NOCASE LIMIT 1').get(templateName);
+  const exists = (await db.prepare('SELECT ID FROM AdministrativeTemplateConfigs WHERE TemplateName = ? COLLATE NOCASE LIMIT 1').get(templateName));
   if (exists) {
     return res.status(409).json({ message: 'اسم النموذج موجود مسبقاً.' });
   }
 
   try {
     const timestamp = getCurrentTimestamp();
-    const result = db.prepare(`
+    const result = (await db.prepare(`
       INSERT INTO AdministrativeTemplateConfigs (TemplateName, TemplateFileName, Coordinates, CreatedAt, UpdatedAt)
       VALUES (?, ?, ?, ?, ?)
-    `).run(templateName, templateFileName, coordinates, timestamp, timestamp);
+    `).run(templateName, templateFileName, coordinates, timestamp, timestamp));
 
-    logSystem({
+    (await logSystem({
       userName: req.user?.username || 'system',
       role: req.user?.role || '',
       action: 'Add',
       page: 'Settings',
       details: `Added administrative template config ID=${result.lastInsertRowid}`
-    });
+    }));
 
     return res.json({ id: result.lastInsertRowid });
   } catch (error) {
@@ -719,7 +720,7 @@ router.post('/administrative-templates', (req, res) => {
   }
 });
 
-router.put('/administrative-templates/:id', (req, res) => {
+router.put('/administrative-templates/:id', async (req, res) => {
   if (denyIfNotAdmin(req, res)) return;
 
   const id = Number(req.params.id);
@@ -739,30 +740,30 @@ router.put('/administrative-templates/:id', (req, res) => {
     return res.status(400).json({ message: 'رابط/ملف النموذج مطلوب.' });
   }
 
-  const exists = db.prepare('SELECT ID FROM AdministrativeTemplateConfigs WHERE TemplateName = ? COLLATE NOCASE AND ID <> ? LIMIT 1').get(templateName, id);
+  const exists = (await db.prepare('SELECT ID FROM AdministrativeTemplateConfigs WHERE TemplateName = ? COLLATE NOCASE AND ID <> ? LIMIT 1').get(templateName, id));
   if (exists) {
     return res.status(409).json({ message: 'اسم النموذج مستخدم من سجل آخر.' });
   }
 
   try {
     const timestamp = getCurrentTimestamp();
-    const result = db.prepare(`
+    const result = (await db.prepare(`
       UPDATE AdministrativeTemplateConfigs
       SET TemplateName = ?, TemplateFileName = ?, Coordinates = ?, UpdatedAt = ?
       WHERE ID = ?
-    `).run(templateName, templateFileName, coordinates, timestamp, id);
+    `).run(templateName, templateFileName, coordinates, timestamp, id));
 
     if (result.changes === 0) {
       return res.status(404).json({ message: 'السجل غير موجود للتعديل.' });
     }
 
-    logSystem({
+    (await logSystem({
       userName: req.user?.username || 'system',
       role: req.user?.role || '',
       action: 'Update',
       page: 'Settings',
       details: `Updated administrative template config ID=${id}`
-    });
+    }));
 
     return res.json({ changes: result.changes });
   } catch (error) {
@@ -771,7 +772,7 @@ router.put('/administrative-templates/:id', (req, res) => {
   }
 });
 
-router.delete('/administrative-templates/:id', (req, res) => {
+router.delete('/administrative-templates/:id', async (req, res) => {
   if (denyIfNotAdmin(req, res)) return;
 
   const id = Number(req.params.id);
@@ -780,18 +781,18 @@ router.delete('/administrative-templates/:id', (req, res) => {
   }
 
   try {
-    const result = db.prepare('DELETE FROM AdministrativeTemplateConfigs WHERE ID = ?').run(id);
+    const result = (await db.prepare('DELETE FROM AdministrativeTemplateConfigs WHERE ID = ?').run(id));
     if (result.changes === 0) {
       return res.status(404).json({ message: 'السجل غير موجود للحذف.' });
     }
 
-    logSystem({
+    (await logSystem({
       userName: req.user?.username || 'system',
       role: req.user?.role || '',
       action: 'Delete',
       page: 'Settings',
       details: `Deleted administrative template config ID=${id}`
-    });
+    }));
 
     return res.json({ changes: result.changes });
   } catch (error) {

@@ -2,6 +2,13 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const Database = require('better-sqlite3');
+const { createPostgresProvider, createSqliteProvider } = require('./database/providers');
+const { removeSync } = require('./utils/fsCompat');
+
+const dbClient = String(process.env.DB_CLIENT || 'sqlite').trim().toLowerCase();
+if (!['sqlite', 'postgres'].includes(dbClient)) {
+  throw new Error(`Unsupported DB_CLIENT: ${dbClient}. Expected sqlite or postgres.`);
+}
 
 const LOCK_STALE_MS = 120000;
 const LOCK_HEARTBEAT_MS = 30000;
@@ -18,6 +25,17 @@ function canOpenDatabase(candidatePath) {
     return false;
   } finally {
     if (probe?.open) probe.close();
+  }
+}
+
+function isLocalProcessRunning(pid) {
+  if (!Number.isInteger(pid) || pid <= 0) return false;
+
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return error.code === 'EPERM';
   }
 }
 
@@ -46,24 +64,31 @@ function acquireApplicationLock(databasePath) {
       return {
         release() {
           clearInterval(heartbeat);
-          fs.rmSync(lockPath, { recursive: true, force: true });
+          removeSync(lockPath, { recursive: true, force: true });
         }
       };
     } catch (error) {
       if (error.code !== 'EEXIST') throw error;
 
+      let details = null;
+      try {
+        details = JSON.parse(fs.readFileSync(path.join(lockPath, 'owner.json'), 'utf8'));
+      } catch {
+        // Lock age remains the fallback when owner metadata is unavailable.
+      }
+
       const lockAge = Date.now() - fs.statSync(lockPath).mtimeMs;
-      if (attempt === 0 && lockAge > LOCK_STALE_MS) {
-        fs.rmSync(lockPath, { recursive: true, force: true });
+      const belongsToThisMachine = details?.machine === os.hostname();
+      const ownerProcessStopped = belongsToThisMachine && !isLocalProcessRunning(Number(details.pid));
+
+      if (attempt === 0 && (ownerProcessStopped || lockAge > LOCK_STALE_MS)) {
+        removeSync(lockPath, { recursive: true, force: true });
         continue;
       }
 
       let owner = 'another machine';
-      try {
-        const details = JSON.parse(fs.readFileSync(path.join(lockPath, 'owner.json'), 'utf8'));
+      if (details) {
         owner = `${details.machine || 'unknown machine'} (PID ${details.pid || 'unknown'})`;
-      } catch {
-        // Keep the fallback owner description.
       }
 
       throw new Error(`The shared database is already in use by the API server on ${owner}.`);
@@ -105,37 +130,45 @@ function resolveDatabasePath() {
   return localPath;
 }
 
-const dbPath = resolveDatabasePath();
-const applicationLock = acquireApplicationLock(dbPath);
+const dbPath = dbClient === 'sqlite' ? resolveDatabasePath() : null;
+let applicationLock = null;
 let db;
 
-try {
-  db = new Database(dbPath, {
-    readonly: false,
-    fileMustExist: Boolean(process.env.DB_PATH && process.env.DB_PATH.trim()),
-    timeout: 15000
-  });
-} catch (error) {
-  applicationLock.release();
-  throw error;
-}
+if (dbClient === 'sqlite') {
+  applicationLock = acquireApplicationLock(dbPath);
 
-try {
-  db.pragma('busy_timeout = 15000');
-  db.pragma('journal_mode = DELETE');
-  db.pragma('synchronous = FULL');
-} catch (error) {
-  db.close();
-  applicationLock.release();
-
-  if (error.code === 'SQLITE_BUSY' || error.code === 'SQLITE_LOCKED') {
-    throw new Error(
-      `Database is locked: ${dbPath}. Close the program using it on PC-SERVER, then start the application again.`,
-      { cause: error }
-    );
+  try {
+    db = new Database(dbPath, {
+      readonly: false,
+      fileMustExist: Boolean(process.env.DB_PATH && process.env.DB_PATH.trim()),
+      timeout: 15000
+    });
+  } catch (error) {
+    applicationLock.release();
+    throw error;
   }
 
-  throw error;
+  try {
+    db.pragma('busy_timeout = 15000');
+    const journalMode = String(process.env.SQLITE_JOURNAL_MODE || 'DELETE').trim().toUpperCase();
+    if (!['DELETE', 'WAL'].includes(journalMode)) {
+      throw new Error(`Unsupported SQLITE_JOURNAL_MODE: ${journalMode}. Expected DELETE or WAL.`);
+    }
+    db.pragma(`journal_mode = ${journalMode}`);
+    db.pragma('synchronous = FULL');
+  } catch (error) {
+    db.close();
+    applicationLock.release();
+
+    if (error.code === 'SQLITE_BUSY' || error.code === 'SQLITE_LOCKED') {
+      throw new Error(
+        `Database is locked: ${dbPath}. Close the program using it on PC-SERVER, then start the application again.`,
+        { cause: error }
+      );
+    }
+
+    throw error;
+  }
 }
 
 const dailyTables = ['Daily1', 'Daily2', 'Daily3', 'Daily4'];
@@ -221,6 +254,23 @@ function ensureLoginTable() {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
     `).run('admin', 'admin', 'Admin', '', '', '', '[]', '[]', '[]', '[]', 'System Administrator', timestamp, timestamp);
   }
+}
+
+function ensureRefreshSessionsTable() {
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS RefreshSessions (
+      ID INTEGER PRIMARY KEY AUTOINCREMENT,
+      UserID INTEGER NOT NULL,
+      TokenHash TEXT NOT NULL UNIQUE,
+      CreatedAt TEXT NOT NULL,
+      ExpiresAt TEXT NOT NULL,
+      LastUsedAt TEXT,
+      FOREIGN KEY (UserID) REFERENCES Login(ID) ON DELETE CASCADE
+    )
+  `).run();
+
+  db.prepare('CREATE INDEX IF NOT EXISTS idx_refresh_sessions_user ON RefreshSessions(UserID)').run();
+  db.prepare('DELETE FROM RefreshSessions WHERE ExpiresAt <= ?').run(new Date().toISOString());
 }
 
 function ensureDepartmentSectionLookupTable() {
@@ -638,44 +688,68 @@ function normalizeDepartmentNames() {
   }
 }
 
-function logSystem({ userName = '', role = '', action = '', target = '', page = '', details = '', machine = '', appVersion = '' } = {}) {
+async function logSystem({ userName = '', role = '', action = '', target = '', page = '', details = '', machine = '', appVersion = '' } = {}) {
   try {
     const stmt = db.prepare(`INSERT INTO SystemLog (Timestamp, UserName, Role, Action, Target, Details, Machine, AppVersion) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`);
-    stmt.run(getCurrentTimestamp(), userName, role, action, target || page, details, machine, appVersion);
+    await stmt.run(getCurrentTimestamp(), userName, role, action, target || page, details, machine, appVersion);
   } catch (error) {
     // Do not block business flow if audit logging fails.
     console.warn('SystemLog insert skipped:', error.message);
   }
 }
 
-function closeDatabase() {
-  if (db.open) {
-    db.close();
-  }
-  applicationLock.release();
+async function closeDatabase() {
+  await db.close();
+  applicationLock?.release();
 }
 
-ensureSystemLogTable();
-ensureLoginTable();
-ensureDepartmentSectionLookupTable();
-ensureWorkflowSubSectionColumns();
-ensureAdministrativeFormsTable();
-ensureAdministrativeTemplateConfigsTable();
-ensureOutgoingDocumentsTable();
-ensureIncomingDocumentsTable();
-ensureHolidayTable();
-ensureCourseTable();
-ensureTransferTable();
-normalizeDepartmentNames();
+let initializationPromise;
+const databaseInitializers = [];
 
-console.log(`Database path: ${dbPath}`);
+function registerDatabaseInitializer(initializer) {
+  databaseInitializers.push(initializer);
+}
+
+async function initializeDatabase() {
+  await initializationPromise;
+  for (const initializer of databaseInitializers) {
+    await initializer();
+  }
+}
+
+if (dbClient === 'postgres') {
+  db = createPostgresProvider();
+  initializationPromise = db.initialize();
+  console.log('Database provider: PostgreSQL');
+} else {
+  ensureSystemLogTable();
+  ensureLoginTable();
+  ensureRefreshSessionsTable();
+  ensureDepartmentSectionLookupTable();
+  ensureWorkflowSubSectionColumns();
+  ensureAdministrativeFormsTable();
+  ensureAdministrativeTemplateConfigsTable();
+  ensureOutgoingDocumentsTable();
+  ensureIncomingDocumentsTable();
+  ensureHolidayTable();
+  ensureCourseTable();
+  ensureTransferTable();
+  normalizeDepartmentNames();
+  db = createSqliteProvider(db);
+  initializationPromise = Promise.resolve();
+  console.log(`Database path: ${dbPath}`);
+}
 
 module.exports = {
   db,
+  dbClient,
   dbPath,
   dailyTables,
   isValidDailyTable,
   getCurrentTimestamp,
+  initializeDatabase,
+  initializationPromise,
   logSystem,
+  registerDatabaseInitializer,
   closeDatabase,
 };

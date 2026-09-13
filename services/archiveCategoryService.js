@@ -10,8 +10,8 @@ const LEGACY_CATEGORY_ALIASES = {
   reports: 'statements'
 };
 
-function ensureArchiveCategoriesTable(db, getCurrentTimestamp) {
-  db.prepare(`
+async function ensureArchiveCategoriesTable(db, getCurrentTimestamp) {
+  (await db.prepare(`
     CREATE TABLE IF NOT EXISTS ArchiveCategories (
       ID INTEGER PRIMARY KEY AUTOINCREMENT,
       KeyName TEXT NOT NULL UNIQUE,
@@ -21,11 +21,11 @@ function ensureArchiveCategoriesTable(db, getCurrentTimestamp) {
       CreatedAt TEXT NOT NULL,
       UpdatedAt TEXT NOT NULL
     )
-  `).run();
+  `).run());
 
-  const columns = db.prepare('PRAGMA table_info(ArchiveCategories)').all();
+  const columns = (await db.prepare('PRAGMA table_info(ArchiveCategories)').all());
   if (!columns.some((column) => String(column.name).toLowerCase() === 'parentid')) {
-    db.prepare('ALTER TABLE ArchiveCategories ADD COLUMN ParentID INTEGER').run();
+    (await db.prepare('ALTER TABLE ArchiveCategories ADD COLUMN ParentID INTEGER').run());
   }
 
   const timestamp = getCurrentTimestamp();
@@ -35,12 +35,12 @@ function ensureArchiveCategoriesTable(db, getCurrentTimestamp) {
     VALUES (?, ?, ?, 1, ?, ?)
   `);
 
-  const seedDefaults = db.transaction(() => {
-    DEFAULT_ARCHIVE_CATEGORIES.forEach((category) => {
-      insert.run(category.key, category.labelAr, category.sortOrder, timestamp, timestamp);
-    });
+  const seedDefaults = db.transaction(async () => {
+    for (const category of DEFAULT_ARCHIVE_CATEGORIES) {
+      await insert.run(category.key, category.labelAr, category.sortOrder, timestamp, timestamp);
+    }
   });
-  seedDefaults();
+  await seedDefaults();
 }
 
 function normalizeCategoryKey(value) {
@@ -48,9 +48,9 @@ function normalizeCategoryKey(value) {
   return LEGACY_CATEGORY_ALIASES[raw] || raw;
 }
 
-function listArchiveCategories(db, { includeInactive = false } = {}) {
+async function listArchiveCategories(db, { includeInactive = false } = {}) {
   const where = includeInactive ? '' : 'WHERE category.IsActive = 1';
-  return db.prepare(`
+  return (await db.prepare(`
     SELECT category.ID, category.KeyName, category.LabelAr, category.ParentID,
            parent.KeyName AS ParentKeyName, parent.LabelAr AS ParentLabelAr,
            category.SortOrder, category.IsActive, category.CreatedAt, category.UpdatedAt
@@ -58,14 +58,14 @@ function listArchiveCategories(db, { includeInactive = false } = {}) {
     LEFT JOIN ArchiveCategories AS parent ON parent.ID = category.ParentID
     ${where}
     ORDER BY category.SortOrder ASC, category.ID ASC
-  `).all();
+  `).all());
 }
 
-function getArchiveCategory(db, value, { includeInactive = false } = {}) {
+async function getArchiveCategory(db, value, { includeInactive = false } = {}) {
   const key = normalizeCategoryKey(value);
   if (!key) return null;
   const activeClause = includeInactive ? '' : 'AND category.IsActive = 1';
-  return db.prepare(`
+  return (await db.prepare(`
     SELECT category.ID, category.KeyName, category.LabelAr, category.ParentID,
            parent.KeyName AS ParentKeyName, parent.LabelAr AS ParentLabelAr,
            category.SortOrder, category.IsActive, category.CreatedAt, category.UpdatedAt
@@ -73,13 +73,13 @@ function getArchiveCategory(db, value, { includeInactive = false } = {}) {
     LEFT JOIN ArchiveCategories AS parent ON parent.ID = category.ParentID
     WHERE category.KeyName = ? ${activeClause}
     LIMIT 1
-  `).get(key) || null;
+  `).get(key)) || null;
 }
 
-function getArchiveCategoryPath(db, value) {
+async function getArchiveCategoryPath(db, value) {
   const parts = [];
   const visited = new Set();
-  let category = getArchiveCategory(db, value, { includeInactive: true });
+  let category = (await getArchiveCategory(db, value, { includeInactive: true }));
 
   while (category) {
     if (visited.has(category.ID)) {
@@ -88,10 +88,10 @@ function getArchiveCategoryPath(db, value) {
     visited.add(category.ID);
     parts.unshift(category.KeyName);
     category = category.ParentID
-      ? db.prepare(`
+      ? (await db.prepare(`
           SELECT ID, KeyName, LabelAr, ParentID, SortOrder, IsActive, CreatedAt, UpdatedAt
           FROM ArchiveCategories WHERE ID = ? LIMIT 1
-        `).get(category.ParentID)
+        `).get(category.ParentID))
       : null;
   }
 

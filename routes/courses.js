@@ -1,11 +1,11 @@
 const express = require('express');
-const { db, logSystem } = require('../database');
+const { db, logSystem, registerDatabaseInitializer } = require('../database');
 
 const router = express.Router();
 const columns = ['EmpID', 'Name', 'Department', 'Section', 'Status', 'CourseName', 'CourseProvider', 'Startdate', 'Enddate', 'Days', 'Note', 'UserName'];
 
-function ensureCourseTable() {
-  db.prepare(`
+async function ensureCourseTable() {
+  (await db.prepare(`
     CREATE TABLE IF NOT EXISTS Course (
       ID INTEGER PRIMARY KEY AUTOINCREMENT,
       EmpID INTEGER,
@@ -21,11 +21,11 @@ function ensureCourseTable() {
       Note TEXT,
       UserName TEXT
     )
-  `).run();
+  `).run());
 
-  const columnsInfo = db.prepare('PRAGMA table_info(Course)').all();
+  const columnsInfo = (await db.prepare('PRAGMA table_info(Course)').all());
   if (!columnsInfo.some((column) => String(column.name || '').toLowerCase() === 'username')) {
-    db.prepare('ALTER TABLE Course ADD COLUMN UserName TEXT').run();
+    (await db.prepare('ALTER TABLE Course ADD COLUMN UserName TEXT').run());
   }
 }
 
@@ -33,7 +33,7 @@ function normalizeText(value) {
   return String(value || '').trim();
 }
 
-function findDuplicateCourse(payload, excludeId = null) {
+async function findDuplicateCourse(payload, excludeId = null) {
   const empId = Number(payload.EmpID || 0);
   const name = normalizeText(payload.Name);
   const courseName = normalizeText(payload.CourseName);
@@ -52,7 +52,7 @@ function findDuplicateCourse(payload, excludeId = null) {
     const args = excludeId
       ? [empId, courseName, courseProvider, startdate, enddate, excludeId]
       : [empId, courseName, courseProvider, startdate, enddate];
-    return db.prepare(sql).get(...args);
+    return (await db.prepare(sql).get(...args));
   }
 
   const sql = excludeId
@@ -61,7 +61,7 @@ function findDuplicateCourse(payload, excludeId = null) {
   const args = excludeId
     ? [name, courseName, courseProvider, startdate, enddate, excludeId]
     : [name, courseName, courseProvider, startdate, enddate];
-  return db.prepare(sql).get(...args);
+  return (await db.prepare(sql).get(...args));
 }
 
 function buildInsertStatement(payload) {
@@ -82,25 +82,25 @@ function buildUpdateStatement(payload, id) {
   };
 }
 
-ensureCourseTable();
+registerDatabaseInitializer(ensureCourseTable);
 
-router.get('/', (req, res) => {
-  const records = db.prepare('SELECT * FROM Course ORDER BY Startdate DESC, ID DESC').all();
+router.get('/', async (req, res) => {
+  const records = (await db.prepare('SELECT * FROM Course ORDER BY Startdate DESC, ID DESC').all());
   res.json(records);
 });
 
-router.get('/:id', (req, res) => {
+router.get('/:id', async (req, res) => {
   const id = Number(req.params.id);
   if (!id) {
     return res.status(400).json({ message: 'معرّف غير صالح' });
   }
 
-  const record = db.prepare('SELECT * FROM Course WHERE ID = ?').get(id);
+  const record = (await db.prepare('SELECT * FROM Course WHERE ID = ?').get(id));
   return record ? res.json(record) : res.status(404).json({ message: 'السجل غير موجود' });
 });
 
-router.post('/', (req, res) => {
-  const duplicate = findDuplicateCourse(req.body);
+router.post('/', async (req, res) => {
+  const duplicate = (await findDuplicateCourse(req.body));
   if (duplicate) {
     return res.status(409).json({ message: 'لا يمكن إدخال نفس الدورة مرتين لنفس الموظف.' });
   }
@@ -110,18 +110,18 @@ router.post('/', (req, res) => {
     return res.status(400).json({ message: 'البيانات المرسلة غير كافية' });
   }
 
-  const result = db.prepare(statement.sql).run(statement.values);
-  logSystem({ userName: req.body.userName || 'system', action: 'Add', page: 'Course', details: `Added course ID=${result.lastInsertRowid}` });
+  const result = (await db.prepare(statement.sql).run(statement.values));
+  (await logSystem({ userName: req.body.userName || 'system', action: 'Add', page: 'Course', details: `Added course ID=${result.lastInsertRowid}` }));
   res.json({ id: result.lastInsertRowid });
 });
 
-router.put('/:id', (req, res) => {
+router.put('/:id', async (req, res) => {
   const id = Number(req.params.id);
   if (!id) {
     return res.status(400).json({ message: 'معرّف غير صالح' });
   }
 
-  const duplicate = findDuplicateCourse(req.body, id);
+  const duplicate = (await findDuplicateCourse(req.body, id));
   if (duplicate) {
     return res.status(409).json({ message: 'لا يمكن تكرار نفس الدورة لنفس الموظف.' });
   }
@@ -131,27 +131,27 @@ router.put('/:id', (req, res) => {
     return res.status(400).json({ message: 'البيانات المرسلة غير كافية' });
   }
 
-  const result = db.prepare(statement.sql).run(statement.values);
+  const result = (await db.prepare(statement.sql).run(statement.values));
   if (result.changes === 0) {
     return res.status(404).json({ message: 'السجل غير موجود للتعديل' });
   }
 
-  logSystem({ userName: req.body.userName || 'system', action: 'Update', page: 'Course', details: `Updated course ID=${id}` });
+  (await logSystem({ userName: req.body.userName || 'system', action: 'Update', page: 'Course', details: `Updated course ID=${id}` }));
   res.json({ changes: result.changes });
 });
 
-router.delete('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
   const id = Number(req.params.id);
   if (!id) {
     return res.status(400).json({ message: 'معرّف غير صالح' });
   }
 
-  const result = db.prepare('DELETE FROM Course WHERE ID = ?').run(id);
+  const result = (await db.prepare('DELETE FROM Course WHERE ID = ?').run(id));
   if (result.changes === 0) {
     return res.status(404).json({ message: 'السجل غير موجود للحذف' });
   }
 
-  logSystem({ userName: req.body.userName || 'system', action: 'Delete', page: 'Course', details: `Deleted course ID=${id}` });
+  (await logSystem({ userName: req.body.userName || 'system', action: 'Delete', page: 'Course', details: `Deleted course ID=${id}` }));
   res.json({ changes: result.changes });
 });
 

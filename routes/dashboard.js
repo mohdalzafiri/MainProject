@@ -2,7 +2,7 @@ const express = require('express');
 const { db } = require('../database');
 const router = express.Router();
 
-function replaceEmployeeIdWithName(record) {
+async function replaceEmployeeIdWithName(record) {
   if (!record || !record.Details) {
     return record;
   }
@@ -28,7 +28,7 @@ function replaceEmployeeIdWithName(record) {
     }
 
     try {
-      const source = db.prepare(`SELECT Name FROM "${String(mapping.table || '').replace(/"/g, '""')}" WHERE ID = ? LIMIT 1`).get(rowId);
+      const source = (await db.prepare(`SELECT Name FROM "${String(mapping.table || '').replace(/"/g, '""')}" WHERE ID = ? LIMIT 1`).get(rowId));
       const name = String(source?.Name || '').trim();
       if (!name) {
         return record;
@@ -166,65 +166,65 @@ function localizeRecord(record) {
   };
 }
 
-function tableOrViewExists(name) {
-  const row = db.prepare("SELECT 1 AS found FROM sqlite_master WHERE name = ? AND type IN ('table','view') LIMIT 1").get(name);
+async function tableOrViewExists(name) {
+  const row = (await db.prepare("SELECT 1 AS found FROM sqlite_master WHERE name = ? AND type IN ('table','view') LIMIT 1").get(name));
   return Boolean(row);
 }
 
-function getTodaySqlDate() {
-  return db.prepare("SELECT date('now', 'localtime') AS value").get().value;
+async function getTodaySqlDate() {
+  return (await db.prepare("SELECT date('now', 'localtime') AS value").get()).value;
 }
 
-function countActiveEmployees() {
-  if (!tableOrViewExists('Main')) return 0;
+async function countActiveEmployees() {
+  if (!(await tableOrViewExists('Main'))) return 0;
 
-  return db.prepare("SELECT COUNT(*) AS count FROM Main WHERE TRIM(Status) = 'نشط'").get().count;
+  return (await db.prepare("SELECT COUNT(*) AS count FROM Main WHERE TRIM(Status) = 'نشط'").get()).count;
 }
 
-function countOutsideEmployees() {
-  if (!tableOrViewExists('Main')) return 0;
+async function countOutsideEmployees() {
+  if (!(await tableOrViewExists('Main'))) return 0;
 
-  return db.prepare("SELECT COUNT(*) AS count FROM Main WHERE TRIM(Status) = 'غير نشط'").get().count;
+  return (await db.prepare("SELECT COUNT(*) AS count FROM Main WHERE TRIM(Status) = 'غير نشط'").get()).count;
 }
 
-function countOngoingRecords(tableName) {
-  if (!tableOrViewExists(tableName)) return 0;
+async function countOngoingRecords(tableName) {
+  if (!(await tableOrViewExists(tableName))) return 0;
 
-  const today = getTodaySqlDate();
-  return db.prepare(`
+  const today = (await getTodaySqlDate());
+  return (await db.prepare(`
     SELECT COUNT(*) AS count
     FROM ${tableName}
     WHERE date(REPLACE(Startdate, '/', '-')) <= date(?)
       AND date(REPLACE(Enddate, '/', '-')) >= date(?)
-  `).get(today, today).count;
+  `).get(today, today)).count;
 }
 
-function countUpcomingHolidays() {
-  if (!tableOrViewExists('Holiday')) return 0;
+async function countUpcomingHolidays() {
+  if (!(await tableOrViewExists('Holiday'))) return 0;
 
-  return db.prepare(`
+  return (await db.prepare(`
     SELECT COUNT(*) AS count
     FROM Holiday
     WHERE date(REPLACE(Startdate, '/', '-')) > date('now', 'localtime')
       AND date(REPLACE(Startdate, '/', '-')) <= date('now', 'localtime', '+3 day')
-  `).get().count;
+  `).get()).count;
 }
 
-function summarizeDocumentTable(tableName, dateColumn, numberColumn, subjectColumn, extraColumn) {
-  if (!tableOrViewExists(tableName)) {
+async function summarizeDocumentTable(tableName, dateColumn, numberColumn, subjectColumn, extraColumn) {
+  if (!(await tableOrViewExists(tableName))) {
     return {
       total: 0,
       latest: null
     };
   }
 
-  const total = db.prepare(`SELECT COUNT(*) AS count FROM ${tableName}`).get().count;
-  const latest = db.prepare(`
+  const total = (await db.prepare(`SELECT COUNT(*) AS count FROM ${tableName}`).get()).count;
+  const latest = (await db.prepare(`
     SELECT ${numberColumn} AS numberValue, ${dateColumn} AS dateValue, ${subjectColumn} AS subjectValue${extraColumn ? `, ${extraColumn} AS extraValue` : ''}
     FROM ${tableName}
     ORDER BY date(REPLACE(${dateColumn}, '/', '-')) DESC, ID DESC
     LIMIT 1
-  `).get();
+  `).get());
 
   return {
     total,
@@ -237,34 +237,34 @@ function summarizeDocumentTable(tableName, dateColumn, numberColumn, subjectColu
   };
 }
 
-router.get('/summary', (req, res) => {
+router.get('/summary', async (req, res) => {
   try {
     const totals = {
-      totalEmployees: countActiveEmployees(),
-      totalDailyRecords: tableOrViewExists('DailyAll') ? db.prepare('SELECT COUNT(*) AS count FROM DailyAll').get().count : 0,
-      currentHolidays: countOngoingRecords('Holiday'),
-      upcomingHolidays: countUpcomingHolidays(),
-      totalHolidays: tableOrViewExists('Holiday')
-        ? db.prepare(`
+      totalEmployees: (await countActiveEmployees()),
+      totalDailyRecords: (await tableOrViewExists('DailyAll')) ? (await db.prepare('SELECT COUNT(*) AS count FROM DailyAll').get()).count : 0,
+      currentHolidays: (await countOngoingRecords('Holiday')),
+      upcomingHolidays: (await countUpcomingHolidays()),
+      totalHolidays: (await tableOrViewExists('Holiday'))
+        ? (await db.prepare(`
             SELECT COUNT(*) AS count
             FROM Holiday
             WHERE date(REPLACE(Enddate, '/', '-')) >= date('now', 'localtime')
-          `).get().count
+          `).get()).count
         : 0,
-      totalCourses: countOngoingRecords('Course'),
-      totalTransfers: countOutsideEmployees(),
-      totalUsers: tableOrViewExists('Login') ? db.prepare('SELECT COUNT(*) AS count FROM Login').get().count : 0,
-      totalSystemEvents: tableOrViewExists('SystemLog') ? db.prepare('SELECT COUNT(*) AS count FROM SystemLog').get().count : 0,
-      totalMonthlyRecords: tableOrViewExists('DailyAll')
-        ? db.prepare("SELECT COUNT(*) AS count FROM DailyAll WHERE strftime('%Y-%m', Today) = strftime('%Y-%m', 'now')").get().count
+      totalCourses: (await countOngoingRecords('Course')),
+      totalTransfers: (await countOutsideEmployees()),
+      totalUsers: (await tableOrViewExists('Login')) ? (await db.prepare('SELECT COUNT(*) AS count FROM Login').get()).count : 0,
+      totalSystemEvents: (await tableOrViewExists('SystemLog')) ? (await db.prepare('SELECT COUNT(*) AS count FROM SystemLog').get()).count : 0,
+      totalMonthlyRecords: (await tableOrViewExists('DailyAll'))
+        ? (await db.prepare("SELECT COUNT(*) AS count FROM DailyAll WHERE strftime('%Y-%m', Today) = strftime('%Y-%m', 'now')").get()).count
         : 0
     };
 
-    const outgoingSummary = summarizeDocumentTable('OutgoingDocuments', 'DocDate', 'DocNumber', 'Subject', 'Recipient');
-    const incomingSummary = summarizeDocumentTable('IncomingDocuments', 'DocDate', 'DocNumber', 'Subject', 'SourceDepartment');
+    const outgoingSummary = (await summarizeDocumentTable('OutgoingDocuments', 'DocDate', 'DocNumber', 'Subject', 'Recipient'));
+    const incomingSummary = (await summarizeDocumentTable('IncomingDocuments', 'DocDate', 'DocNumber', 'Subject', 'SourceDepartment'));
 
-    const departments = tableOrViewExists('Main')
-      ? db.prepare(`
+    const departments = (await tableOrViewExists('Main'))
+      ? (await db.prepare(`
           WITH department_labels(label, sort_order) AS (
             VALUES
               ('البلاغات', 1),
@@ -281,11 +281,11 @@ router.get('/summary', (req, res) => {
           LEFT JOIN Main ON TRIM(Main.Department) = department_labels.label AND TRIM(Main.Status) = 'نشط'
           GROUP BY department_labels.label, department_labels.sort_order
           ORDER BY department_labels.sort_order
-        `).all()
+        `).all())
       : [];
 
-    const shifts = tableOrViewExists('Main')
-      ? db.prepare(`
+    const shifts = (await tableOrViewExists('Main'))
+      ? (await db.prepare(`
           WITH shift_labels(label, sort_order) AS (
             VALUES
               ('أ - البلاغات', 1),
@@ -321,11 +321,11 @@ router.get('/summary', (req, res) => {
           LEFT JOIN Main ON TRIM(Main.Section) = shift_labels.label AND TRIM(Main.Status) = 'نشط'
           GROUP BY shift_labels.label, shift_labels.sort_order
           ORDER BY shift_labels.sort_order
-        `).all()
+        `).all())
       : [];
 
-    const workplaces = tableOrViewExists('Main')
-      ? db.prepare(`
+    const workplaces = (await tableOrViewExists('Main'))
+      ? (await db.prepare(`
           SELECT
             TRIM(Work) AS label,
             COUNT(*) AS value
@@ -335,24 +335,24 @@ router.get('/summary', (req, res) => {
           GROUP BY TRIM(Work)
           ORDER BY value DESC, label ASC
           LIMIT 10
-        `).all()
+        `).all())
       : [];
 
     const sections = [];
 
     let todaySummary = [];
     let latestDailyShift = null;
-    if (tableOrViewExists('DailyAll')) {
+    if ((await tableOrViewExists('DailyAll'))) {
       const dailyTables = new Set(['Daily1', 'Daily2', 'Daily3', 'Daily4']);
-      const latestDailyAdd = tableOrViewExists('SystemLog')
-        ? db.prepare(`
+      const latestDailyAdd = (await tableOrViewExists('SystemLog'))
+        ? (await db.prepare(`
             SELECT Target, Details
             FROM SystemLog
             WHERE LOWER(TRIM(Action)) = 'add'
               AND Target IN ('Daily1', 'Daily2', 'Daily3', 'Daily4')
             ORDER BY datetime(Timestamp) DESC, ID DESC
             LIMIT 1
-          `).get()
+          `).get())
         : null;
 
       if (latestDailyAdd && dailyTables.has(latestDailyAdd.Target)) {
@@ -365,7 +365,7 @@ router.get('/summary', (req, res) => {
             : null;
 
         if (sourceFilter) {
-          latestDailyShift = db.prepare(`
+          latestDailyShift = (await db.prepare(`
             SELECT
               date(REPLACE(Today, '/', '-')) AS logDate,
               TRIM(Department) AS department,
@@ -378,12 +378,12 @@ router.get('/summary', (req, res) => {
               AND TRIM(Period) <> ''
             ORDER BY ID DESC
             LIMIT 1
-          `).get(sourceFilter.value);
+          `).get(sourceFilter.value));
         }
       }
 
       if (!latestDailyShift) {
-        latestDailyShift = db.prepare(`
+        latestDailyShift = (await db.prepare(`
           SELECT
             date(REPLACE(Today, '/', '-')) AS logDate,
             TRIM(Department) AS department,
@@ -396,11 +396,11 @@ router.get('/summary', (req, res) => {
             AND TRIM(Period) <> ''
           ORDER BY date(REPLACE(Today, '/', '-')) DESC, ID DESC
           LIMIT 1
-        `).get();
+        `).get());
       }
 
       if (latestDailyShift?.logDate && latestDailyShift?.department && latestDailyShift?.section && latestDailyShift?.period) {
-        todaySummary = db.prepare(`
+        todaySummary = (await db.prepare(`
           SELECT
             Name,
             Status,
@@ -423,12 +423,12 @@ router.get('/summary', (req, res) => {
           latestDailyShift.department,
           latestDailyShift.section,
           latestDailyShift.period
-        );
+        ));
       }
     }
 
-    const leaveDailySummary = tableOrViewExists('Holiday')
-      ? db.prepare(`
+    const leaveDailySummary = (await tableOrViewExists('Holiday'))
+      ? (await db.prepare(`
           SELECT
             Name,
             Department,
@@ -441,16 +441,16 @@ router.get('/summary', (req, res) => {
             AND date(REPLACE(Enddate, '/', '-')) >= date(?)
           ORDER BY date(REPLACE(Enddate, '/', '-')) ASC, date(REPLACE(Startdate, '/', '-')) ASC, Name ASC
           LIMIT 12
-        `).all(getTodaySqlDate(), getTodaySqlDate())
+        `).all((await getTodaySqlDate()), (await getTodaySqlDate())))
       : [];
 
-    const recentActivities = tableOrViewExists('SystemLog')
-      ? db.prepare(`
+    const recentActivities = (await tableOrViewExists('SystemLog'))
+      ? (await db.prepare(`
           SELECT Timestamp, UserName, Action, Target, Details
           FROM SystemLog
           WHERE date(Timestamp) BETWEEN date('now', 'localtime', '-2 day') AND date('now', 'localtime')
           ORDER BY Timestamp DESC
-        `).all().map(replaceEmployeeIdWithName).map(localizeRecord)
+        `).all()).map(replaceEmployeeIdWithName).map(localizeRecord)
       : [];
 
     res.json({

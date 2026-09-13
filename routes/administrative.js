@@ -1,5 +1,5 @@
 ﻿const express = require('express');
-const { db, logSystem, getCurrentTimestamp } = require('../database');
+const { db, logSystem, getCurrentTimestamp, registerDatabaseInitializer } = require('../database');
 const {
   formatDate,
   formatTimestamp,
@@ -15,8 +15,8 @@ const {
 const router = express.Router();
 const columns = ['EmpID', 'Name', 'Department', 'Section', 'SubSection', 'Status', 'Department1', 'Section1', 'SubSection1', 'Enddate', 'Note', 'UserName'];
 
-function ensureTransferTable() {
-  db.prepare(`
+async function ensureTransferTable() {
+  (await db.prepare(`
     CREATE TABLE IF NOT EXISTS Transfer (
       ID INTEGER PRIMARY KEY AUTOINCREMENT,
       EmpID INTEGER,
@@ -32,15 +32,15 @@ function ensureTransferTable() {
       Note TEXT,
       UserName TEXT
     )
-  `).run();
+  `).run());
 
-  const columnsInfo = db.prepare('PRAGMA table_info(Transfer)').all();
+  const columnsInfo = (await db.prepare('PRAGMA table_info(Transfer)').all());
   if (!columnsInfo.some((column) => String(column.name || '').toLowerCase() === 'username')) {
-    db.prepare('ALTER TABLE Transfer ADD COLUMN UserName TEXT').run();
+    (await db.prepare('ALTER TABLE Transfer ADD COLUMN UserName TEXT').run());
   }
 }
 
-ensureTransferTable();
+registerDatabaseInitializer(ensureTransferTable);
 
 function normalize(value) {
   return String(value || '').trim();
@@ -167,13 +167,13 @@ function buildUpdateStatement(payload, id) {
   };
 }
 
-router.get('/forms/options', (req, res) => {
+router.get('/forms/options', async (req, res) => {
   try {
-    const rows = db.prepare(`
+    const rows = (await db.prepare(`
       SELECT TemplateName
       FROM AdministrativeTemplateConfigs
       ORDER BY TemplateName ASC
-    `).all();
+    `).all());
 
     const formNames = rows.map((row) => normalize(row.TemplateName)).filter(Boolean);
     res.json({ formNames });
@@ -183,14 +183,14 @@ router.get('/forms/options', (req, res) => {
   }
 });
 
-router.get('/forms', (req, res) => {
+router.get('/forms', async (req, res) => {
   try {
-    const rows = db.prepare(`
+    const rows = (await db.prepare(`
       SELECT ID, FormDate, PermitDate, DayName, EmployeeName, Department, SubSection, Section, FormName, FromTime, ToTime, PermitReason, LeaveStartDate, LeaveEndDate, LeaveType, Notes, CreatedAt, CreatedBy
       FROM AdministrativeForms
       ORDER BY FormDate DESC, ID DESC
       LIMIT 1000
-    `).all();
+    `).all());
 
     res.json(rows);
   } catch (error) {
@@ -199,7 +199,7 @@ router.get('/forms', (req, res) => {
   }
 });
 
-router.post('/forms', (req, res) => {
+router.post('/forms', async (req, res) => {
   const formDateInput = normalize(req.body.FormDate);
   const permitDateInput = normalize(req.body.PermitDate);
   const formName = normalize(req.body.FormName);
@@ -214,12 +214,12 @@ router.post('/forms', (req, res) => {
   const selectedDepartment = normalize(req.body.Department);
   const selectedSection = normalize(req.body.Section);
   const selectedSubSection = normalize(req.body.SubSection);
-  let employee = selectedEmpId ? db.prepare(`
+  let employee = selectedEmpId ? (await db.prepare(`
     SELECT ID, Name, Department, IFNULL(SubSection, '') AS SubSection, Section, Status
     FROM Main
     WHERE CAST(ID AS TEXT) = ?
     LIMIT 1
-  `).get(selectedEmpId) : null;
+  `).get(selectedEmpId)) : null;
 
   if (!formDateInput) {
     return res.status(400).json({ message: 'التاريخ مطلوب.' });
@@ -267,7 +267,7 @@ router.post('/forms', (req, res) => {
   }
 
   try {
-    const result = db.prepare(`
+    const result = (await db.prepare(`
       INSERT INTO AdministrativeForms (
         FormDate, PermitDate, DayName, FormName, EmpID, EmployeeName, Department, SubSection, Section, FromTime, ToTime, PermitReason, LeaveStartDate, LeaveEndDate, LeaveType, Notes, CreatedAt, CreatedBy
       )
@@ -291,15 +291,15 @@ router.post('/forms', (req, res) => {
       notes,
       createdAt,
       req.user?.username || 'system'
-    );
+    ));
 
-    logSystem({
+    (await logSystem({
       userName: req.user?.username || 'system',
       role: req.user?.role || '',
       action: 'Add',
       page: 'Administrative',
       details: `Archived administrative form ID=${result.lastInsertRowid}`
-    });
+    }));
 
     res.json({ id: result.lastInsertRowid });
   } catch (error) {
@@ -324,12 +324,12 @@ router.post('/forms/print-group', async (req, res) => {
     return res.status(400).json({ message: 'يرجى اختيار القسم قبل الطباعة.' });
   }
 
-  const config = db.prepare(`
+  const config = (await db.prepare(`
     SELECT TemplateFileName
     FROM AdministrativeTemplateConfigs
     WHERE TemplateName = ?
     LIMIT 1
-  `).get(formName);
+  `).get(formName));
 
   if (!config || !normalize(config.TemplateFileName)) {
     return res.status(404).json({ message: 'تعذر العثور على ملف النموذج المرتبط بهذا الاسم.' });
@@ -346,12 +346,12 @@ router.post('/forms/print-group', async (req, res) => {
     employeeParams.push(subSection);
   }
 
-  const employees = db.prepare(`
+  const employees = (await db.prepare(`
     SELECT ID, Name, Department, Section, IFNULL(SubSection, '') AS SubSection
     FROM Main
     WHERE ${employeeQueryParts.join(' AND ')}
     ORDER BY Name ASC
-  `).all(...employeeParams);
+  `).all(...employeeParams));
 
   if (!employees.length) {
     return res.status(404).json({ message: 'لا يوجد موظفون نشطون مطابقون للخيارات المحددة.' });
@@ -441,13 +441,13 @@ router.post('/forms/print-group', async (req, res) => {
     }
     const pdfResult = convertDocxToPdf(output.docxPath, output.pdfPath);
 
-    logSystem({
+    (await logSystem({
       userName: req.user?.username || 'system',
       role: req.user?.role || '',
       action: 'Print',
       page: 'Administrative',
       details: `Generated group form for ${department}/${section || '-'} / ${subSection || '-'} using ${formName}`
-    });
+    }));
 
     return res.json({
       message: `تم تجهيز الطباعة لعدد ${employees.length} موظف.` ,
@@ -465,31 +465,31 @@ router.post('/forms/print-group', async (req, res) => {
   }
 });
 
-router.get('/transfers', (req, res) => {
-  const records = db.prepare('SELECT * FROM Transfer ORDER BY ID DESC LIMIT 1000').all();
+router.get('/transfers', async (req, res) => {
+  const records = (await db.prepare('SELECT * FROM Transfer ORDER BY ID DESC LIMIT 1000').all());
   res.json(records);
 });
 
-router.get('/transfers/:id', (req, res) => {
+router.get('/transfers/:id', async (req, res) => {
   const id = Number(req.params.id);
   if (!id) return res.status(400).json({ message: 'معرّف غير صالح' });
 
-  const record = db.prepare('SELECT * FROM Transfer WHERE ID = ?').get(id);
+  const record = (await db.prepare('SELECT * FROM Transfer WHERE ID = ?').get(id));
   return record ? res.json(record) : res.status(404).json({ message: 'السجل غير موجود' });
 });
 
-router.post('/transfers', (req, res) => {
+router.post('/transfers', async (req, res) => {
   const statement = buildInsertStatement(req.body);
   if (!statement) {
     return res.status(400).json({ message: 'البيانات المرسلة غير كافية' });
   }
 
-  const result = db.prepare(statement.sql).run(statement.values);
-  logSystem({ userName: req.body.userName || 'system', action: 'Add', page: 'Transfer', details: `Added transfer ID=${result.lastInsertRowid}` });
+  const result = (await db.prepare(statement.sql).run(statement.values));
+  (await logSystem({ userName: req.body.userName || 'system', action: 'Add', page: 'Transfer', details: `Added transfer ID=${result.lastInsertRowid}` }));
   res.json({ id: result.lastInsertRowid });
 });
 
-router.put('/transfers/:id', (req, res) => {
+router.put('/transfers/:id', async (req, res) => {
   const id = Number(req.params.id);
   if (!id) return res.status(400).json({ message: 'معرّف غير صالح' });
 
@@ -498,25 +498,25 @@ router.put('/transfers/:id', (req, res) => {
     return res.status(400).json({ message: 'البيانات المرسلة غير كافية' });
   }
 
-  const result = db.prepare(statement.sql).run(statement.values);
+  const result = (await db.prepare(statement.sql).run(statement.values));
   if (result.changes === 0) {
     return res.status(404).json({ message: 'السجل غير موجود للتعديل' });
   }
 
-  logSystem({ userName: req.body.userName || 'system', action: 'Update', page: 'Transfer', details: `Updated transfer ID=${id}` });
+  (await logSystem({ userName: req.body.userName || 'system', action: 'Update', page: 'Transfer', details: `Updated transfer ID=${id}` }));
   res.json({ changes: result.changes });
 });
 
-router.delete('/transfers/:id', (req, res) => {
+router.delete('/transfers/:id', async (req, res) => {
   const id = Number(req.params.id);
   if (!id) return res.status(400).json({ message: 'معرّف غير صالح' });
 
-  const result = db.prepare('DELETE FROM Transfer WHERE ID = ?').run(id);
+  const result = (await db.prepare('DELETE FROM Transfer WHERE ID = ?').run(id));
   if (result.changes === 0) {
     return res.status(404).json({ message: 'السجل غير موجود للحذف' });
   }
 
-  logSystem({ userName: req.body.userName || 'system', action: 'Delete', page: 'Transfer', details: `Deleted transfer ID=${id}` });
+  (await logSystem({ userName: req.body.userName || 'system', action: 'Delete', page: 'Transfer', details: `Deleted transfer ID=${id}` }));
   res.json({ changes: result.changes });
 });
 

@@ -83,7 +83,7 @@ function deriveTemplateNameFromFileName(fileName) {
   return normalize(baseName);
 }
 
-function resolveLeavePermitTemplateFileName(templateName) {
+async function resolveLeavePermitTemplateFileName(templateName) {
   const raw = normalize(templateName);
   if (!raw) return '';
 
@@ -91,12 +91,12 @@ function resolveLeavePermitTemplateFileName(templateName) {
     return raw;
   }
 
-  const mapped = db.prepare(`
+  const mapped = (await db.prepare(`
     SELECT TemplateFileName
     FROM AdministrativeTemplateConfigs
     WHERE TemplateName = ?
     LIMIT 1
-  `).get(raw);
+  `).get(raw));
 
   const fileName = normalize(mapped?.TemplateFileName);
   if (fileName) {
@@ -238,13 +238,13 @@ function expandPayloadAliases(basePayload) {
   return expanded;
 }
 
-function findActiveEmployee(empId) {
-  return db.prepare(`
+async function findActiveEmployee(empId) {
+  return (await db.prepare(`
     SELECT ID, Title, Name, CivilID, Department, Section, IFNULL(SubSection, '') AS SubSection, Status, Rank
     FROM Main
     WHERE CAST(ID AS TEXT) = ?
     LIMIT 1
-  `).get(String(empId || ''));
+  `).get(String(empId || '')));
 }
 
 
@@ -259,19 +259,19 @@ router.get('/templates', (_req, res) => {
   }
 });
 
-router.post('/templates/upload', upload.single('template'), (req, res) => {
+router.post('/templates/upload', upload.single('template'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ message: 'يرجى اختيار ملف DOCX.' });
     }
 
-    logSystem({
+    (await logSystem({
       userName: req.user?.username || 'system',
       role: req.user?.role || '',
       action: 'Add',
       page: 'AdministrativeTemplate',
       details: `Uploaded template ${req.file.filename}`
-    });
+    }));
 
     const info = buildTemplateInfo(req.file.filename);
 
@@ -291,7 +291,7 @@ router.post('/templates/upload', upload.single('template'), (req, res) => {
   }
 });
 
-router.post('/leave-permit/generate', (req, res) => {
+router.post('/leave-permit/generate', async (req, res) => {
   const templateName = normalize(req.body.templateName);
   const empId = normalize(req.body.empId);
   const permitDate = formatDate(req.body.permitDate);
@@ -324,7 +324,7 @@ router.post('/leave-permit/generate', (req, res) => {
     return res.status(400).json({ message: 'رقم الموظف مطلوب.' });
   }
 
-  const employee = findActiveEmployee(empId);
+  const employee = (await findActiveEmployee(empId));
 
   if (!employee) {
     return res.status(404).json({ message: 'الموظف المحدد غير موجود.' });
@@ -335,7 +335,7 @@ router.post('/leave-permit/generate', (req, res) => {
   }
 
   let templatePath = '';
-  const templateFileName = resolveLeavePermitTemplateFileName(templateName);
+  const templateFileName = (await resolveLeavePermitTemplateFileName(templateName));
   if (!templateFileName) {
     return res.status(404).json({ message: 'تعذر العثور على ملف القالب المرتبط باسم النموذج المحدد.' });
   }
@@ -402,13 +402,13 @@ router.post('/leave-permit/generate', (req, res) => {
 
     const pdfResult = convertDocxToPdf(output.docxPath, output.pdfPath);
 
-    logSystem({
+    (await logSystem({
       userName: req.user?.username || 'system',
       role: req.user?.role || '',
       action: 'Add',
       page: 'AdministrativeTemplate',
       details: `Generated leave permit for EmpID=${employee.ID} with template=${templateName}`
-    });
+    }));
 
     return res.json({
       message: 'تم إنشاء نموذج الاستئذان بنجاح.',

@@ -26,9 +26,9 @@ function buildUpdateStatement(payload, id) {
   };
 }
 
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
-    const records = db.prepare('SELECT * FROM Main ORDER BY ID DESC').all();
+    const records = (await db.prepare('SELECT * FROM Main ORDER BY ID DESC').all());
     res.json(records);
   } catch (error) {
     console.error(error);
@@ -36,14 +36,14 @@ router.get('/', (req, res) => {
   }
 });
 
-router.get('/department-sections', (req, res) => {
+router.get('/department-sections', async (req, res) => {
   try {
-    const rows = db.prepare(`
+    const rows = (await db.prepare(`
       SELECT ID, Department, Section, SubSection, SortOrder
       FROM DepartmentSectionLookup
       WHERE IsActive = 1
       ORDER BY SortOrder ASC, ID ASC
-    `).all();
+    `).all());
 
     res.json(rows);
   } catch (error) {
@@ -52,14 +52,14 @@ router.get('/department-sections', (req, res) => {
   }
 });
 
-router.get('/:id', (req, res) => {
+router.get('/:id', async (req, res) => {
   const id = Number(req.params.id);
   if (!id) {
     return res.status(400).json({ message: 'معرّف الموظف غير صالح' });
   }
 
   try {
-    const record = db.prepare('SELECT * FROM Main WHERE ID = ?').get(id);
+    const record = (await db.prepare('SELECT * FROM Main WHERE ID = ?').get(id));
     return record ? res.json(record) : res.status(404).json({ message: 'الموظف غير موجود' });
   } catch (error) {
     console.error(error);
@@ -67,7 +67,7 @@ router.get('/:id', (req, res) => {
   }
 });
 
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   const civilId = String(req.body.CivilID || '').trim();
   const statement = buildInsertStatement(req.body);
   if (!statement) {
@@ -75,12 +75,12 @@ router.post('/', (req, res) => {
   }
 
   if (civilId) {
-    const existingEmployee = db.prepare(`
+    const existingEmployee = (await db.prepare(`
       SELECT ID, Name
       FROM Main
       WHERE TRIM(CivilID) = ?
       LIMIT 1
-    `).get(civilId);
+    `).get(civilId));
 
     if (existingEmployee) {
       return res.status(409).json({
@@ -90,8 +90,8 @@ router.post('/', (req, res) => {
   }
 
   try {
-    const result = db.prepare(statement.sql).run(statement.values);
-    logSystem({ userName: req.body.userName || 'system', action: 'Add', page: 'Main', details: `Added employee ID=${result.lastInsertRowid}` });
+    const result = (await db.prepare(statement.sql).run(statement.values));
+    (await logSystem({ userName: req.body.userName || 'system', action: 'Add', page: 'Main', details: `Added employee ID=${result.lastInsertRowid}` }));
     res.json({ id: result.lastInsertRowid });
   } catch (error) {
     console.error(error);
@@ -99,7 +99,7 @@ router.post('/', (req, res) => {
   }
 });
 
-router.put('/:id', (req, res) => {
+router.put('/:id', async (req, res) => {
   const id = Number(req.params.id);
   if (!id) {
     return res.status(400).json({ message: 'معرّف الموظف غير صالح' });
@@ -111,16 +111,16 @@ router.put('/:id', (req, res) => {
   }
 
   try {
-    const result = db.prepare(statement.sql).run(statement.values);
+    const result = (await db.prepare(statement.sql).run(statement.values));
     if (result.changes === 0) {
       return res.status(404).json({ message: 'الموظف غير موجود للتعديل' });
     }
 
-    const updatedRecord = db.prepare('SELECT ID, Status FROM Main WHERE ID = ?').get(id);
+    const updatedRecord = (await db.prepare('SELECT ID, Status FROM Main WHERE ID = ?').get(id));
     const movedToOutside = updatedRecord ? !isActiveStatus(updatedRecord.Status) : false;
     const movedToActive = updatedRecord ? isActiveStatus(updatedRecord.Status) : false;
 
-    logSystem({ userName: req.body.userName || 'system', action: 'Update', page: 'Main', details: `Updated employee ID=${id}` });
+    (await logSystem({ userName: req.body.userName || 'system', action: 'Update', page: 'Main', details: `Updated employee ID=${id}` }));
     res.json({ changes: result.changes, movedToOutside, movedToActive, status: updatedRecord?.Status || '' });
   } catch (error) {
     console.error(error);
@@ -128,19 +128,19 @@ router.put('/:id', (req, res) => {
   }
 });
 
-router.delete('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
   const id = Number(req.params.id);
   if (!id) {
     return res.status(400).json({ message: 'معرّف الموظف غير صالح' });
   }
 
   try {
-    const result = db.prepare('DELETE FROM Main WHERE ID = ?').run(id);
+    const result = (await db.prepare('DELETE FROM Main WHERE ID = ?').run(id));
     if (result.changes === 0) {
       return res.status(404).json({ message: 'الموظف غير موجود للحذف' });
     }
 
-    logSystem({ userName: req.body.userName || 'system', action: 'Delete', page: 'Main', details: `Deleted employee ID=${id}` });
+    (await logSystem({ userName: req.body.userName || 'system', action: 'Delete', page: 'Main', details: `Deleted employee ID=${id}` }));
     res.json({ changes: result.changes });
   } catch (error) {
     console.error(error);

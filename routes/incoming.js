@@ -35,14 +35,14 @@ function getTimestamp() {
   return getCurrentTimestamp();
 }
 
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
-    const rows = db.prepare(`
+    const rows = (await db.prepare(`
       SELECT ID, DocNumber, DocDate, BookNumber, BookDate, Subject, SourceDepartment, SpecialDepartment, Notes, UserName, CreatedAt, UpdatedAt
       FROM ${tableName}
       ORDER BY DocDate DESC, ID DESC
       LIMIT 1000
-    `).all();
+    `).all());
     res.json(rows);
   } catch (error) {
     console.error(error);
@@ -50,19 +50,19 @@ router.get('/', (req, res) => {
   }
 });
 
-router.get('/:id', (req, res) => {
+router.get('/:id', async (req, res) => {
   const id = Number(req.params.id);
   if (!id) {
     return res.status(400).json({ message: 'معرّف السجل غير صالح.' });
   }
 
   try {
-    const row = db.prepare(`
+    const row = (await db.prepare(`
       SELECT ID, DocNumber, DocDate, BookNumber, BookDate, Subject, SourceDepartment, SpecialDepartment, Notes, UserName, CreatedAt, UpdatedAt
       FROM ${tableName}
       WHERE ID = ?
       LIMIT 1
-    `).get(id);
+    `).get(id));
 
     return row ? res.json(row) : res.status(404).json({ message: 'السجل غير موجود.' });
   } catch (error) {
@@ -71,7 +71,7 @@ router.get('/:id', (req, res) => {
   }
 });
 
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   const docNumber = normalize(req.body.DocNumber);
   const docDate = formatDateOnly(req.body.DocDate);
   const bookNumber = normalize(req.body.BookNumber);
@@ -93,7 +93,7 @@ router.post('/', (req, res) => {
   const timestamp = getTimestamp();
 
   try {
-    const result = db.prepare(`
+    const result = (await db.prepare(`
       INSERT INTO ${tableName} (
         DocNumber, DocDate, BookNumber, BookDate, Subject, SourceDepartment, SpecialDepartment, Notes, UserName, CreatedAt, UpdatedAt
       )
@@ -110,14 +110,14 @@ router.post('/', (req, res) => {
       userName,
       timestamp,
       timestamp
-    );
+    ));
 
-    logSystem({
+    (await logSystem({
       userName,
       action: 'Add',
       page: 'Incoming',
       details: `Added incoming ID=${result.lastInsertRowid}`
-    });
+    }));
 
     res.json({ id: result.lastInsertRowid });
   } catch (error) {
@@ -126,7 +126,7 @@ router.post('/', (req, res) => {
   }
 });
 
-router.put('/:id', (req, res) => {
+router.put('/:id', async (req, res) => {
   const id = Number(req.params.id);
   if (!id) {
     return res.status(400).json({ message: 'معرّف السجل غير صالح.' });
@@ -153,7 +153,7 @@ router.put('/:id', (req, res) => {
   const timestamp = getTimestamp();
 
   try {
-    const result = db.prepare(`
+    const result = (await db.prepare(`
       UPDATE ${tableName}
       SET DocNumber = ?, DocDate = ?, BookNumber = ?, BookDate = ?, Subject = ?, SourceDepartment = ?, SpecialDepartment = ?, Notes = ?, UserName = ?, UpdatedAt = ?
       WHERE ID = ?
@@ -169,18 +169,18 @@ router.put('/:id', (req, res) => {
       userName,
       timestamp,
       id
-    );
+    ));
 
     if (result.changes === 0) {
       return res.status(404).json({ message: 'السجل غير موجود للتعديل.' });
     }
 
-    logSystem({
+    (await logSystem({
       userName,
       action: 'Update',
       page: 'Incoming',
       details: `Updated incoming ID=${id}`
-    });
+    }));
 
     res.json({ changes: result.changes });
   } catch (error) {
@@ -189,24 +189,24 @@ router.put('/:id', (req, res) => {
   }
 });
 
-router.delete('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
   const id = Number(req.params.id);
   if (!id) {
     return res.status(400).json({ message: 'معرّف السجل غير صالح.' });
   }
 
   try {
-    const result = db.prepare(`DELETE FROM ${tableName} WHERE ID = ?`).run(id);
+    const result = (await db.prepare(`DELETE FROM ${tableName} WHERE ID = ?`).run(id));
     if (result.changes === 0) {
       return res.status(404).json({ message: 'السجل غير موجود للحذف.' });
     }
 
-    logSystem({
+    (await logSystem({
       userName: normalize(req.body.userName) || req.user?.name || req.user?.username || 'system',
       action: 'Delete',
       page: 'Incoming',
       details: `Deleted incoming ID=${id}`
-    });
+    }));
 
     res.json({ changes: result.changes });
   } catch (error) {

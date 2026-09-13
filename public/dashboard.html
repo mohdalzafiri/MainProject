@@ -926,6 +926,16 @@
     }
 
     logoutBtn.addEventListener('click', () => {
+      const refreshToken = localStorage.getItem('refreshToken');
+      if (refreshToken) {
+        fetch('/api/auth/logout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refreshToken }),
+          keepalive: true
+        }).catch(() => {});
+      }
+      localStorage.removeItem('refreshToken');
       sessionStorage.removeItem('authToken');
       window.location.href = '/';
     });
