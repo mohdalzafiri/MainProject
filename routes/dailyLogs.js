@@ -26,6 +26,18 @@ const periodTimes = {
   'صباحاً': { inTime: '07:30', outTime: '14:30' }
 };
 
+function getBulkEditTimes(row, sourcePeriod, nextPeriod) {
+  const currentTimes = {
+    inTime: String(row.InTime || '').trim(),
+    outTime: String(row.OutTime || '').trim()
+  };
+  if (nextPeriod === sourcePeriod || (!currentTimes.inTime && !currentTimes.outTime)) {
+    return currentTimes;
+  }
+
+  return periodTimes[nextPeriod] || { inTime: '', outTime: '' };
+}
+
 const tableSections = {
   Daily1: [
     'أ - البلاغات', 'ب - البلاغات', 'ج - البلاغات', 'د - البلاغات', 'هـ - البلاغات', 'ثابت صبح',
@@ -825,16 +837,25 @@ router.put('/bulk', async (req, res) => {
         return res.status(409).json({ message: `لا يمكن تعديل اليومية لأن الموظف ${row.Name || ''} موجود مسبقًا في التاريخ والفترة الجديدة.` });
       }
 
-      const permissionLimitError = (await validateMonthlyPermissionLimit({ ...row, Today: targetToday, Day: targetDay, Period: nextPeriod }, table, row.ID));
+      const nextTimes = getBulkEditTimes(row, sourcePeriod, nextPeriod);
+      const permissionLimitError = (await validateMonthlyPermissionLimit({
+        ...row,
+        Today: targetToday,
+        Day: targetDay,
+        Period: nextPeriod,
+        InTime: nextTimes.inTime,
+        OutTime: nextTimes.outTime
+      }, table, row.ID));
       if (permissionLimitError) {
         return res.status(400).json({ message: `${permissionLimitError} الموظف: ${row.Name || ''}.` });
       }
     }
 
-    const update = db.prepare(`UPDATE ${table} SET Today = ?, Day = ?, Period = ? WHERE ID = ?`);
+    const update = db.prepare(`UPDATE ${table} SET Today = ?, Day = ?, Period = ?, InTime = ?, OutTime = ? WHERE ID = ?`);
     await db.transaction(async () => {
       for (const row of sourceRows) {
-        await update.run(targetToday, targetDay, nextPeriod, row.ID);
+        const nextTimes = getBulkEditTimes(row, sourcePeriod, nextPeriod);
+        await update.run(targetToday, targetDay, nextPeriod, nextTimes.inTime, nextTimes.outTime, row.ID);
       }
     })();
 
@@ -890,6 +911,47 @@ router.put('/table/:table/:id', async (req, res) => {
 
   (await logSystem({ userName, action: 'Update', page: table, details: `Updated daily record ID=${id}` }));
   res.json({ changes: result.changes });
+});
+
+router.delete('/bulk', async (req, res) => {
+  try {
+    const today = normalizeDateInput(req.body.today);
+    const department = normalizeDepartment(req.body.department);
+    const section = String(req.body.section || '').trim();
+    const period = String(req.body.period || '').trim();
+
+    if (!today || !department || !section || !period) {
+      return res.status(400).json({ message: 'اختر التاريخ والقسم والنوبة والفترة قبل حذف اليومية كاملة.' });
+    }
+
+    const table = resolveDailyTableByDepartment(department);
+    if (!table) {
+      return res.status(400).json({ message: 'تعذر تحديد جدول اليومية للقسم المختار.' });
+    }
+
+    const result = (await db.prepare(`
+      DELETE FROM ${table}
+      WHERE date(REPLACE(Today, '/', '-')) = date(?)
+        AND TRIM(Department) = ?
+        AND TRIM(Section) = ?
+        AND TRIM(Period) = ?
+    `).run(today, department, section, period));
+
+    if (result.changes === 0) {
+      return res.status(404).json({ message: 'لا توجد سجلات مطابقة لليومية المحددة لحذفها.' });
+    }
+
+    (await logSystem({
+      userName: req.body.userName || 'system',
+      action: 'Delete',
+      page: table,
+      details: `تم حذف اليومية كاملة (${result.changes} سجلًا) بتاريخ ${toSlashDate(today)}`
+    }));
+    return res.json({ changes: result.changes, message: `تم حذف اليومية كاملة بنجاح (${result.changes} سجلًا).` });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'تعذر حذف اليومية كاملة. تحقق من اتصال قاعدة البيانات ثم حاول مرة أخرى.' });
+  }
 });
 
 router.delete('/table/:table/:id', async (req, res) => {

@@ -246,7 +246,11 @@
       if (refreshToken) {
         fetch('/api/auth/logout', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+            'X-UI-Mode': 'mobile'
+          },
           body: JSON.stringify({ refreshToken }),
           keepalive: true
         }).catch(() => {});

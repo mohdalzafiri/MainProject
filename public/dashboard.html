@@ -727,7 +727,7 @@
       const badgeClass = status === 'فشل' ? 'fail' : '';
       const row = document.createElement('tr');
       row.innerHTML = `
-        <td><span class="log-type">${item.Action || ''}</span></td>
+        <td><span class="log-type">${formatActivityAction(item)}</span></td>
         <td>${item.Target || ''}</td>
         <td class="user-name-column">${item.UserName || ''}</td>
         <td><span class="log-time">${normalizeStoredTime(item.Timestamp)}</span></td>
@@ -870,7 +870,19 @@
 
     function getActivityStatus(item) {
       const action = String(item?.Action || item?.action || '').toLowerCase();
-      return action.includes('failed') || action.includes('error') || action.includes('فشل') ? 'فشل' : 'نجاح';
+      return action.includes('failed') || action.includes('error') || action.includes('فشل') || action.includes('خطأ') ? 'فشل' : 'نجاح';
+    }
+
+    function isMobileActivity(item) {
+      const machine = String(item?.Machine || '').trim().toLowerCase();
+      const appVersion = String(item?.AppVersion || '').trim().toLowerCase();
+      const details = String(item?.Details || '');
+      return machine === 'mobile' || appVersion === 'mobile-web' || details.includes('الموبايل');
+    }
+
+    function formatActivityAction(item) {
+      const action = String(item?.Action || '').trim();
+      return isMobileActivity(item) ? `📱 ${action}` : action;
     }
 
     function renderRecentActivities(items) {

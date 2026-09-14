@@ -185,6 +185,26 @@ router.post('/logout', async (req, res) => {
   if (refreshToken) {
     (await db.prepare('DELETE FROM RefreshSessions WHERE TokenHash = ?').run(hashRefreshToken(refreshToken)));
   }
+
+  const authHeader = String(req.headers.authorization || '');
+  const accessToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+  let sessionUser = null;
+  if (accessToken) {
+    try {
+      sessionUser = jwt.verify(accessToken, JWT_SECRET);
+    } catch {
+      sessionUser = null;
+    }
+  }
+
+  await logSystem({
+    userName: (sessionUser && sessionUser.username) || 'unknown',
+    role: (sessionUser && sessionUser.role) || '',
+    action: 'Close',
+    page: 'Login',
+    details: 'User logged out'
+  });
+
   return res.json({ message: 'تم تسجيل الخروج بنجاح' });
 });
 

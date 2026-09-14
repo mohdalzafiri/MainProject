@@ -493,7 +493,8 @@
       window.location.href = '/';
     }
 
-    const STATUS_OPTIONS = ['حضور', 'تأخير', 'تأخير+عقوبة', 'استئذان', 'غياب', 'حضور بعد غياب', 'طبية', 'اجازة', 'دورة', 'تكليف'];
+    const STATUS_OPTIONS = ['حضور', 'تأخير', 'تأخير+عقوبة', 'استئذان', 'غياب', 'حضور بعد غياب', 'طبية', 'اجازة', 'تخفيف عمل', 'دورة', 'تكليف'];
+    const EDITABLE_TIME_STATUSES = ['حضور', 'حضور بعد غياب', 'تأخير', 'تأخير+عقوبة', 'استئذان', 'تخفيف عمل'];
     const PERIOD_DEFAULTS = {
       'نوبة صبح': { inTime: '08:00', outTime: '16:00' },
       'نوبة عصر': { inTime: '16:00', outTime: '00:00' },
@@ -1144,7 +1145,7 @@
         const nextStatus = event.target.value;
         const payload = { Status: nextStatus };
 
-        if (nextStatus !== 'حضور') {
+        if (!EDITABLE_TIME_STATUSES.includes(nextStatus)) {
           payload.InTime = '';
           payload.OutTime = '';
         } else {
@@ -1167,6 +1168,9 @@
       input.type = 'time';
       input.className = 'time-input mono';
       input.value = String(item[key] || '').trim();
+      const currentStatus = String(item.Status || '').trim();
+      input.disabled = !EDITABLE_TIME_STATUSES.includes(currentStatus);
+      if (input.disabled) input.title = 'تعديل الوقت متاح فقط لحالات الحضور والتأخير والاستئذان والتخفيف.';
 
       input.addEventListener('click', (event) => event.stopPropagation());
       input.addEventListener('change', async (event) => {
@@ -1382,7 +1386,39 @@
 
     async function deleteSelectedRecord() {
       if (!selectedRecord?.ID) {
-        showStatus('اختر سجلًا من الجدول أولاً قبل الحذف.', true);
+        const today = String(todayInput.value || '').trim();
+        const department = String(departmentInput.value || '').trim();
+        const section = String(sectionInput.value || '').trim();
+        const period = String(periodInput.value || '').trim();
+        if (!today || !department || !section || !period) {
+          showStatus('لحذف اليومية كاملة اختر التاريخ والقسم والنوبة والفترة أولاً.', true);
+          return;
+        }
+        if (!currentRows.length) {
+          showStatus('لا توجد سجلات في اليومية المحددة لحذفها.', true);
+          return;
+        }
+
+        const confirmed = window.confirm(
+          `لم يتم تحديد موظف. سيتم حذف اليومية كاملة وعدد سجلاتها ${currentRows.length} للقسم ${department} والنوبة ${section} والفترة ${period} بتاريخ ${formatDateYmdSlash(today)}. هل تريد المتابعة؟`
+        );
+        if (!confirmed) return;
+
+        const result = await requestJson('/api/daily-logs/bulk', {
+          method: 'DELETE',
+          headers: getHeaders(),
+          body: JSON.stringify({
+            today,
+            department,
+            section,
+            period,
+            userName: currentUser.username || 'system'
+          })
+        });
+
+        showStatus(result?.message || 'تم حذف اليومية كاملة بنجاح.');
+        searchNameInput.value = '';
+        await refreshDailyView();
         return;
       }
 
@@ -1392,7 +1428,7 @@
         return;
       }
 
-      const confirmed = window.confirm(`هل تريد حذف سجل ${selectedRecord.Name || ''}؟`);
+      const confirmed = window.confirm(`سيتم حذف سجل الموظف ${selectedRecord.Name || ''} فقط من اليومية. هل تريد المتابعة؟`);
       if (!confirmed) return;
 
       await requestJson(`/api/daily-logs/table/${table}/${selectedRecord.ID}`, {

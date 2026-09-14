@@ -1,5 +1,6 @@
 const express = require('express');
 const { db } = require('../database');
+const { localizeRecord } = require('../services/systemLogLocalization');
 const router = express.Router();
 
 async function replaceEmployeeIdWithName(record) {
@@ -29,7 +30,7 @@ async function replaceEmployeeIdWithName(record) {
 
     try {
       const source = (await db.prepare(`SELECT Name FROM "${String(mapping.table || '').replace(/"/g, '""')}" WHERE ID = ? LIMIT 1`).get(rowId));
-      const name = String(source?.Name || '').trim();
+      const name = String((source && source.Name) || '').trim();
       if (!name) {
         return record;
       }
@@ -44,126 +45,6 @@ async function replaceEmployeeIdWithName(record) {
   }
 
   return record;
-}
-
-function translateAction(action) {
-  const key = String(action || '').trim().toLowerCase();
-  const map = {
-    add: 'إضافة',
-    update: 'تعديل',
-    delete: 'حذف',
-    view: 'عرض البيانات',
-    open: 'دخول',
-    close: 'خروج',
-    print: 'طباعة',
-    search: 'بحث',
-    'login success': 'نجح تسجيل الدخول',
-    'login failed': 'فشل تسجيل الدخول',
-    'login error': 'خطأ تسجيل الدخول'
-  };
-
-  return map[key] || String(action || '');
-}
-
-function translateTarget(target) {
-  const key = String(target || '').trim();
-  const normalized = key.toLowerCase();
-
-  const map = {
-    main: 'الرئيسية',
-    employees: 'الموظفين',
-    'outside-employees': 'الموظفين خارج الادارة',
-    outsideemployees: 'الموظفين خارج الادارة',
-    holiday: 'الإجازات',
-    holidays: 'الإجازات',
-    course: 'الدورات',
-    courses: 'الدورات',
-    transfer: 'التنقلات',
-    transfers: 'التنقلات',
-    daily: 'اليوميات',
-    evaluations: 'تقييم الاداء',
-    statistics: 'الإحصائيات',
-    login: 'تسجيل دخول',
-    settings: 'الإعدادات',
-    dashboard: 'الرئيسية',
-    'system-log': 'سجل النظام',
-    systemlog: 'سجل النظام',
-    administrative: 'النماذج الإدارية',
-    administrativeforms: 'النماذج الإدارية',
-    api: 'واجهة النظام'
-  };
-
-  if (/^daily[1-4]$/i.test(key) || /^dailyall(_p)?$/i.test(key)) {
-    return 'اليوميات';
-  }
-
-  return map[normalized] || key;
-}
-
-function translateDetails(details) {
-  const text = String(details || '').trim();
-  if (!text) return text;
-
-  const directMap = {
-    'User logged in': 'تم تسجيل دخول المستخدم',
-    'User not found': 'المستخدم غير موجود',
-    'Invalid password': 'كلمة المرور غير صحيحة',
-    'Inactive user': 'المستخدم غير نشط',
-    'Missing username or password': 'اسم المستخدم أو كلمة المرور مفقود'
-  };
-
-  if (directMap[text]) {
-    return directMap[text];
-  }
-
-  const singleWordMap = {
-    open: 'دخول',
-    close: 'خروج',
-    main: 'الرئيسية'
-  };
-
-  if (singleWordMap[text.toLowerCase()]) {
-    return singleWordMap[text.toLowerCase()];
-  }
-
-  const entityMap = [
-    { pattern: /department-section/gi, value: 'القسم/النوبة' },
-    { pattern: /admin password/gi, value: 'كلمة سر المدير' },
-    { pattern: /login user/gi, value: 'مستخدم النظام' },
-    { pattern: /daily record/gi, value: 'سجل يومي' },
-    { pattern: /employee/gi, value: 'موظف' },
-    { pattern: /holiday/gi, value: 'إجازة' },
-    { pattern: /course/gi, value: 'دورة' },
-    { pattern: /transfer/gi, value: 'تنقل' }
-  ];
-
-  let translated = text;
-  entityMap.forEach((item) => {
-    translated = translated.replace(item.pattern, item.value);
-  });
-
-  translated = translated
-    .replace(/\bopen\b/gi, 'دخول')
-    .replace(/\bclose\b/gi, 'خروج')
-    .replace(/\bmain\b/gi, 'الرئيسية');
-
-  translated = translated
-    .replace(/^Added\s+/i, 'تمت إضافة ')
-    .replace(/^Updated\s+/i, 'تم تعديل ')
-    .replace(/^Deleted\s+/i, 'تم حذف ');
-
-  return translated;
-}
-
-function localizeRecord(record) {
-  if (!record) return record;
-
-  return {
-    ...record,
-    Action: translateAction(record.Action),
-    Target: translateTarget(record.Target),
-    Details: translateDetails(record.Details)
-  };
 }
 
 async function tableOrViewExists(name) {
@@ -356,8 +237,10 @@ router.get('/summary', async (req, res) => {
         : null;
 
       if (latestDailyAdd && dailyTables.has(latestDailyAdd.Target)) {
-        const recordId = String(latestDailyAdd.Details || '').match(/daily record ID=(\d+)/i)?.[1];
-        const batchDate = String(latestDailyAdd.Details || '').match(/\bon\s+(\d{4}[/-]\d{2}[/-]\d{2})/i)?.[1];
+        const recordIdMatch = String(latestDailyAdd.Details || '').match(/daily record ID=(\d+)/i);
+        const batchDateMatch = String(latestDailyAdd.Details || '').match(/\bon\s+(\d{4}[/-]\d{2}[/-]\d{2})/i);
+        const recordId = recordIdMatch && recordIdMatch[1];
+        const batchDate = batchDateMatch && batchDateMatch[1];
         const sourceFilter = recordId
           ? { clause: 'ID = ?', value: Number(recordId) }
           : batchDate
@@ -399,7 +282,7 @@ router.get('/summary', async (req, res) => {
         `).get());
       }
 
-      if (latestDailyShift?.logDate && latestDailyShift?.department && latestDailyShift?.section && latestDailyShift?.period) {
+      if (latestDailyShift && latestDailyShift.logDate && latestDailyShift.department && latestDailyShift.section && latestDailyShift.period) {
         todaySummary = (await db.prepare(`
           SELECT
             Name,
@@ -445,12 +328,12 @@ router.get('/summary', async (req, res) => {
       : [];
 
     const recentActivities = (await tableOrViewExists('SystemLog'))
-      ? (await db.prepare(`
-          SELECT Timestamp, UserName, Action, Target, Details
-          FROM SystemLog
-          WHERE date(Timestamp) BETWEEN date('now', 'localtime', '-2 day') AND date('now', 'localtime')
-          ORDER BY Timestamp DESC
-        `).all()).map(replaceEmployeeIdWithName).map(localizeRecord)
+      ? (await Promise.all((await db.prepare(`
+            SELECT Timestamp, UserName, Action, Target, Details, Machine, AppVersion
+            FROM SystemLog
+            WHERE date(Timestamp) BETWEEN date('now', 'localtime', '-2 day') AND date('now', 'localtime')
+            ORDER BY Timestamp DESC
+          `).all()).map(replaceEmployeeIdWithName))).map(localizeRecord)
       : [];
 
     res.json({

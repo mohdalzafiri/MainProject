@@ -59,7 +59,7 @@ function fileTypeFromExtension(extension) {
 }
 
 function escapeHtml(value) {
-  return String(value ?? '').replace(/[&<>"']/g, (character) => ({
+  return String(value == null ? '' : value).replace(/[&<>"']/g, (character) => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
   })[character]);
 }
@@ -196,7 +196,7 @@ async function serializeRow(row) {
     PageCount: Number(row.PageCount || 0),
     UploadedAt: row.UploadedAt,
     Category: normalizedCategory,
-    CategoryLabel: categoryRecord?.LabelAr || normalizedCategory,
+    CategoryLabel: (categoryRecord && categoryRecord.LabelAr) || normalizedCategory,
     Extension: String(row.Extension || '').replace(/^\./, '').toLowerCase(),
     DownloadUrl: url,
     PreviewUrl: previewUrl,
@@ -252,8 +252,8 @@ router.get('/', async (req, res) => {
 });
 
 router.post('/upload', upload.array('files', 20), async (req, res) => {
-  const userName = normalize(req.user?.username || req.user?.name || 'admin');
-  const role = String(req.user?.role || '').trim().toLowerCase();
+  const userName = normalize((req.user && (req.user.username || req.user.name)) || 'admin');
+  const role = String((req.user && req.user.role) || '').trim().toLowerCase();
   if (role !== 'admin') {
     return res.status(403).json({ message: 'لا يسمح لك برفع ملفات الأرشيف إلا مدير النظام.' });
   }

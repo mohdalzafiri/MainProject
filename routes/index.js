@@ -18,6 +18,8 @@ const archiveRoutes = require('./archive');
 const wordTemplatesRoutes = require('./wordTemplates');
 const attachmentsRoutes = require('./attachments');
 const authMiddleware = require('../auth/auth');
+const { logSystem } = require('../database');
+const { runWithRequestAuditContext } = require('../utils/requestAuditContext');
 const {
 	ADMIN_ONLY_PAGE_KEYS,
 	normalizeRole,
@@ -25,6 +27,37 @@ const {
 } = require('../auth/permissions');
 
 const router = express.Router();
+
+const mobileActionByMethod = {
+	GET: 'View',
+	HEAD: 'View',
+	POST: 'Add',
+	PUT: 'Update',
+	PATCH: 'Update',
+	DELETE: 'Delete'
+};
+
+router.use((req, res, next) => {
+	runWithRequestAuditContext(req, (auditContext) => {
+		res.once('finish', () => {
+			if (!auditContext.isMobile || auditContext.logged) return;
+
+			const method = String(req.method || '').toUpperCase();
+			const target = String(req.path || '').split('/').filter(Boolean)[0] || 'api';
+			void logSystem({
+				userName: auditContext.userName || 'unknown',
+				role: auditContext.role,
+				action: mobileActionByMethod[method] || method,
+				target,
+				details: `Mobile ${method} ${req.path} status=${res.statusCode}`,
+				machine: 'Mobile',
+				appVersion: 'mobile-web'
+			});
+		});
+
+		next();
+	});
+});
 
 const routePageKeyMap = {
 	'/daily-logs': 'daily',
@@ -78,10 +111,10 @@ function canAccessEmployeesReadForAllowedPages(req, allowedPages = []) {
 }
 
 function attachAccessContext(req, res, next) {
-	const normalizedRole = normalizeRole(req.user?.role || '');
+	const normalizedRole = normalizeRole((req.user && req.user.role) || '');
 	const isAdmin = normalizedRole === 'admin';
 	const isViewOnly = normalizedRole === 'view';
-	const allowedPages = getEffectiveAllowedPages(isAdmin, req.user?.allowedPages);
+	const allowedPages = getEffectiveAllowedPages(isAdmin, req.user && req.user.allowedPages);
 
 	req.user.role = normalizedRole;
 	req.user.allowedPages = allowedPages;
@@ -90,9 +123,9 @@ function attachAccessContext(req, res, next) {
 		isAdmin,
 		isViewOnly,
 		allowedPages,
-		department: String(req.user?.department || '').trim(),
-		section: String(req.user?.section || '').trim(),
-		subSection: String(req.user?.subSection || '').trim()
+		department: String((req.user && req.user.department) || '').trim(),
+		section: String((req.user && req.user.section) || '').trim(),
+		subSection: String((req.user && req.user.subSection) || '').trim()
 	};
 
 	next();

@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const { getRequestAuditContext } = require('../utils/requestAuditContext');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'change_this_secret';
 
@@ -13,6 +14,11 @@ function authMiddleware(req, res, next) {
   try {
     const payload = jwt.verify(token, JWT_SECRET);
     req.user = payload;
+    const auditContext = getRequestAuditContext();
+    if (auditContext) {
+      auditContext.userName = String(payload.username || '').trim();
+      auditContext.role = String(payload.role || '').trim().toLowerCase();
+    }
     return next();
   } catch (error) {
     return res.status(401).json({ message: 'رمز المصادقة غير صالح أو منتهي.' });

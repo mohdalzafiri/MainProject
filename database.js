@@ -4,6 +4,7 @@ const os = require('os');
 const Database = require('better-sqlite3');
 const { createPostgresProvider, createSqliteProvider } = require('./database/providers');
 const { removeSync } = require('./utils/fsCompat');
+const { getRequestAuditContext } = require('./utils/requestAuditContext');
 
 const dbClient = String(process.env.DB_CLIENT || 'sqlite').trim().toLowerCase();
 if (!['sqlite', 'postgres'].includes(dbClient)) {
@@ -24,7 +25,7 @@ function canOpenDatabase(candidatePath) {
   } catch {
     return false;
   } finally {
-    if (probe?.open) probe.close();
+    if (probe && probe.open) probe.close();
   }
 }
 
@@ -78,7 +79,7 @@ function acquireApplicationLock(databasePath) {
       }
 
       const lockAge = Date.now() - fs.statSync(lockPath).mtimeMs;
-      const belongsToThisMachine = details?.machine === os.hostname();
+      const belongsToThisMachine = details && details.machine === os.hostname();
       const ownerProcessStopped = belongsToThisMachine && !isLocalProcessRunning(Number(details.pid));
 
       if (attempt === 0 && (ownerProcessStopped || lockAge > LOCK_STALE_MS)) {
@@ -690,6 +691,16 @@ function normalizeDepartmentNames() {
 
 async function logSystem({ userName = '', role = '', action = '', target = '', page = '', details = '', machine = '', appVersion = '' } = {}) {
   try {
+    const requestContext = getRequestAuditContext();
+    if (requestContext && requestContext.isMobile) {
+      userName = requestContext.userName || userName;
+      role = requestContext.role || role;
+      machine = 'Mobile';
+      appVersion = appVersion || 'mobile-web';
+      details = details ? `${details} | المصدر: الموبايل` : 'المصدر: الموبايل';
+      requestContext.logged = true;
+    }
+
     const stmt = db.prepare(`INSERT INTO SystemLog (Timestamp, UserName, Role, Action, Target, Details, Machine, AppVersion) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`);
     await stmt.run(getCurrentTimestamp(), userName, role, action, target || page, details, machine, appVersion);
   } catch (error) {
@@ -700,7 +711,7 @@ async function logSystem({ userName = '', role = '', action = '', target = '', p
 
 async function closeDatabase() {
   await db.close();
-  applicationLock?.release();
+  if (applicationLock) applicationLock.release();
 }
 
 let initializationPromise;

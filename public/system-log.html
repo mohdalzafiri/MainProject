@@ -315,9 +315,116 @@
         .replace(/'/g, '&#39;');
     }
 
+    function translateLogAction(value) {
+      const text = String(value || '').trim();
+      const map = {
+        add: 'إضافة', update: 'تعديل', delete: 'حذف', view: 'عرض البيانات',
+        open: 'دخول', close: 'خروج', print: 'طباعة', search: 'بحث',
+        upload: 'رفع ملف', backup: 'نسخ احتياطي', restore: 'استعادة نسخة احتياطية',
+        download: 'تنزيل ملف', 'login success': 'نجح تسجيل الدخول',
+        'login failed': 'فشل تسجيل الدخول', 'login error': 'خطأ تسجيل الدخول'
+      };
+      return map[text.toLowerCase()] || (/[A-Za-z]/.test(text) ? 'عملية نظام' : text);
+    }
+
+    function translateLogTarget(value) {
+      const text = String(value || '').trim();
+      const key = text.toLowerCase().replace(/\s+/g, '');
+      const map = {
+        main: 'الموظفين', employees: 'الموظفين', holiday: 'الإجازات', holidays: 'الإجازات',
+        course: 'الدورات', courses: 'الدورات', transfer: 'التنقلات', transfers: 'التنقلات',
+        daily: 'اليوميات', evaluations: 'تقييم الأداء', statistics: 'الإحصائيات',
+        login: 'تسجيل الدخول', settings: 'الإعدادات', dashboard: 'الرئيسية',
+        systemlog: 'سجل النظام', administrative: 'النماذج الإدارية',
+        administrativeforms: 'النماذج الإدارية', administrativetemplate: 'قوالب النماذج الإدارية',
+        archive: 'الأرشيف', categories: 'مجلدات الأرشيف', attachments: 'المرفقات',
+        incoming: 'الوارد', outgoing: 'الصادر', reduction: 'تخفيف العمل',
+        database: 'قاعدة البيانات', api: 'واجهة النظام', outsideemployees: 'الموظفين خارج الإدارة',
+        'outside-employees': 'الموظفين خارج الإدارة', 'system-log': 'سجل النظام'
+      };
+      if (/^daily[1-4]$/i.test(text) || /^dailyall(_p)?$/i.test(text)) return 'اليوميات';
+      return map[key] || (/[A-Za-z]/.test(text) ? 'النظام' : text);
+    }
+
+    function translateLogDetails(value) {
+      const text = String(value || '').trim();
+      if (!text) return '';
+
+      const mobile = text.match(/^Mobile\s+(GET|HEAD|POST|PUT|PATCH|DELETE)\s+([^\s]+)\s+status=(\d+)/i);
+      if (mobile) {
+        const actionMap = { GET: 'عرض', HEAD: 'عرض', POST: 'إضافة', PUT: 'تعديل', PATCH: 'تعديل', DELETE: 'حذف' };
+        const target = translateLogTarget(mobile[2].split('?')[0].split('/').filter(Boolean)[0] || 'api');
+        return `${actionMap[mobile[1].toUpperCase()]} ${target} من الموبايل، رمز الاستجابة ${mobile[3]}`;
+      }
+
+      const exact = [
+        [/^Created verified daily database backup:.*$/i, 'تم إنشاء نسخة احتياطية يومية موثقة لقاعدة البيانات'],
+        [/^Daily database backup already exists and is valid:.*$/i, 'النسخة الاحتياطية اليومية لقاعدة البيانات موجودة وصالحة'],
+        [/^Unknown encoding:\s*base64url$/i, 'ترميز الرابط غير معروف'],
+        [/^database is locked$/i, 'قاعدة البيانات مقفلة بواسطة عملية أخرى'],
+        [/^worker exited with code\s+(.+)$/i, 'توقفت خدمة النسخ الاحتياطي'],
+        [/^User logged in/i, 'تم تسجيل دخول المستخدم'],
+        [/^User logged out/i, 'تم تسجيل خروج المستخدم'],
+        [/^Generated (?:daily records|سجل يوميs)\s*(.*)$/i, 'تم إنشاء سجلات يومية $1'],
+        [/^Added work reduction ID=(\d+)$/i, 'تمت إضافة سجل تخفيف العمل، المعرّف $1'],
+        [/^Updated work reduction ID=(\d+)$/i, 'تم تعديل سجل تخفيف العمل، المعرّف $1'],
+        [/^Deleted work reduction ID=(\d+)$/i, 'تم حذف سجل تخفيف العمل، المعرّف $1']
+      ];
+      for (const item of exact) {
+        if (item[0].test(text)) {
+          return text
+            .replace(item[0], item[1])
+            .replace(/\bfor\b/gi, 'بتاريخ')
+            .replace(/\s*\|\s*المصدر: الموبايل\s*$/, ' من الموبايل');
+        }
+      }
+
+      let translated = text
+        .replace(/^Added\s+/i, 'تمت إضافة ')
+        .replace(/^Updated\s+/i, 'تم تعديل ')
+        .replace(/^Deleted\s+/i, 'تم حذف ')
+        .replace(/^Uploaded\s+/i, 'تم رفع ')
+        .replace(/^Generated\s+/i, 'تم إنشاء ')
+        .replace(/department-section/gi, 'القسم/النوبة')
+        .replace(/admin password/gi, 'كلمة سر المدير')
+        .replace(/login user/gi, 'مستخدم النظام')
+        .replace(/daily records?/gi, 'سجلات يومية')
+        .replace(/employee/gi, 'موظف')
+        .replace(/holiday/gi, 'إجازة')
+        .replace(/course/gi, 'دورة')
+        .replace(/transfer/gi, 'تنقل')
+        .replace(/attachment/gi, 'مرفق')
+        .replace(/archive category/gi, 'مجلد أرشيف')
+        .replace(/\bID=/gi, 'المعرّف=')
+        .replace(/\bfor\b/gi, 'لـ');
+
+      return /[A-Za-z]{2,}/.test(translated) ? 'تفاصيل عملية النظام' : translated;
+    }
+
+    function localizeLogRecord(item) {
+      return {
+        ...item,
+        Action: translateLogAction(item.Action),
+        Target: translateLogTarget(item.Target),
+        Details: translateLogDetails(item.Details)
+      };
+    }
+
     function getActivityStatus(item) {
       const action = String(item?.Action || item?.action || '').toLowerCase();
-      return action.includes('failed') || action.includes('error') || action.includes('فشل') ? 'فشل' : 'نجاح';
+      return action.includes('failed') || action.includes('error') || action.includes('فشل') || action.includes('خطأ') ? 'فشل' : 'نجاح';
+    }
+
+    function isMobileRecord(item) {
+      const machine = String(item?.Machine || '').trim().toLowerCase();
+      const appVersion = String(item?.AppVersion || '').trim().toLowerCase();
+      const details = String(item?.Details || '');
+      return machine === 'mobile' || appVersion === 'mobile-web' || details.includes('الموبايل');
+    }
+
+    function formatAction(item) {
+      const action = String(item?.Action || '').trim();
+      return isMobileRecord(item) ? `📱 ${action}` : action;
     }
 
     function renderRows(items) {
@@ -334,7 +441,7 @@
         const badgeClass = status === 'فشل' ? 'fail' : '';
         const row = document.createElement('tr');
         row.innerHTML = `
-          <td>${escapeHtml(item.Action || '')}</td>
+          <td>${escapeHtml(formatAction(item))}</td>
           <td>${escapeHtml(item.Target || '')}</td>
           <td>${escapeHtml(item.UserName || '')}</td>
           <td class="mono">${escapeHtml(formatDateTime(item.Timestamp || ''))}</td>
@@ -377,7 +484,7 @@
         const status = getActivityStatus(item);
         return `
           <tr>
-            <td>${escapeHtml(item.Action || '')}</td>
+            <td>${escapeHtml(formatAction(item))}</td>
             <td>${escapeHtml(item.Target || '')}</td>
             <td>${escapeHtml(item.UserName || '')}</td>
             <td>${escapeHtml(formatDateTime(item.Timestamp || ''))}</td>
@@ -468,7 +575,7 @@
       const url = params.toString() ? `/api/system-log?${params.toString()}` : '/api/system-log';
       const records = await requestJson(url);
       if (!records) return;
-      allRecords = Array.isArray(records) ? records : [];
+      allRecords = Array.isArray(records) ? records.map(localizeLogRecord) : [];
       renderRows(getFilteredRecords());
       setPageMessage('');
     }
