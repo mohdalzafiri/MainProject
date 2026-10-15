@@ -102,33 +102,15 @@ function acquireApplicationLock(databasePath) {
 function resolveDatabasePath() {
   const configuredPath = process.env.DB_PATH && process.env.DB_PATH.trim();
   const uncPath = '\\\\PC-SERVER\\Database\\database.db';
-  const mappedPath = 'Z:\\database.db';
-  const localPath = path.resolve(__dirname, 'database.db');
+  const databasePath = configuredPath || uncPath;
 
-  if (configuredPath) {
-    const normalizedConfiguredPath = path.normalize(configuredPath).toLowerCase();
-    const normalizedUncPath = path.normalize(uncPath).toLowerCase();
-
-    if (normalizedConfiguredPath === normalizedUncPath && canOpenDatabase(mappedPath)) {
-      return mappedPath;
-    }
-
-    if (!fs.existsSync(configuredPath)) {
-      throw new Error(`Configured database is unavailable: ${configuredPath}`);
-    }
-
-    return configuredPath;
+  if (!canOpenDatabase(databasePath)) {
+    throw new Error(
+      `Central database is unavailable: ${databasePath}. Connect to PC-SERVER before starting the application.`
+    );
   }
 
-  const candidates = [mappedPath, uncPath, localPath];
-
-  for (const candidate of candidates) {
-    if (canOpenDatabase(candidate)) {
-      return candidate;
-    }
-  }
-
-  return localPath;
+  return databasePath;
 }
 
 const dbPath = dbClient === 'sqlite' ? resolveDatabasePath() : null;
@@ -141,7 +123,7 @@ if (dbClient === 'sqlite') {
   try {
     db = new Database(dbPath, {
       readonly: false,
-      fileMustExist: Boolean(process.env.DB_PATH && process.env.DB_PATH.trim()),
+      fileMustExist: true,
       timeout: 15000
     });
   } catch (error) {
@@ -333,6 +315,7 @@ function ensureDepartmentSectionLookupTable() {
     ['البلاغات', 'ج - فريق عمل البلاغات', ''],
     ['البلاغات', 'د - فريق عمل البلاغات', ''],
     ['البلاغات', 'هـ - فريق عمل البلاغات', ''],
+    ['البلاغات', 'فريق عمل البلاغات صباحاً', ''],
     ['البلاغات', 'سكرتارية البلاغات', ''],
     ['البلاغات', 'صباحاً', ''],
     ['العمليات', 'أ - العمليات', ''],
@@ -367,6 +350,7 @@ function ensureDepartmentSectionLookupTable() {
       'ج - فريق عمل البلاغات',
       'د - فريق عمل البلاغات',
       'هـ - فريق عمل البلاغات',
+      'فريق عمل البلاغات صباحاً',
       'سكرتارية البلاغات',
       'صباحاً'
     ],
