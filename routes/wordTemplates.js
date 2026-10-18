@@ -98,7 +98,7 @@ async function resolveLeavePermitTemplateFileName(templateName) {
     LIMIT 1
   `).get(raw));
 
-  const fileName = normalize(mapped?.TemplateFileName);
+  const fileName = normalize((mapped == null ? undefined : mapped.TemplateFileName));
   if (fileName) {
     return fileName;
   }
@@ -266,8 +266,8 @@ router.post('/templates/upload', upload.single('template'), async (req, res) => 
     }
 
     (await logSystem({
-      userName: req.user?.username || 'system',
-      role: req.user?.role || '',
+      userName: (req.user == null ? undefined : req.user.username) || 'system',
+      role: (req.user == null ? undefined : req.user.role) || '',
       action: 'Add',
       page: 'AdministrativeTemplate',
       details: `Uploaded template ${req.file.filename}`
@@ -392,7 +392,7 @@ router.post('/leave-permit/generate', async (req, res) => {
       leave_start_date: toLtrDate(leaveStartDate),
       leave_end_date: toLtrDate(leaveEndDate),
       notes,
-      created_by: req.user?.username || 'system',
+      created_by: (req.user == null ? undefined : req.user.username) || 'system',
       created_at: formatTimestamp(new Date())
     };
 
@@ -403,8 +403,8 @@ router.post('/leave-permit/generate', async (req, res) => {
     const pdfResult = convertDocxToPdf(output.docxPath, output.pdfPath);
 
     (await logSystem({
-      userName: req.user?.username || 'system',
-      role: req.user?.role || '',
+      userName: (req.user == null ? undefined : req.user.username) || 'system',
+      role: (req.user == null ? undefined : req.user.role) || '',
       action: 'Add',
       page: 'AdministrativeTemplate',
       details: `Generated leave permit for EmpID=${employee.ID} with template=${templateName}`

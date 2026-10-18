@@ -59,7 +59,7 @@ function fileTypeFromExtension(extension) {
 }
 
 function escapeHtml(value) {
-  return String(value == null ? '' : value).replace(/[&<>"']/g, (character) => ({
+  return String(value != null ? value : '').replace(/[&<>"']/g, (character) => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
   })[character]);
 }
@@ -370,8 +370,11 @@ router.get('/preview/:category/:id', async (req, res) => {
         return res.status(422).send('ملف Excel لا يحتوي على أوراق قابلة للعرض.');
       }
 
-      const maxRows = Math.min(worksheet.actualRowCount || worksheet.rowCount || 1, 60);
-      const maxColumns = Math.min(worksheet.actualColumnCount || worksheet.columnCount || 1, 20);
+      const fullView = String(req.query.full || '') === '1';
+      const totalRows = fullView ? (worksheet.rowCount || 1) : (worksheet.actualRowCount || worksheet.rowCount || 1);
+      const totalColumns = fullView ? (worksheet.columnCount || 1) : (worksheet.actualColumnCount || worksheet.columnCount || 1);
+      const maxRows = fullView ? totalRows : Math.min(totalRows, 60);
+      const maxColumns = fullView ? totalColumns : Math.min(totalColumns, 20);
       let tableRows = '';
       for (let rowIndex = 1; rowIndex <= maxRows; rowIndex += 1) {
         let cells = '';

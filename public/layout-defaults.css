@@ -272,6 +272,15 @@ body.app-shell .native-date-input {
   -moz-appearance: none;
 }
 
+@media (pointer: coarse) {
+  body.app-shell .native-date-input {
+    pointer-events: auto;
+    appearance: auto;
+    -webkit-appearance: auto;
+    -moz-appearance: auto;
+  }
+}
+
 body.app-shell textarea {
   min-height: 84px;
   resize: vertical;

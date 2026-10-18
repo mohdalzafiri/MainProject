@@ -970,7 +970,7 @@
       const sortedItems = applyDateSort(items);
 
       if (!Array.isArray(sortedItems) || sortedItems.length === 0) {
-        rowsBody.innerHTML = `<tr><td colspan="${isAdminUser ? 11 : 10}">لا توجد بيانات إجازات حالياً.</td></tr>`;
+        rowsBody.innerHTML = `<tr><td colspan="${isAdminUser ? 11 : 10}">لاتوجد بيانات حالياً.</td></tr>`;
         countLabel.textContent = 'عدد السجلات: 0';
         syncUserNameColumnVisibility();
         return;

@@ -492,6 +492,7 @@
   </div>
 
   <script src="/record-photos.js"></script>
+  <script src="/text-encoding.js"></script>
   <script>
     const authToken = sessionStorage.getItem('authToken');
     if (!authToken) {
@@ -817,7 +818,7 @@
       rowsBody.innerHTML = '';
 
       if (!Array.isArray(items) || items.length === 0) {
-        rowsBody.innerHTML = `<tr><td colspan="${isAdminUser ? 12 : 11}">لا توجد بيانات دورات حالياً.</td></tr>`;
+        rowsBody.innerHTML = `<tr><td colspan="${isAdminUser ? 12 : 11}">لاتوجد بيانات حالياً.</td></tr>`;
         countLabel.textContent = 'عدد السجلات: 0';
         syncUserNameColumnVisibility();
         return;
@@ -904,7 +905,7 @@
       });
 
       if (!data) return;
-      allCourses = Array.isArray(data) ? data : [];
+      allCourses = MainProjectTextEncoding.normalizeUserNameRecords(data);
       applyNameFilter();
     }
 

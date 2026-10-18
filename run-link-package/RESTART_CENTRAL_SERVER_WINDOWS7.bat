@@ -4,11 +4,12 @@ setlocal
 title Restart MainProject API on PC-SERVER
 
 set "PROJECT_DIR="
+if exist "G:\Database\MainProject.Api\server.js" set "PROJECT_DIR=G:\Database\MainProject.Api"
 if exist "%~dp0MainProject.Api\server.js" set "PROJECT_DIR=%~dp0MainProject.Api"
 if exist "%~dp0..\server.js" set "PROJECT_DIR=%~dp0.."
 
 if not defined PROJECT_DIR (
-	echo ERROR: MainProject.Api could not be found next to this file.
+	echo ERROR: MainProject.Api could not be found at G:\Database\MainProject.Api or next to this file.
 	pause
 	exit /b 1
 )
@@ -22,7 +23,7 @@ set "CURRENT_LOG=%PROJECT_DIR%\run-link-package\server-runtime-current.log"
 set "DB_CLIENT=sqlite"
 set "DB_PATH=%DATABASE_DIR%\database.db"
 set "DB_BACKUP_DIR=%DATABASE_DIR%\Backups"
-set "SQLITE_JOURNAL_MODE=WAL"
+set "SQLITE_JOURNAL_MODE=DELETE"
 set "NODE_SKIP_PLATFORM_CHECK=1"
 set "HOST=0.0.0.0"
 set "PORT=5000"

@@ -2,7 +2,11 @@
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { db, logSystem, getCurrentTimestamp } = require('../database');
-const { normalizeRole, getEffectiveAllowedPages } = require('../auth/permissions');
+const {
+  normalizeRole,
+  getEffectiveAllowedPages,
+  getEffectiveEditablePages
+} = require('../auth/permissions');
 
 function parseJsonArray(value) {
   if (Array.isArray(value)) {
@@ -46,6 +50,7 @@ function buildSessionUser(user) {
     section: user.Section || '',
     subSection: user.SubSection || '',
     allowedPages: getEffectiveAllowedPages(isAdmin, user.AllowedPages),
+    editablePages: getEffectiveEditablePages(isAdmin, user.AllowedPages, role === 'view'),
     allowedDepartments: parseJsonArray(user.AllowedDepartments),
     allowedSections: parseJsonArray(user.AllowedSections),
     allowedSubSections: parseJsonArray(user.AllowedSubSections),
@@ -209,4 +214,3 @@ router.post('/logout', async (req, res) => {
 });
 
 module.exports = router;
-

@@ -135,7 +135,9 @@ function createPostgresProvider(options = {}) {
     if (mode === 'get') return rows[0];
     return {
       changes: result.rowCount || 0,
-      lastInsertRowid: rows[0]?.ID ?? rows[0]?.id ?? null
+      lastInsertRowid: rows[0]
+        ? (rows[0].ID != null ? rows[0].ID : (rows[0].id != null ? rows[0].id : null))
+        : null
     };
   }
 

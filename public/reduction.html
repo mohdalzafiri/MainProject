@@ -385,6 +385,7 @@
   </div>
 
   <script src="/record-photos.js"></script>
+  <script src="/text-encoding.js"></script>
   <script>
     const authToken = sessionStorage.getItem('authToken');
     if (!authToken) {
@@ -553,7 +554,7 @@
     function renderRows(items) {
       rowsBody.innerHTML = '';
       if (!Array.isArray(items) || !items.length) {
-        rowsBody.innerHTML = `<tr><td colspan="${isAdminUser ? 11 : 10}">لا توجد بيانات متاحة.</td></tr>`;
+        rowsBody.innerHTML = `<tr><td colspan="${isAdminUser ? 11 : 10}">لاتوجد بيانات حالياً.</td></tr>`;
         countLabel.textContent = 'عدد السجلات: 0';
         syncUserNameColumnVisibility();
         return;
@@ -627,7 +628,7 @@
     async function loadReduction() {
       try {
         const data = await requestJson('/api/reduction', { headers: getHeaders() });
-        allReduction = Array.isArray(data) ? data : [];
+        allReduction = MainProjectTextEncoding.normalizeUserNameRecords(data);
         const filterText = (nameFilterInput.value || '').trim().toLowerCase();
         const visible = !filterText ? allReduction : allReduction.filter((item) => String(item.Name || '').toLowerCase().includes(filterText));
         renderRows(visible);

@@ -101,7 +101,7 @@ router.post('/', async (req, res) => {
   const subject = normalize(req.body.Subject);
   const recipient = normalize(req.body.Recipient);
   const notes = normalize(req.body.Notes);
-  const userName = normalize(req.body.UserName) || req.user?.name || req.user?.username || 'system';
+  const userName = normalize(req.body.UserName) || (req.user == null ? undefined : req.user.name) || (req.user == null ? undefined : req.user.username) || 'system';
 
   if (!docNumber) return res.status(400).json({ message: 'رقم الصادر مطلوب.' });
   if (!docDate) return res.status(400).json({ message: 'تاريخ الصادر مطلوب.' });
@@ -141,7 +141,7 @@ router.put('/:id', async (req, res) => {
   const subject = normalize(req.body.Subject);
   const recipient = normalize(req.body.Recipient);
   const notes = normalize(req.body.Notes);
-  const userName = normalize(req.body.UserName) || req.user?.name || req.user?.username || 'system';
+  const userName = normalize(req.body.UserName) || (req.user == null ? undefined : req.user.name) || (req.user == null ? undefined : req.user.username) || 'system';
 
   if (!docNumber) return res.status(400).json({ message: 'رقم الصادر مطلوب.' });
   if (!docDate) return res.status(400).json({ message: 'تاريخ الصادر مطلوب.' });
@@ -188,7 +188,7 @@ router.delete('/:id', async (req, res) => {
     }
 
     (await logSystem({
-      userName: normalize(req.body.userName) || req.user?.name || req.user?.username || 'system',
+      userName: normalize(req.body.userName) || (req.user == null ? undefined : req.user.name) || (req.user == null ? undefined : req.user.username) || 'system',
       action: 'Delete',
       page: 'Outgoing',
       details: `Deleted outgoing ID=${id}`

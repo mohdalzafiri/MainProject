@@ -1,5 +1,6 @@
 const express = require('express');
 const { db } = require('../database');
+const { filterByDataScope } = require('../auth/dataScope');
 
 const router = express.Router();
 
@@ -10,7 +11,8 @@ function isActiveStatus(status) {
 router.get('/', async (req, res) => {
   try {
     const records = (await db.prepare('SELECT * FROM Main ORDER BY ID DESC').all());
-    const outsideRecords = records.filter((item) => !isActiveStatus(item.Status));
+    const outsideRecords = filterByDataScope(records, req.access)
+      .filter((item) => !isActiveStatus(item.Status));
     res.json(outsideRecords);
   } catch (error) {
     console.error(error);

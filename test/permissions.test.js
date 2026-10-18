@@ -9,8 +9,11 @@ const {
   normalizeRole,
   normalizePageKey,
   parseAllowedPages,
+  parseStoredPagePermissions,
   getEffectiveAllowedPages,
-  serializeAllowedPages
+  getEffectiveEditablePages,
+  serializeAllowedPages,
+  serializePagePermissions
 } = require('../auth/permissions');
 
 test('normalizes supported roles and defaults unknown roles to user', () => {
@@ -49,6 +52,36 @@ test('archive and confidential books permissions remain independent', () => {
     getEffectiveAllowedPages(false, ['archive', 'confidentialBooks']),
     ['archive', 'confidentialBooks']
   );
+});
+
+test('query and statistics permissions remain independent', () => {
+  assert.deepEqual(getEffectiveAllowedPages(false, ['query']), ['query']);
+  assert.deepEqual(getEffectiveAllowedPages(false, ['statistics']), ['statistics']);
+  assert.deepEqual(getEffectiveAllowedPages(false, ['query', 'statistics']), ['query', 'statistics']);
+  assert.equal(serializeAllowedPages(['query']), '["query"]');
+});
+
+test('legacy page permissions remain editable until explicitly configured', () => {
+  assert.deepEqual(getEffectiveEditablePages(false, ['employees', 'daily']), ['employees', 'daily']);
+  assert.deepEqual(getEffectiveEditablePages(false, ['employees'], true), []);
+});
+
+test('configured edit permissions remain independent from view permissions', () => {
+  const serialized = serializePagePermissions(
+    ['employees', 'daily', 'query'],
+    ['employees', 'query', 'settings']
+  );
+  assert.equal(
+    serialized,
+    '["employees","daily","query","pageEditsConfigured","edit:employees","edit:query"]'
+  );
+  assert.deepEqual(parseAllowedPages(serialized), ['employees', 'daily', 'query']);
+  assert.deepEqual(getEffectiveEditablePages(false, serialized), ['employees', 'query']);
+  assert.deepEqual(parseStoredPagePermissions(serialized), {
+    allowedPages: ['employees', 'daily', 'query'],
+    editablePages: ['employees', 'query'],
+    editsConfigured: true
+  });
 });
 
 test('serialization removes duplicates and unsupported keys', () => {

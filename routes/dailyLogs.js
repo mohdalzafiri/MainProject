@@ -1,5 +1,6 @@
-﻿const express = require('express');
+const express = require('express');
 const { db, dailyTables, isValidDailyTable, logSystem } = require('../database');
+const { filterByDataScope, isWithinDataScope } = require('../auth/dataScope');
 
 const router = express.Router();
 
@@ -25,18 +26,6 @@ const periodTimes = {
   'نوبة ليل': { inTime: '00:00', outTime: '08:00' },
   'صباحاً': { inTime: '07:30', outTime: '14:30' }
 };
-
-function getBulkEditTimes(row, sourcePeriod, nextPeriod) {
-  const currentTimes = {
-    inTime: String(row.InTime || '').trim(),
-    outTime: String(row.OutTime || '').trim()
-  };
-  if (nextPeriod === sourcePeriod || (!currentTimes.inTime && !currentTimes.outTime)) {
-    return currentTimes;
-  }
-
-  return periodTimes[nextPeriod] || { inTime: '', outTime: '' };
-}
 
 const tableSections = {
   Daily1: [
@@ -209,96 +198,13 @@ function buildUpdateStatement(table, payload, id) {
   };
 }
 
-function normalizeLinkedRecordDate(value) {
-  const normalized = normalizeDateInput(value);
-  if (!normalized) return '';
-  const parts = normalized.split('-');
-  if (parts.length !== 3) return '';
-  return `${parts[0]}/${String(parts[1]).padStart(2, '0')}/${String(parts[2]).padStart(2, '0')}`;
-}
-
-async function addLinkedHolidayIfNeeded(record, userName) {
-  if (String(record.Status || '').trim() !== 'اجازة') return false;
-
-  const date = normalizeLinkedRecordDate(record.Today);
-  const name = String(record.Name || '').trim();
-  const empId = Number(record.EmpID || 0) || null;
-  if (!date || (!empId && !name)) return false;
-
-  const type = String(record.Type || '').trim() || 'اجازة';
-  const existing = (await db.prepare(`
-    SELECT ID, Type FROM Holiday
-    WHERE Status = 'اجازة' AND Startdate = ? AND Enddate = ?
-      AND ((EmpID IS NOT NULL AND CAST(EmpID AS TEXT) = CAST(? AS TEXT)) OR TRIM(Name) = ?)
-    LIMIT 1
-  `).get(date, date, empId, name));
-  if (existing) {
-    if (String(existing.Type || '').trim() !== type) {
-      (await db.prepare('UPDATE Holiday SET Type = ?, Note = ?, UserName = ? WHERE ID = ?')
-        .run(type, String(record.Note || '').trim(), userName, existing.ID));
-      return true;
-    }
-    return false;
-  }
-
-  (await db.prepare(`
-    INSERT INTO Holiday (EmpID, Name, Department, Section, Status, Type, Startdate, Enddate, Days, Note, UserName)
-    VALUES (?, ?, ?, ?, 'اجازة', ?, ?, ?, 1, ?, ?)
-  `).run(
-    empId,
-    name,
-    String(record.Department || '').trim(),
-    String(record.Section || '').trim(),
-    type,
-    date,
-    date,
-    String(record.Note || '').trim(),
-    userName
-  ));
-  return true;
-}
-
-async function addLinkedReductionIfNeeded(record, userName) {
-  if (String(record.Status || '').trim() !== 'تخفيف عمل') return false;
-
-  const date = normalizeLinkedRecordDate(record.Today);
-  const name = String(record.Name || '').trim();
-  const empId = Number(record.EmpID || 0) || null;
-  const type = String(record.Type || '').trim();
-  if (!date || !type || !['بداية الدوام', 'نهاية الدوام'].includes(type) || (!empId && !name)) return false;
-
-  const duplicate = (await db.prepare(`
-    SELECT ID FROM Reduction
-    WHERE Status = 'تخفيف عمل' AND Type = ? AND Startdate = ? AND Enddate = ?
-      AND ((EmpID IS NOT NULL AND CAST(EmpID AS TEXT) = CAST(? AS TEXT)) OR TRIM(Name) = ?)
-    LIMIT 1
-  `).get(type, date, date, empId, name));
-  if (duplicate) return false;
-
-  (await db.prepare(`
-    INSERT INTO Reduction (EmpID, Name, Department, Section, Status, Type, Startdate, Enddate, Hours, Note, UserName)
-    VALUES (?, ?, ?, ?, 'تخفيف عمل', ?, ?, ?, 2, ?, ?)
-  `).run(
-    empId,
-    name,
-    String(record.Department || '').trim(),
-    String(record.Section || '').trim(),
-    type,
-    date,
-    date,
-    String(record.Note || '').trim(),
-    userName
-  ));
-  return true;
-}
-
 async function findActiveEmployees(department, section = '') {
   const normalizedDepartment = normalizeDepartment(department);
   const normalizedSection = String(section || '').trim();
 
   if (!normalizedDepartment) {
     return (await db.prepare(`
-      SELECT ID AS EmpID, Name, Department, Section
+      SELECT ID AS EmpID, Name, Department, Section, SubSection
       FROM Main
       WHERE TRIM(Status) = 'نشط'
       ORDER BY Name ASC
@@ -306,7 +212,7 @@ async function findActiveEmployees(department, section = '') {
   }
 
   const baseSql = `
-    SELECT ID AS EmpID, Name, Department, Section
+    SELECT ID AS EmpID, Name, Department, Section, SubSection
     FROM Main
     WHERE TRIM(Status) = 'نشط'
       AND (
@@ -384,7 +290,7 @@ router.get('/', async (req, res) => {
     ORDER BY date(REPLACE(Today, '/', '-')) DESC, Name ASC, ID DESC
     LIMIT 1000
   `).all());
-  res.json(records);
+  res.json(filterByDataScope(records, req.access));
 });
 
 router.get('/tables', (req, res) => {
@@ -393,14 +299,16 @@ router.get('/tables', (req, res) => {
 
 router.get('/filters', async (req, res) => {
   try {
+    const departmentSections = filterByDataScope((await db.prepare(`
+      SELECT Department, Section, SubSection, SortOrder
+      FROM DepartmentSectionLookup
+      WHERE IsActive = 1
+      ORDER BY SortOrder ASC, ID ASC
+    `).all()), req.access);
+
     res.json({
-      departments: (await getLookupDepartments()),
-      departmentSections: (await db.prepare(`
-        SELECT Department, Section, SortOrder
-        FROM DepartmentSectionLookup
-        WHERE IsActive = 1
-        ORDER BY SortOrder ASC, ID ASC
-      `).all()).map((row) => ({
+      departments: [...new Set(departmentSections.map((row) => normalizeDepartment(row.Department)))],
+      departmentSections: departmentSections.map((row) => ({
         Department: normalizeDepartment(row.Department),
         Section: String(row.Section || '').trim(),
         SortOrder: row.SortOrder
@@ -463,7 +371,12 @@ router.get('/recorded-sections', async (req, res) => {
       ORDER BY MIN(ID) ASC
     `).all(dateValue, department)).map((row) => String(row.Section || '').trim()).filter(Boolean);
 
-    res.json({ sections });
+    res.json({
+      sections: sections.filter((section) => isWithinDataScope({
+        Department: department,
+        Section: section
+      }, req.access))
+    });
   } catch (error) {
     console.error(error);
     res.json({ sections: [] });
@@ -480,14 +393,13 @@ router.get('/employee-suggestions', async (req, res) => {
       return res.json({ items: [] });
     }
 
-    const suggestions = (await db.prepare(`
-      SELECT ID AS EmpID, Name, Department, Section
+    const suggestions = filterByDataScope((await db.prepare(`
+      SELECT ID AS EmpID, Name, Department, Section, SubSection
       FROM Main
       WHERE TRIM(Status) = 'نشط'
         AND TRIM(Name) LIKE ?
       ORDER BY Name ASC
-      LIMIT 60
-    `).all(`%${keyword}%`));
+    `).all(`%${keyword}%`)), req.access).slice(0, 60);
 
     const items = [];
     const seenNames = new Set();
@@ -534,7 +446,7 @@ router.get('/table/:table', async (req, res) => {
   }
 
   const records = (await db.prepare(`SELECT * FROM ${table} ORDER BY date(REPLACE(Today, '/', '-')) DESC, Name ASC, ID DESC`).all());
-  res.json(records);
+  res.json(filterByDataScope(records, req.access));
 });
 
 router.get('/table/:table/:id', async (req, res) => {
@@ -545,7 +457,9 @@ router.get('/table/:table/:id', async (req, res) => {
   }
 
   const record = (await db.prepare(`SELECT * FROM ${table} WHERE ID = ?`).get(id));
-  return record ? res.json(record) : res.status(404).json({ message: 'السجل غير موجود' });
+  return record && isWithinDataScope(record, req.access)
+    ? res.json(record)
+    : res.status(404).json({ message: 'السجل غير موجود' });
 });
 
 router.get('/search', async (req, res) => {
@@ -625,7 +539,7 @@ router.get('/search', async (req, res) => {
     `;
 
     const records = (await db.prepare(sql).all(...params));
-    res.json(records);
+    res.json(filterByDataScope(records, req.access));
   } catch (error) {
     console.error(error);
     res.json([]);
@@ -643,6 +557,9 @@ router.post('/generate', async (req, res) => {
 
     if (!today || !department || !period) {
       return res.status(400).json({ message: 'التاريخ والقسم والفترة مطلوبة.' });
+    }
+    if (!isWithinDataScope({ Department: department, Section: requestedSection }, req.access)) {
+      return res.status(403).json({ message: 'القسم أو النوبة خارج نطاق صلاحيات المستخدم.' });
     }
 
     const table = resolveDailyTableByDepartment(department);
@@ -762,6 +679,9 @@ router.post('/table/:table', async (req, res) => {
   if (!todayValue || !payload.Department || !period || !payload.Name) {
     return res.status(400).json({ message: 'البيانات الأساسية غير مكتملة لإضافة سجل اليومية.' });
   }
+  if (!isWithinDataScope(payload, req.access)) {
+    return res.status(403).json({ message: 'لا تملك صلاحية إضافة سجل خارج القسم أو النوبة المسموحة.' });
+  }
 
   if ((await hasSameEmployeeInDaily(table, payload.EmpID, payload.Name, normalizeDateInput(todayValue), period))) {
     return res.status(409).json({ message: 'لا يمكن تكرار نفس الموظف في اليومية الواحدة.' });
@@ -796,6 +716,9 @@ router.put('/bulk', async (req, res) => {
 
     if (!sourceToday || !sourceDepartment || !sourceSection || !sourcePeriod) {
       return res.status(400).json({ message: 'اختر التاريخ والقسم والنوبة والفترة لليومية المطلوب تعديلها.' });
+    }
+    if (!isWithinDataScope({ Department: sourceDepartment, Section: sourceSection }, req.access)) {
+      return res.status(403).json({ message: 'اليومية المحددة خارج نطاق صلاحيات المستخدم.' });
     }
 
     if (!nextToday || !periods.includes(nextPeriod)) {
@@ -837,25 +760,16 @@ router.put('/bulk', async (req, res) => {
         return res.status(409).json({ message: `لا يمكن تعديل اليومية لأن الموظف ${row.Name || ''} موجود مسبقًا في التاريخ والفترة الجديدة.` });
       }
 
-      const nextTimes = getBulkEditTimes(row, sourcePeriod, nextPeriod);
-      const permissionLimitError = (await validateMonthlyPermissionLimit({
-        ...row,
-        Today: targetToday,
-        Day: targetDay,
-        Period: nextPeriod,
-        InTime: nextTimes.inTime,
-        OutTime: nextTimes.outTime
-      }, table, row.ID));
+      const permissionLimitError = (await validateMonthlyPermissionLimit({ ...row, Today: targetToday, Day: targetDay, Period: nextPeriod }, table, row.ID));
       if (permissionLimitError) {
         return res.status(400).json({ message: `${permissionLimitError} الموظف: ${row.Name || ''}.` });
       }
     }
 
-    const update = db.prepare(`UPDATE ${table} SET Today = ?, Day = ?, Period = ?, InTime = ?, OutTime = ? WHERE ID = ?`);
+    const update = db.prepare(`UPDATE ${table} SET Today = ?, Day = ?, Period = ? WHERE ID = ?`);
     await db.transaction(async () => {
       for (const row of sourceRows) {
-        const nextTimes = getBulkEditTimes(row, sourcePeriod, nextPeriod);
-        await update.run(targetToday, targetDay, nextPeriod, nextTimes.inTime, nextTimes.outTime, row.ID);
+        await update.run(targetToday, targetDay, nextPeriod, row.ID);
       }
     })();
 
@@ -883,8 +797,11 @@ router.put('/table/:table/:id', async (req, res) => {
   }
 
   const current = (await db.prepare(`SELECT * FROM ${table} WHERE ID = ?`).get(id));
-  if (!current) {
+  if (!current || !isWithinDataScope(current, req.access)) {
     return res.status(404).json({ message: 'السجل غير موجود للتعديل' });
+  }
+  if (!isWithinDataScope({ ...current, ...payload }, req.access)) {
+    return res.status(403).json({ message: 'لا تملك صلاحية نقل السجل خارج القسم أو النوبة المسموحة.' });
   }
 
   const permissionLimitError = (await validateMonthlyPermissionLimit({ ...current, ...payload }, table, id));
@@ -898,13 +815,7 @@ router.put('/table/:table/:id', async (req, res) => {
   }
 
   const userName = req.body.userName || 'system';
-  const nextRecord = { ...current, ...payload };
-  const result = (await db.transaction(async () => {
-    const updateResult = (await db.prepare(statement.sql).run(statement.values));
-    (await addLinkedHolidayIfNeeded(nextRecord, userName));
-    (await addLinkedReductionIfNeeded(nextRecord, userName));
-    return updateResult;
-  })());
+  const result = (await db.prepare(statement.sql).run(statement.values));
   if (result.changes === 0) {
     return res.status(404).json({ message: 'السجل غير موجود للتعديل' });
   }
@@ -913,52 +824,16 @@ router.put('/table/:table/:id', async (req, res) => {
   res.json({ changes: result.changes });
 });
 
-router.delete('/bulk', async (req, res) => {
-  try {
-    const today = normalizeDateInput(req.body.today);
-    const department = normalizeDepartment(req.body.department);
-    const section = String(req.body.section || '').trim();
-    const period = String(req.body.period || '').trim();
-
-    if (!today || !department || !section || !period) {
-      return res.status(400).json({ message: 'اختر التاريخ والقسم والنوبة والفترة قبل حذف اليومية كاملة.' });
-    }
-
-    const table = resolveDailyTableByDepartment(department);
-    if (!table) {
-      return res.status(400).json({ message: 'تعذر تحديد جدول اليومية للقسم المختار.' });
-    }
-
-    const result = (await db.prepare(`
-      DELETE FROM ${table}
-      WHERE date(REPLACE(Today, '/', '-')) = date(?)
-        AND TRIM(Department) = ?
-        AND TRIM(Section) = ?
-        AND TRIM(Period) = ?
-    `).run(today, department, section, period));
-
-    if (result.changes === 0) {
-      return res.status(404).json({ message: 'لا توجد سجلات مطابقة لليومية المحددة لحذفها.' });
-    }
-
-    (await logSystem({
-      userName: req.body.userName || 'system',
-      action: 'Delete',
-      page: table,
-      details: `تم حذف اليومية كاملة (${result.changes} سجلًا) بتاريخ ${toSlashDate(today)}`
-    }));
-    return res.json({ changes: result.changes, message: `تم حذف اليومية كاملة بنجاح (${result.changes} سجلًا).` });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ message: 'تعذر حذف اليومية كاملة. تحقق من اتصال قاعدة البيانات ثم حاول مرة أخرى.' });
-  }
-});
-
 router.delete('/table/:table/:id', async (req, res) => {
   const table = req.params.table;
   const id = Number(req.params.id);
   if (!isValidDailyTable(table) || !id) {
     return res.status(400).json({ message: 'معرّف غير صالح أو جدول غير صالح' });
+  }
+
+  const current = (await db.prepare(`SELECT * FROM ${table} WHERE ID = ?`).get(id));
+  if (!current || !isWithinDataScope(current, req.access)) {
+    return res.status(404).json({ message: 'السجل غير موجود للحذف' });
   }
 
   const result = (await db.prepare(`DELETE FROM ${table} WHERE ID = ?`).run(id));
@@ -971,4 +846,3 @@ router.delete('/table/:table/:id', async (req, res) => {
 });
 
 module.exports = router;
-

@@ -306,7 +306,14 @@
               <option value="غير نشط">غير نشط</option>
             </select>
           </div>
-          <div class="field"></div>
+          <div class="field">
+            <label for="militaryNumber">الرقم العسكري</label>
+            <input id="militaryNumber" type="text" inputmode="numeric" pattern="\d*" />
+          </div>
+          <div class="field">
+            <label for="fileNumber">رقم الملف</label>
+            <input id="fileNumber" type="text" inputmode="numeric" pattern="\d*" />
+          </div>
 
           <div class="field full-row">
             <label for="note">ملاحظات</label>
@@ -406,6 +413,8 @@
     const endDateDisplayInput = document.getElementById('endDateDisplay');
     const titleInput = document.getElementById('title');
     const statusInput = document.getElementById('status');
+    const militaryNumberInput = document.getElementById('militaryNumber');
+    const fileNumberInput = document.getElementById('fileNumber');
     const noteInput = document.getElementById('note');
 
     const addBtn = document.getElementById('addBtn');
@@ -610,6 +619,8 @@
         Enddate: normalizeDate(endDateInput.value),
         Title: rankInput.value.trim(),
         Status: statusInput.value.trim(),
+        MilitaryNumber: militaryNumberInput.value.trim(),
+        FileNumber: fileNumberInput.value.trim(),
         Note: noteInput.value.trim(),
         userName: currentUser.username || 'system'
       };
@@ -644,6 +655,8 @@
       endDateDisplayInput.value = '';
       titleInput.value = '';
       statusInput.value = '';
+      militaryNumberInput.value = '';
+      fileNumberInput.value = '';
       noteInput.value = '';
       clearStatus();
       Array.from(rowsBody.querySelectorAll('tr')).forEach((row) => row.classList.remove('selected'));
@@ -668,6 +681,8 @@
       endDateDisplayInput.value = formatKuwaitDate(item.Enddate);
       titleInput.value = item.Rank || '';
       statusInput.value = item.Status || '';
+      militaryNumberInput.value = item.MilitaryNumber || '';
+      fileNumberInput.value = item.FileNumber || '';
       noteInput.value = item.Note || '';
     }
 
@@ -1070,7 +1085,7 @@
       const activeTotal = allEmployees.filter((item) => String(item.Status || '').trim() === 'نشط').length;
 
       if (!Array.isArray(items) || items.length === 0) {
-        rowsBody.innerHTML = '<tr><td colspan="13">لا توجد بيانات موظفين حالياً.</td></tr>';
+        rowsBody.innerHTML = '<tr><td colspan="13">لاتوجد بيانات حالياً.</td></tr>';
         const hasFilter = Boolean(tableFilterInput.value.trim());
         countLabel.textContent = hasFilter
           ? `عدد السجلات: 0 من ${activeTotal}`
@@ -1164,8 +1179,24 @@
       }
     }
 
-    async function loadDepartmentSections() {
+    async function loadJobTitles() {
       try {
+        const data = await requestJson('/api/employees/job-titles', {
+          headers: { Authorization: 'Bearer ' + authToken }
+        });
+        const existing = new Set(Array.from(titleInput.options).map((option) => option.value.trim()));
+        (Array.isArray(data) ? data : []).forEach((item) => {
+          const title = String(item.Title || '').trim();
+          if (!title || existing.has(title)) return;
+          existing.add(title);
+          titleInput.appendChild(new Option(title, title));
+        });
+      } catch (error) {
+        showStatus(error.message, true);
+      }
+    }
+
+    async function loadDepartmentSections() {      try {
         const data = await requestJson('/api/employees/department-sections', {
           headers: { Authorization: `Bearer ${authToken}` }
         });
@@ -1288,6 +1319,12 @@
       civilIdInput.value = civilIdInput.value.replace(/\D/g, '').slice(0, 12);
     });
 
+    [militaryNumberInput, fileNumberInput].forEach((input) => {
+      input.addEventListener('input', () => {
+        input.value = input.value.replace(/\D/g, '');
+      });
+    });
+
     departmentInput.addEventListener('change', () => {
       renderSectionOptions(normalizeDepartment(departmentInput.value));
       renderSubSectionOptions(normalizeDepartment(departmentInput.value), '');
@@ -1333,6 +1370,7 @@
     });
 
     loadDepartmentSections();
+    loadJobTitles();
     loadEmployees();
     syncDateDisplays();
   </script>

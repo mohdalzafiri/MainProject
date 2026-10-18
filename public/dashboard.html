@@ -349,6 +349,7 @@
     <div class="panel buttons-grid">
       <div class="action-item" id="employeesBtn"><span class="action-icon" aria-hidden="true">👥</span><span>الموظفين</span></div>
       <a class="action-item" id="dailyBtn" href="/daily.html"><span class="action-icon" aria-hidden="true">🗓️</span><span>اليوميات</span></a>
+      <a class="action-item" id="queryBtn" href="/query.html"><span class="action-icon" aria-hidden="true">🔎</span><span>الاستعلام</span></a>
       <a class="action-item" id="statisticsBtn" href="/statistics.html"><span class="action-icon" aria-hidden="true">📊</span><span>الاحصائيات</span></a>
       <div class="action-item" id="holidaysBtn"><span class="action-icon" aria-hidden="true">🏖️</span><span>الاجازات</span></div>
       <div class="action-item" id="reductionBtn"><span class="action-icon" aria-hidden="true">⏱️</span><span>تخفيف العمل</span></div>
@@ -362,6 +363,7 @@
       <div class="action-item" id="outsideAdminBtn"><span class="action-icon" aria-hidden="true">🏢</span><span>خارج الإدارة</span></div>
       <a class="action-item" id="newPage1Btn" href="/outgoing.html"><span class="action-icon" aria-hidden="true">📤</span><span>الصادر</span></a>
       <a class="action-item" id="newPage2Btn" href="/incoming.html"><span class="action-icon" aria-hidden="true">📥</span><span>الوارد</span></a>
+      <div class="action-item" id="forceListBtn"><span class="action-icon" aria-hidden="true">📋</span><span>كشف القوة</span></div>
     </div>
 
     <div class="summary-row">
@@ -499,12 +501,14 @@
   </div>
 
   <script src="/install-shortcut.js"></script>
+  <script src="/force-list.js"></script>
   <script>
     const logoutBtn = document.getElementById('logoutBtn');
     const employeesBtn = document.getElementById('employeesBtn');
     const outsideAdminBtn = document.getElementById('outsideAdminBtn');
     const holidaysBtn = document.getElementById('holidaysBtn');
     const reductionBtn = document.getElementById('reductionBtn');
+    const queryBtn = document.getElementById('queryBtn');
     const statisticsBtn = document.getElementById('statisticsBtn');
     const coursesBtn = document.getElementById('coursesBtn');
     const transfersBtn = document.getElementById('transfersBtn');
@@ -556,7 +560,7 @@
 
     const currentRole = String(currentUser?.role || '').trim().toLowerCase();
     const isAdminUser = currentRole === 'admin';
-    const defaultAllowedPages = ['employees', 'daily', 'statistics', 'holidays', 'reduction', 'courses', 'transfers', 'outsideEmployees', 'outgoing', 'incoming', 'archive'];
+    const defaultAllowedPages = ['employees', 'daily', 'query', 'statistics', 'holidays', 'reduction', 'courses', 'transfers', 'outsideEmployees', 'outgoing', 'incoming', 'archive'];
     const allowedPages = Array.isArray(currentUser?.allowedPages) && currentUser.allowedPages.length
       ? currentUser.allowedPages
       : [];
@@ -565,6 +569,7 @@
     const interfaceButtons = {
       employees: employeesBtn,
       daily: document.getElementById('dailyBtn'),
+      query: queryBtn,
       statistics: statisticsBtn,
       holidays: holidaysBtn,
       reduction: reductionBtn,
@@ -599,6 +604,10 @@
           button.style.display = 'none';
         }
       });
+
+      if (!allowedPagesSet.has('archive')) {
+        document.getElementById('forceListBtn').style.display = 'none';
+      }
 
       if (recentActivitiesPanel) {
         recentActivitiesPanel.style.display = 'none';
@@ -822,7 +831,7 @@
     function renderTodaySummary(items) {
       todaySummaryRows.innerHTML = '';
       if (!Array.isArray(items) || items.length === 0) {
-        todaySummaryRows.innerHTML = '<tr><td colspan="9">لا توجد بيانات متاحة.</td></tr>';
+        todaySummaryRows.innerHTML = '<tr><td colspan="9">لاتوجد بيانات حالياً.</td></tr>';
         return;
       }
 
@@ -846,7 +855,7 @@
     function renderLeaveDailySummary(items) {
       leaveDailySummaryRows.innerHTML = '';
       if (!Array.isArray(items) || items.length === 0) {
-        leaveDailySummaryRows.innerHTML = '<tr><td colspan="6">لا توجد بيانات متاحة.</td></tr>';
+        leaveDailySummaryRows.innerHTML = '<tr><td colspan="6">لاتوجد بيانات حالياً.</td></tr>';
         return;
       }
 
@@ -892,7 +901,7 @@
       });
 
       if (!Array.isArray(items) || items.length === 0) {
-        activityRows.innerHTML = `<tr><td colspan="${isAdminUser ? 6 : 5}">لا توجد عمليات مسجلة حالياً.</td></tr>`;
+        activityRows.innerHTML = `<tr><td colspan="${isAdminUser ? 6 : 5}">لاتوجد بيانات حالياً.</td></tr>`;
         return;
       }
 
@@ -929,7 +938,7 @@
       });
 
       if (!hasRows) {
-        activityRows.innerHTML = `<tr><td colspan="${isAdminUser ? 6 : 5}">لا توجد عمليات ضمن اليوم أو الأمس أو قبل الأمس.</td></tr>`;
+        activityRows.innerHTML = `<tr><td colspan="${isAdminUser ? 6 : 5}">لاتوجد بيانات حالياً.</td></tr>`;
       }
 
       document.querySelectorAll('.user-name-column').forEach((cell) => {
@@ -986,6 +995,10 @@
 
     coursesBtn.addEventListener('click', () => {
       window.location.href = '/courses.html';
+    });
+
+    document.getElementById('forceListBtn').addEventListener('click', () => {
+      window.openLatestForceList();
     });
 
     transfersBtn.addEventListener('click', () => {

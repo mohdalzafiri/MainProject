@@ -1,21 +1,22 @@
 const express = require('express');
 const { db } = require('../database');
+const { filterByDataScope } = require('../auth/dataScope');
 
 const router = express.Router();
 
 router.get('/daily-all', async (req, res) => {
   const records = (await db.prepare('SELECT * FROM DailyAll ORDER BY Today DESC LIMIT 1000').all());
-  res.json(records);
+  res.json(filterByDataScope(records, req.access));
 });
 
 router.get('/daily-all-p', async (req, res) => {
   const records = (await db.prepare('SELECT * FROM DailyAll_P ORDER BY Today DESC LIMIT 1000').all());
-  res.json(records);
+  res.json(filterByDataScope(records, req.access));
 });
 
 router.get('/periods', async (req, res) => {
   const records = (await db.prepare('SELECT * FROM Periods_Lookup ORDER BY Period').all());
-  res.json(records);
+  res.json(filterByDataScope(records, req.access));
 });
 
 router.get('/records', async (req, res) => {

@@ -760,7 +760,7 @@
       countLabel.textContent = `عدد السجلات: ${records.length}`;
 
       if (!records.length) {
-        rowsBody.innerHTML = `<tr><td colspan="${isAdminUser() ? 10 : 9}">لا توجد بيانات متاحة حالياً.</td></tr>`;
+        rowsBody.innerHTML = `<tr><td colspan="${isAdminUser() ? 10 : 9}">لاتوجد بيانات حالياً.</td></tr>`;
         syncUserNameColumnVisibility();
         return;
       }

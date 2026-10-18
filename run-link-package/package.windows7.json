@@ -1,7 +1,7 @@
 {
   "name": "mainproject-api-windows7-runtime",
   "private": true,
-  "version": "3.0.0",
+  "version": "3.3.0",
   "dependencies": {
     "bcryptjs": "2.4.3",
     "better-sqlite3": "7.6.2",

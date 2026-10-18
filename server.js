@@ -1,5 +1,4 @@
 const express = require('express');
-require('express-async-errors');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const os = require('os');
@@ -74,13 +73,13 @@ app.use('/mobile', express.static(path.join(__dirname, 'mobile')));
 
 // Routes
 const apiRoutes = require('./routes');
-const { db, dbClient, closeDatabase, initializeDatabase } = require('./database');
+const { db, closeDatabase } = require('./database');
 const { startDatabaseMaintenance, stopDatabaseMaintenance } = require('./services/databaseMaintenanceService');
 
-app.get('/api/health', async (req, res) => {
+app.get('/api/health', (req, res) => {
   try {
-    await db.prepare('SELECT 1').get();
-    return res.json({ status: 'ok', databaseProvider: dbClient, uptimeSeconds: Math.floor(process.uptime()) });
+    db.prepare('SELECT 1').get();
+    return res.json({ status: 'ok', uptimeSeconds: Math.floor(process.uptime()) });
   } catch (error) {
     return res.status(503).json({ status: 'unavailable', message: 'قاعدة البيانات غير جاهزة' });
   }
@@ -96,57 +95,37 @@ app.get('/mobile', (req, res) => {
   res.redirect(302, '/mobile/dashboard.html');
 });
 
-app.use((error, req, res, next) => {
-  if (res.headersSent) return next(error);
-  console.error(error);
-  return res.status(500).json({ message: 'تعذر تنفيذ الطلب بسبب خطأ داخلي في الخادم.' });
-});
-
 // Start server
 const PORT = process.env.PORT || 5000;
 const HOST = process.env.HOST || '0.0.0.0';
 
-let server;
-
-async function startServer() {
-  await initializeDatabase();
-  server = app.listen(PORT, HOST, () => {
-    console.log(`Server is running on ${HOST}:${PORT}`);
-    console.log(`Local URL: http://localhost:${PORT}`);
-    getLanIps().forEach((ip) => {
-      console.log(`LAN URL: http://${ip}:${PORT}`);
-    });
-    startDatabaseMaintenance();
+const server = app.listen(PORT, HOST, () => {
+  console.log(`Server is running on ${HOST}:${PORT}`);
+  console.log(`Local URL: http://localhost:${PORT}`);
+  getLanIps().forEach((ip) => {
+    console.log(`LAN URL: http://${ip}:${PORT}`);
   });
-}
+  startDatabaseMaintenance();
+});
 
 let isShuttingDown = false;
 
-async function shutdown(signal) {
+function shutdown(signal) {
   if (isShuttingDown) return;
   isShuttingDown = true;
   console.log(`${signal} received; closing server and database.`);
 
-  const finishShutdown = async () => {
+  server.close(async () => {
     await stopDatabaseMaintenance();
-    await closeDatabase();
+    closeDatabase();
     process.exit(0);
-  };
+  });
 
-  if (server) server.close(finishShutdown);
-  else await finishShutdown();
-
-  setTimeout(async () => {
-    await closeDatabase();
+  setTimeout(() => {
+    closeDatabase();
     process.exit(1);
   }, 10000).unref();
 }
 
 process.once('SIGINT', () => shutdown('SIGINT'));
 process.once('SIGTERM', () => shutdown('SIGTERM'));
-
-startServer().catch(async (error) => {
-  console.error(`Server startup failed: ${error.message}`);
-  await closeDatabase().catch(() => {});
-  process.exitCode = 1;
-});

@@ -799,7 +799,7 @@
       rowsBody.innerHTML = '';
 
       if (!Array.isArray(items) || items.length === 0) {
-        rowsBody.innerHTML = `<tr><td colspan="${isAdminUser ? 10 : 9}">لا توجد بيانات تنقلات حالياً.</td></tr>`;
+        rowsBody.innerHTML = `<tr><td colspan="${isAdminUser ? 10 : 9}">لاتوجد بيانات حالياً.</td></tr>`;
         countLabel.textContent = 'عدد السجلات: 0';
         syncUserNameColumnVisibility();
         return;
@@ -1240,6 +1240,7 @@
 
         showStatus('تمت إضافة بيانات النقل بنجاح');
         clearForm();
+        await loadEmployees();
         await loadTransfers();
       } catch (error) {
         showStatus(error.message, true);
@@ -1268,6 +1269,9 @@
         });
 
         showStatus('تم تعديل بيانات النقل بنجاح');
+        await loadEmployees();
+        fromDepartmentInput.value = payload.Department;
+        fromSectionInput.value = payload.Section;
         await loadTransfers();
       } catch (error) {
         showStatus(error.message, true);

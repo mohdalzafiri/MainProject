@@ -33,6 +33,7 @@ const allSectionsOrder = [
   { department: 'البلاغات', section: 'ج - فريق عمل البلاغات' },
   { department: 'البلاغات', section: 'د - فريق عمل البلاغات' },
   { department: 'البلاغات', section: 'هـ - فريق عمل البلاغات' },
+  { department: 'البلاغات', section: 'فريق عمل البلاغات صباحاً' },
   { department: 'البلاغات', section: 'سكرتارية البلاغات' },
   { department: 'البلاغات', section: 'صباحاً' },
   { department: 'العمليات', section: 'أ - العمليات' },
@@ -163,21 +164,26 @@ function formatDuration(totalMinutes) {
   return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(Math.floor(minutes % 60)).padStart(2, '0')}`;
 }
 
+function getMetricValue(metrics, primaryKey, fallbackKey) {
+  const primaryValue = metrics[primaryKey];
+  return primaryValue === null || primaryValue === undefined ? metrics[fallbackKey] : primaryValue;
+}
+
 function resolveMetrics(metrics) {
   return {
-    totalCount: toNumber(metrics.totalCount ?? metrics.TotalCount),
-    presentCount: toNumber(metrics.presentCount ?? metrics.PresentCount),
-    licenseCount: toNumber(metrics.licenseCount ?? metrics.LicenseCount),
-    licenseMinutes: toNumber(metrics.licenseMinutes ?? metrics.LicenseMinutes),
-    absentCount: toNumber(metrics.absentCount ?? metrics.AbsentCount),
-    leaveCount: toNumber(metrics.leaveCount ?? metrics.LeaveCount),
-    medicalCount: toNumber(metrics.medicalCount ?? metrics.MedicalCount),
-    delayCount: toNumber(metrics.delayCount ?? metrics.DelayCount),
-    delayMinutes: toNumber(metrics.delayMinutes ?? metrics.DelayMinutes),
-    assignmentCount: toNumber(metrics.assignmentCount ?? metrics.AssignmentCount),
-    occasionalCount: toNumber(metrics.occasionalCount ?? metrics.OccasionalCount),
-    workInterruptionCount: toNumber(metrics.workInterruptionCount ?? metrics.WorkInterruptionCount),
-    otherCount: toNumber(metrics.otherCount ?? metrics.OtherCount)
+    totalCount: toNumber(getMetricValue(metrics, 'totalCount', 'TotalCount')),
+    presentCount: toNumber(getMetricValue(metrics, 'presentCount', 'PresentCount')),
+    licenseCount: toNumber(getMetricValue(metrics, 'licenseCount', 'LicenseCount')),
+    licenseMinutes: toNumber(getMetricValue(metrics, 'licenseMinutes', 'LicenseMinutes')),
+    absentCount: toNumber(getMetricValue(metrics, 'absentCount', 'AbsentCount')),
+    leaveCount: toNumber(getMetricValue(metrics, 'leaveCount', 'LeaveCount')),
+    medicalCount: toNumber(getMetricValue(metrics, 'medicalCount', 'MedicalCount')),
+    delayCount: toNumber(getMetricValue(metrics, 'delayCount', 'DelayCount')),
+    delayMinutes: toNumber(getMetricValue(metrics, 'delayMinutes', 'DelayMinutes')),
+    assignmentCount: toNumber(getMetricValue(metrics, 'assignmentCount', 'AssignmentCount')),
+    occasionalCount: toNumber(getMetricValue(metrics, 'occasionalCount', 'OccasionalCount')),
+    workInterruptionCount: toNumber(getMetricValue(metrics, 'workInterruptionCount', 'WorkInterruptionCount')),
+    otherCount: toNumber(getMetricValue(metrics, 'otherCount', 'OtherCount'))
   };
 }
 

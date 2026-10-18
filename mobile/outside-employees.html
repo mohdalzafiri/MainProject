@@ -1070,7 +1070,7 @@
       const outsideTotal = allEmployees.filter((item) => String(item.Status || '').trim() !== 'نشط').length;
 
       if (!Array.isArray(items) || items.length === 0) {
-        rowsBody.innerHTML = '<tr><td colspan="13">لا توجد بيانات موظفين خارج الادارة حالياً.</td></tr>';
+        rowsBody.innerHTML = '<tr><td colspan="13">لاتوجد بيانات حالياً.</td></tr>';
         const hasFilter = Boolean(tableFilterInput.value.trim());
         countLabel.textContent = hasFilter
           ? `عدد السجلات: 0 من ${outsideTotal}`

@@ -80,7 +80,7 @@ router.post('/', async (req, res) => {
   const sourceDepartment = normalize(req.body.SourceDepartment);
   const specialDepartment = normalize(req.body.SpecialDepartment);
   const notes = normalize(req.body.Notes);
-  const userName = normalize(req.body.UserName) || req.user?.name || req.user?.username || 'system';
+  const userName = normalize(req.body.UserName) || (req.user == null ? undefined : req.user.name) || (req.user == null ? undefined : req.user.username) || 'system';
 
   if (!docNumber) return res.status(400).json({ message: 'رقم الوارد مطلوب.' });
   if (!docDate) return res.status(400).json({ message: 'تاريخ الوارد مطلوب.' });
@@ -140,7 +140,7 @@ router.put('/:id', async (req, res) => {
   const sourceDepartment = normalize(req.body.SourceDepartment);
   const specialDepartment = normalize(req.body.SpecialDepartment);
   const notes = normalize(req.body.Notes);
-  const userName = normalize(req.body.UserName) || req.user?.name || req.user?.username || 'system';
+  const userName = normalize(req.body.UserName) || (req.user == null ? undefined : req.user.name) || (req.user == null ? undefined : req.user.username) || 'system';
 
   if (!docNumber) return res.status(400).json({ message: 'رقم الوارد مطلوب.' });
   if (!docDate) return res.status(400).json({ message: 'تاريخ الوارد مطلوب.' });
@@ -202,7 +202,7 @@ router.delete('/:id', async (req, res) => {
     }
 
     (await logSystem({
-      userName: normalize(req.body.userName) || req.user?.name || req.user?.username || 'system',
+      userName: normalize(req.body.userName) || (req.user == null ? undefined : req.user.name) || (req.user == null ? undefined : req.user.username) || 'system',
       action: 'Delete',
       page: 'Incoming',
       details: `Deleted incoming ID=${id}`

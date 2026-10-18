@@ -498,6 +498,7 @@
   </div>
 
   <script src="/record-photos.js"></script>
+  <script src="/text-encoding.js"></script>
   <script>
     const authToken = sessionStorage.getItem('authToken');
     if (!authToken) {
@@ -975,7 +976,7 @@
       const sortedItems = applyDateSort(items);
 
       if (!Array.isArray(sortedItems) || sortedItems.length === 0) {
-        rowsBody.innerHTML = `<tr><td colspan="${isAdminUser ? 11 : 10}">لا توجد بيانات إجازات حالياً.</td></tr>`;
+        rowsBody.innerHTML = `<tr><td colspan="${isAdminUser ? 11 : 10}">لاتوجد بيانات حالياً.</td></tr>`;
         countLabel.textContent = 'عدد السجلات: 0';
         syncUserNameColumnVisibility();
         return;
@@ -1105,7 +1106,7 @@
       });
 
       if (!data) return;
-      allHolidays = Array.isArray(data) ? data : [];
+      allHolidays = MainProjectTextEncoding.normalizeUserNameRecords(data);
       populateTypeOptions(typeInput.value);
       applyNameFilter();
     }

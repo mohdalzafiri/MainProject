@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const { db, logSystem, getCurrentTimestamp, registerDatabaseInitializer } = require('../database');
 const {
   formatDate,
@@ -167,6 +167,37 @@ function buildUpdateStatement(payload, id) {
   };
 }
 
+// Only the employee's latest transfer is applied, so editing an older transfer cannot overwrite newer data.
+async function applyTransferToEmployee(transferId, userName) {
+  const transfer = (await db.prepare('SELECT * FROM Transfer WHERE ID = ?').get(transferId));
+  if (!transfer) return false;
+
+  const toDepartment = String(transfer.Department1 || '').trim();
+  const toSection = String(transfer.Section1 || '').trim();
+  if (!toDepartment || !toSection) return false;
+
+  let employeeId = Number(transfer.EmpID) || 0;
+  if (!employeeId) {
+    const matches = (await db.prepare('SELECT ID FROM Main WHERE TRIM(Name) = ?').all(String(transfer.Name || '').trim()));
+    if (matches.length !== 1) return false;
+    employeeId = matches[0].ID;
+  }
+
+  const latest = (await db.prepare(`
+    SELECT ID FROM Transfer
+    WHERE EmpID = ? OR (EmpID IS NULL AND TRIM(Name) = ?)
+    ORDER BY ID DESC LIMIT 1
+  `).get(employeeId, String(transfer.Name || '').trim()));
+  if (latest && Number(latest.ID) !== Number(transfer.ID)) return false;
+
+  const result = (await db.prepare('UPDATE Main SET Department = ?, Section = ?, SubSection = ?, Enddate = ? WHERE ID = ?')
+    .run(toDepartment, toSection, String(transfer.SubSection1 || '').trim(), String(transfer.Enddate || '').trim(), employeeId));
+  if (!result.changes) return false;
+
+  (await logSystem({ userName: userName || 'system', action: 'Update', page: 'Main', details: `Updated employee ID=${employeeId} from transfer ID=${transfer.ID}` }));
+  return true;
+}
+
 router.get('/forms/options', async (req, res) => {
   try {
     const rows = (await db.prepare(`
@@ -258,9 +289,9 @@ router.post('/forms', async (req, res) => {
 
   const dayName = getArabicDayName(normalizedDate.replace(/\//g, '-'));
   const createdAt = getCurrentTimestamp();
-  const finalDepartment = selectedDepartment || normalize(employee?.Department);
-  const finalSection = selectedSection || normalize(employee?.Section);
-  const finalSubSection = selectedSubSection || normalize(employee?.SubSection);
+  const finalDepartment = selectedDepartment || normalize((employee == null ? undefined : employee.Department));
+  const finalSection = selectedSection || normalize((employee == null ? undefined : employee.Section));
+  const finalSubSection = selectedSubSection || normalize((employee == null ? undefined : employee.SubSection));
 
   if (!finalDepartment) {
     return res.status(400).json({ message: 'يرجى اختيار القسم.' });
@@ -277,8 +308,8 @@ router.post('/forms', async (req, res) => {
       permitDate,
       dayName,
       formName,
-      String(employee?.ID || ''),
-      normalize(employee?.Name),
+      String((employee == null ? undefined : employee.ID) || ''),
+      normalize((employee == null ? undefined : employee.Name)),
       finalDepartment,
       finalSubSection,
       finalSection,
@@ -290,12 +321,12 @@ router.post('/forms', async (req, res) => {
       leaveType,
       notes,
       createdAt,
-      req.user?.username || 'system'
+      (req.user == null ? undefined : req.user.username) || 'system'
     ));
 
     (await logSystem({
-      userName: req.user?.username || 'system',
-      role: req.user?.role || '',
+      userName: (req.user == null ? undefined : req.user.username) || 'system',
+      role: (req.user == null ? undefined : req.user.role) || '',
       action: 'Add',
       page: 'Administrative',
       details: `Archived administrative form ID=${result.lastInsertRowid}`
@@ -422,7 +453,7 @@ router.post('/forms/print-group', async (req, res) => {
       section,
       sub_section: subSection,
       notes,
-      created_by: req.user?.username || 'system',
+      created_by: (req.user == null ? undefined : req.user.username) || 'system',
       created_at: formatTimestamp(new Date()),
       employees: displayEmployees.map((item, index) => ({
         index: index + 1,
@@ -442,8 +473,8 @@ router.post('/forms/print-group', async (req, res) => {
     const pdfResult = convertDocxToPdf(output.docxPath, output.pdfPath);
 
     (await logSystem({
-      userName: req.user?.username || 'system',
-      role: req.user?.role || '',
+      userName: (req.user == null ? undefined : req.user.username) || 'system',
+      role: (req.user == null ? undefined : req.user.role) || '',
       action: 'Print',
       page: 'Administrative',
       details: `Generated group form for ${department}/${section || '-'} / ${subSection || '-'} using ${formName}`
@@ -486,7 +517,8 @@ router.post('/transfers', async (req, res) => {
 
   const result = (await db.prepare(statement.sql).run(statement.values));
   (await logSystem({ userName: req.body.userName || 'system', action: 'Add', page: 'Transfer', details: `Added transfer ID=${result.lastInsertRowid}` }));
-  res.json({ id: result.lastInsertRowid });
+  const employeeUpdated = await applyTransferToEmployee(result.lastInsertRowid, req.body.userName);
+  res.json({ id: result.lastInsertRowid, employeeUpdated });
 });
 
 router.put('/transfers/:id', async (req, res) => {
@@ -504,7 +536,8 @@ router.put('/transfers/:id', async (req, res) => {
   }
 
   (await logSystem({ userName: req.body.userName || 'system', action: 'Update', page: 'Transfer', details: `Updated transfer ID=${id}` }));
-  res.json({ changes: result.changes });
+  const employeeUpdated = await applyTransferToEmployee(id, req.body.userName);
+  res.json({ changes: result.changes, employeeUpdated });
 });
 
 router.delete('/transfers/:id', async (req, res) => {

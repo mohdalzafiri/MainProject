@@ -222,7 +222,7 @@
           </thead>
           <tbody id="rows">
             <tr>
-              <td colspan="6">لا توجد بيانات متاحة ضمن المدة المحددة.</td>
+              <td colspan="6">لاتوجد بيانات حالياً.</td>
             </tr>
           </tbody>
         </table>
@@ -431,7 +431,7 @@
       rowsBody.innerHTML = '';
 
       if (!Array.isArray(items) || items.length === 0) {
-        rowsBody.innerHTML = '<tr><td colspan="6">لا توجد بيانات متاحة ضمن المدة المحددة.</td></tr>';
+        rowsBody.innerHTML = '<tr><td colspan="6">لاتوجد بيانات حالياً.</td></tr>';
         countLabel.textContent = 'عدد السجلات: 0';
         return;
       }

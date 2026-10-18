@@ -1,6 +1,7 @@
 const express = require('express');
 const { db } = require('../database');
 const { localizeRecord } = require('../services/systemLogLocalization');
+const { filterByDataScope, isWithinDataScope } = require('../auth/dataScope');
 const router = express.Router();
 
 async function replaceEmployeeIdWithName(record) {
@@ -120,9 +121,20 @@ async function summarizeDocumentTable(tableName, dateColumn, numberColumn, subje
 
 router.get('/summary', async (req, res) => {
   try {
+    const scopedEmployees = (await tableOrViewExists('Main'))
+      ? filterByDataScope((await db.prepare('SELECT * FROM Main').all()), req.access)
+      : [];
+    const scopedDailyRecords = (await tableOrViewExists('DailyAll'))
+      ? filterByDataScope((await db.prepare(`
+          SELECT ID, EmpID, Day, Today, Name, Department, Section, Status, Period,
+                 InTime, OutTime, Startdate, Enddate, Type, Note
+          FROM DailyAll
+        `).all()), req.access)
+      : [];
+
     const totals = {
-      totalEmployees: (await countActiveEmployees()),
-      totalDailyRecords: (await tableOrViewExists('DailyAll')) ? (await db.prepare('SELECT COUNT(*) AS count FROM DailyAll').get()).count : 0,
+      totalEmployees: scopedEmployees.filter((row) => String(row.Status || '').trim() === 'نشط').length,
+      totalDailyRecords: scopedDailyRecords.length,
       currentHolidays: (await countOngoingRecords('Holiday')),
       upcomingHolidays: (await countUpcomingHolidays()),
       totalHolidays: (await tableOrViewExists('Holiday'))
@@ -133,91 +145,36 @@ router.get('/summary', async (req, res) => {
           `).get()).count
         : 0,
       totalCourses: (await countOngoingRecords('Course')),
-      totalTransfers: (await countOutsideEmployees()),
+      totalTransfers: scopedEmployees.filter((row) => String(row.Status || '').trim() === 'غير نشط').length,
       totalUsers: (await tableOrViewExists('Login')) ? (await db.prepare('SELECT COUNT(*) AS count FROM Login').get()).count : 0,
       totalSystemEvents: (await tableOrViewExists('SystemLog')) ? (await db.prepare('SELECT COUNT(*) AS count FROM SystemLog').get()).count : 0,
-      totalMonthlyRecords: (await tableOrViewExists('DailyAll'))
-        ? (await db.prepare("SELECT COUNT(*) AS count FROM DailyAll WHERE strftime('%Y-%m', Today) = strftime('%Y-%m', 'now')").get()).count
-        : 0
+      totalMonthlyRecords: scopedDailyRecords.filter((row) => {
+        const dateValue = String(row.Today || '').replace(/\//g, '-');
+        const date = new Date(`${dateValue}T00:00:00`);
+        const now = new Date();
+        return !Number.isNaN(date.getTime())
+          && date.getFullYear() === now.getFullYear()
+          && date.getMonth() === now.getMonth();
+      }).length
     };
 
     const outgoingSummary = (await summarizeDocumentTable('OutgoingDocuments', 'DocDate', 'DocNumber', 'Subject', 'Recipient'));
     const incomingSummary = (await summarizeDocumentTable('IncomingDocuments', 'DocDate', 'DocNumber', 'Subject', 'SourceDepartment'));
 
-    const departments = (await tableOrViewExists('Main'))
-      ? (await db.prepare(`
-          WITH department_labels(label, sort_order) AS (
-            VALUES
-              ('البلاغات', 1),
-              ('العمليات', 2),
-              ('الخدمات المساندة', 3),
-              ('الموارد البشرية', 4),
-              ('المعلومات', 5),
-              ('الاحصاء', 6)
-          )
-          SELECT
-            department_labels.label AS label,
-            COUNT(Main.ID) AS value
-          FROM department_labels
-          LEFT JOIN Main ON TRIM(Main.Department) = department_labels.label AND TRIM(Main.Status) = 'نشط'
-          GROUP BY department_labels.label, department_labels.sort_order
-          ORDER BY department_labels.sort_order
-        `).all())
-      : [];
-
-    const shifts = (await tableOrViewExists('Main'))
-      ? (await db.prepare(`
-          WITH shift_labels(label, sort_order) AS (
-            VALUES
-              ('أ - البلاغات', 1),
-              ('ب - البلاغات', 2),
-              ('ج - البلاغات', 3),
-              ('د - البلاغات', 4),
-              ('هـ - البلاغات', 5),
-              ('ثابت صبح', 6),
-              ('أ - فريق عمل البلاغات', 7),
-              ('ب - فريق عمل البلاغات', 8),
-              ('ج - فريق عمل البلاغات', 9),
-              ('د - فريق عمل البلاغات', 10),
-              ('هـ - فريق عمل البلاغات', 11),
-              ('سكرتارية البلاغات', 12),
-              ('صباحاً', 13),
-              ('أ - العمليات', 14),
-              ('ب - العمليات', 15),
-              ('ج - العمليات', 16),
-              ('د - العمليات', 17),
-              ('هـ - العمليات', 18),
-              ('سكرتارية العمليات', 19),
-              ('أ - الخدمات', 20),
-              ('ب - الخدمات', 21),
-              ('ج - الخدمات', 22),
-              ('د - الخدمات', 23),
-              ('هـ - الخدمات', 24),
-              ('سكرتارية الخدمات', 25)
-          )
-          SELECT
-            shift_labels.label AS label,
-            COUNT(Main.ID) AS value
-          FROM shift_labels
-          LEFT JOIN Main ON TRIM(Main.Section) = shift_labels.label AND TRIM(Main.Status) = 'نشط'
-          GROUP BY shift_labels.label, shift_labels.sort_order
-          ORDER BY shift_labels.sort_order
-        `).all())
-      : [];
-
-    const workplaces = (await tableOrViewExists('Main'))
-      ? (await db.prepare(`
-          SELECT
-            TRIM(Work) AS label,
-            COUNT(*) AS value
-          FROM Main
-          WHERE TRIM(Status) = 'نشط'
-            AND TRIM(Work) <> ''
-          GROUP BY TRIM(Work)
-          ORDER BY value DESC, label ASC
-          LIMIT 10
-        `).all())
-      : [];
+    const activeScopedEmployees = scopedEmployees.filter((row) => String(row.Status || '').trim() === 'نشط');
+    const summarizeScopedValues = (field) => {
+      const counts = new Map();
+      activeScopedEmployees.forEach((row) => {
+        const label = String(row[field] || '').trim();
+        if (label) counts.set(label, (counts.get(label) || 0) + 1);
+      });
+      return [...counts.entries()]
+        .map(([label, value]) => ({ label, value }))
+        .sort((left, right) => left.label.localeCompare(right.label, 'ar'));
+    };
+    const departments = summarizeScopedValues('Department');
+    const shifts = summarizeScopedValues('Section');
+    const workplaces = summarizeScopedValues('Work').slice(0, 10);
 
     const sections = [];
 
@@ -265,8 +222,8 @@ router.get('/summary', async (req, res) => {
         }
       }
 
-      if (!latestDailyShift) {
-        latestDailyShift = (await db.prepare(`
+      if (!latestDailyShift || !isWithinDataScope(latestDailyShift, req.access)) {
+        const latestDailyCandidates = (await db.prepare(`
           SELECT
             date(REPLACE(Today, '/', '-')) AS logDate,
             TRIM(Department) AS department,
@@ -278,14 +235,17 @@ router.get('/summary', async (req, res) => {
             AND TRIM(Section) <> ''
             AND TRIM(Period) <> ''
           ORDER BY date(REPLACE(Today, '/', '-')) DESC, ID DESC
-          LIMIT 1
-        `).get());
+          LIMIT 500
+        `).all());
+        latestDailyShift = latestDailyCandidates.find((row) => isWithinDataScope(row, req.access)) || null;
       }
 
       if (latestDailyShift && latestDailyShift.logDate && latestDailyShift.department && latestDailyShift.section && latestDailyShift.period) {
-        todaySummary = (await db.prepare(`
+        todaySummary = filterByDataScope((await db.prepare(`
           SELECT
             Name,
+            Department,
+            Section,
             Status,
             Period,
             InTime,
@@ -306,12 +266,12 @@ router.get('/summary', async (req, res) => {
           latestDailyShift.department,
           latestDailyShift.section,
           latestDailyShift.period
-        ));
+        )), req.access);
       }
     }
 
     const leaveDailySummary = (await tableOrViewExists('Holiday'))
-      ? (await db.prepare(`
+      ? filterByDataScope((await db.prepare(`
           SELECT
             Name,
             Department,
@@ -324,7 +284,7 @@ router.get('/summary', async (req, res) => {
             AND date(REPLACE(Enddate, '/', '-')) >= date(?)
           ORDER BY date(REPLACE(Enddate, '/', '-')) ASC, date(REPLACE(Startdate, '/', '-')) ASC, Name ASC
           LIMIT 12
-        `).all((await getTodaySqlDate()), (await getTodaySqlDate())))
+        `).all((await getTodaySqlDate()), (await getTodaySqlDate()))), req.access)
       : [];
 
     const recentActivities = (await tableOrViewExists('SystemLog'))

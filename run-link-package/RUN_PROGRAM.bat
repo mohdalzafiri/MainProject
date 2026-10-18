@@ -1,39 +1,35 @@
 @echo off
+chcp 65001 >nul
 setlocal
-cd /d "%~dp0.."
+title MainProject
 
-set "LOCAL_URL=http://localhost:5000"
-set "CENTRAL_URL=http://PC-SERVER:5000"
+set "PUBLIC_URL=http://37.34.208.209:5000"
 
-call :is_ready "%LOCAL_URL%/api/health"
+call :is_ready "%PUBLIC_URL%/api/health"
 if not errorlevel 1 (
-	call :open_url "%LOCAL_URL%/login.html"
+	echo.
+	echo الموقع متاح
+	call :open_url "%PUBLIC_URL%/login.html"
+	timeout /t 2 /nobreak >nul
 	exit /b 0
 )
 
-call :is_ready "%CENTRAL_URL%/api/health"
-if not errorlevel 1 (
-	call :open_url "%CENTRAL_URL%/login.html"
-	exit /b 0
-)
-
-start "MainProject Server" /MIN cmd /c "npm start"
-for /L %%I in (1,1,90) do (
-	call :is_ready "%LOCAL_URL%/api/health"
-	if not errorlevel 1 (
-		call :open_url "%LOCAL_URL%/login.html"
-		exit /b 0
-	)
-	timeout /t 1 /nobreak >nul
-)
-
-echo تعذر تشغيل الخادم خلال 90 ثانية. راجع اتصال قاعدة البيانات المركزية.
+echo.
+echo الموقع مغلق
+echo تعذر الاتصال بالخادم المركزي: %PUBLIC_URL%
+echo تحقق من اتصال الإنترنت أو تواصل مع مسؤول الخادم.
 pause
 exit /b 1
 
 :is_ready
-curl.exe --fail --silent --max-time 2 "%~1" 2>nul | findstr /C:"\"status\":\"ok\"" >nul
-exit /b
+where curl.exe >nul 2>&1
+if errorlevel 1 goto :is_ready_powershell
+curl.exe --fail --silent --max-time 5 "%~1" 2>nul | findstr /C:"\"status\":\"ok\"" >nul
+exit /b %ERRORLEVEL%
+
+:is_ready_powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "try { $response = Invoke-RestMethod -Uri '%~1' -TimeoutSec 5; if ($response.status -eq 'ok') { exit 0 }; exit 1 } catch { exit 1 }"
+exit /b %ERRORLEVEL%
 
 :open_url
 if defined MAINPROJECT_NO_BROWSER exit /b 0

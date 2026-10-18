@@ -23,7 +23,8 @@ const { runWithRequestAuditContext } = require('../utils/requestAuditContext');
 const {
 	ADMIN_ONLY_PAGE_KEYS,
 	normalizeRole,
-	getEffectiveAllowedPages
+	getEffectiveAllowedPages,
+	getEffectiveEditablePages
 } = require('../auth/permissions');
 
 const router = express.Router();
@@ -82,6 +83,7 @@ const routePageKeyMap = {
 const sharedEmployeesReadAllowedPages = new Set([
 	'employees',
 	'daily',
+	'query',
 	'statistics',
 	'holidays',
 	'reduction',
@@ -102,7 +104,7 @@ function canAccessEmployeesReadForAllowedPages(req, allowedPages = []) {
 	}
 
 	const normalizedPath = String(req.path || '').replace(/\/+$/, '');
-	const isSharedReadEndpoint = normalizedPath === '/employees' || normalizedPath === '/employees/department-sections';
+	const isSharedReadEndpoint = normalizedPath === '/employees' || normalizedPath === '/employees/department-sections' || normalizedPath === '/employees/job-titles';
 	if (!isSharedReadEndpoint) {
 		return false;
 	}
@@ -110,22 +112,50 @@ function canAccessEmployeesReadForAllowedPages(req, allowedPages = []) {
 	return allowedPages.some((pageKey) => sharedEmployeesReadAllowedPages.has(pageKey));
 }
 
+function canAccessDailyLogsReadForAllowedPages(req, allowedPages = []) {
+	if (!req.path.startsWith('/daily-logs')) {
+		return false;
+	}
+
+	const method = String(req.method || '').toUpperCase();
+	if (method !== 'GET' && method !== 'HEAD') {
+		return false;
+	}
+
+	return allowedPages.some((pageKey) => ['daily', 'query', 'statistics'].includes(pageKey));
+}
+
 function attachAccessContext(req, res, next) {
 	const normalizedRole = normalizeRole((req.user && req.user.role) || '');
 	const isAdmin = normalizedRole === 'admin';
 	const isViewOnly = normalizedRole === 'view';
 	const allowedPages = getEffectiveAllowedPages(isAdmin, req.user && req.user.allowedPages);
+	const editableSource = Array.isArray(req.user && req.user.editablePages)
+		? req.user.editablePages
+		: req.user && req.user.allowedPages;
+	const editablePages = getEffectiveEditablePages(isAdmin, editableSource, isViewOnly);
 
 	req.user.role = normalizedRole;
 	req.user.allowedPages = allowedPages;
+	req.user.editablePages = editablePages;
 	req.access = {
 		role: normalizedRole,
 		isAdmin,
 		isViewOnly,
 		allowedPages,
+		editablePages,
 		department: String((req.user && req.user.department) || '').trim(),
 		section: String((req.user && req.user.section) || '').trim(),
-		subSection: String((req.user && req.user.subSection) || '').trim()
+		subSection: String((req.user && req.user.subSection) || '').trim(),
+		allowedDepartments: Array.isArray(req.user && req.user.allowedDepartments)
+			? req.user.allowedDepartments
+			: [],
+		allowedSections: Array.isArray(req.user && req.user.allowedSections)
+			? req.user.allowedSections
+			: [],
+		allowedSubSections: Array.isArray(req.user && req.user.allowedSubSections)
+			? req.user.allowedSubSections
+			: []
 	};
 
 	next();
@@ -138,10 +168,16 @@ function enforceRouteAccess(req, res, next) {
 	}
 
 	const pageKey = routePageKeyMap[routePath];
-	const { isAdmin, isViewOnly, allowedPages } = req.access || {};
+	const { isAdmin, isViewOnly, allowedPages, editablePages } = req.access || {};
+	const method = String(req.method || '').toUpperCase();
+	const isWriteMethod = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method);
 
 	if (!isAdmin) {
 		if (canAccessEmployeesReadForAllowedPages(req, allowedPages)) {
+			return next();
+		}
+
+		if (canAccessDailyLogsReadForAllowedPages(req, allowedPages)) {
 			return next();
 		}
 
@@ -152,10 +188,10 @@ function enforceRouteAccess(req, res, next) {
 		if (pageKey !== 'dashboard' && !allowedPages.includes(pageKey)) {
 			return res.status(403).json({ message: 'غير مصرح لك بالوصول إلى هذه الواجهة.' });
 		}
-	}
 
-	if (isViewOnly && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method.toUpperCase())) {
-		return res.status(403).json({ message: 'لا تملك صلاحية التعديل أو الحذف' });
+		if (isWriteMethod && (isViewOnly || !editablePages.includes(pageKey))) {
+			return res.status(403).json({ message: 'لا تملك صلاحية الإضافة أو التعديل أو الحذف في هذه الواجهة.' });
+		}
 	}
 
 	return next();

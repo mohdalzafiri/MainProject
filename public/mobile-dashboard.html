@@ -189,34 +189,40 @@
 
     <section class="panel">
       <div class="grid">
-        <a class="card" href="/employees.html">
+        <a class="card" href="/employees.html" data-page-key="employees">
           <strong>الموظفين</strong>
         </a>
-        <a class="card" href="/daily.html">
+        <a class="card" href="/daily.html" data-page-key="daily">
           <strong>اليوميات</strong>
         </a>
-        <a class="card" href="/statistics.html">
-          <strong>الإحصائيات</strong>
+        <a class="card" href="/query.html" data-page-key="query">
+          <strong>الاستعلام</strong>
         </a>
-        <a class="card" href="/holidays.html">
+        <a class="card" href="/mobile/statistics.html" data-page-key="statistics">
+          <strong>الاحصائيات</strong>
+        </a>
+        <a class="card" href="/holidays.html" data-page-key="holidays">
           <strong>الإجازات</strong>
         </a>
-        <a class="card" href="/reduction.html">
+        <a class="card" href="/reduction.html" data-page-key="reduction">
           <strong>تخفيف العمل</strong>
         </a>
-        <a class="card" href="/transfers.html">
+        <a class="card" href="/transfers.html" data-page-key="transfers">
           <strong>التنقلات</strong>
         </a>
-        <a class="card" href="/outgoing.html">
+        <a class="card" href="/outgoing.html" data-page-key="outgoing">
           <strong>الصادر</strong>
         </a>
-        <a class="card" href="/incoming.html">
+        <a class="card" href="/incoming.html" data-page-key="incoming">
           <strong>الوارد</strong>
         </a>
-        <a class="card" href="/outside-employees.html">
+        <a class="card" href="#" id="forceListBtn" data-page-key="archive">
+          <strong>كشف القوة</strong>
+        </a>
+        <a class="card" href="/outside-employees.html" data-page-key="outsideEmployees">
           <strong>خارج الإدارة</strong>
         </a>
-        <a class="card" href="/archive.html">
+        <a class="card" href="/archive.html" data-page-key="archive">
           <strong>الأرشيف</strong>
         </a>
       </div>
@@ -228,10 +234,34 @@
   </main>
 
   <script src="/install-shortcut.js"></script>
+  <script src="/force-list.js"></script>
   <script>
+    document.getElementById('forceListBtn').addEventListener('click', (event) => {
+      event.preventDefault();
+      window.openLatestForceList();
+    });
     const token = sessionStorage.getItem('authToken');
     if (!token) {
       window.location.href = '/login.html';
+    }
+
+    function parseJwtPayload(value) {
+      try {
+        const payload = String(value || '').split('.')[1];
+        const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+        return JSON.parse(atob(normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=')));
+      } catch {
+        return null;
+      }
+    }
+
+    const currentUser = parseJwtPayload(token);
+    const currentRole = String(currentUser && currentUser.role || '').trim().toLowerCase();
+    const allowedPages = new Set(Array.isArray(currentUser && currentUser.allowedPages) ? currentUser.allowedPages : []);
+    if (currentRole !== 'admin') {
+      document.querySelectorAll('[data-page-key]').forEach((link) => {
+        link.hidden = !allowedPages.has(String(link.dataset.pageKey || ''));
+      });
     }
 
     if (typeof window.initShortcutInstallGate === 'function') {
