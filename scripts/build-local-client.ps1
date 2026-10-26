@@ -5,9 +5,11 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
+$packageVersion = (Get-Content -LiteralPath (Join-Path $projectRoot 'package.json') -Raw | ConvertFrom-Json).version
+$buildDate = Get-Date -Format 'yyyy-MM-dd'
 $stagingRoot = Join-Path $env:TEMP "$PackageName-build"
 $packageRoot = Join-Path $stagingRoot $PackageName
-$zipPath = Join-Path $OutputDirectory "$PackageName.zip"
+$zipPath = Join-Path $OutputDirectory "$PackageName-v$packageVersion-$buildDate.zip"
 
 if (Test-Path $stagingRoot) {
   Remove-Item $stagingRoot -Recurse -Force
