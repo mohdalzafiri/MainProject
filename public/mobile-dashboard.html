@@ -2,244 +2,454 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>النسخة الموبايل</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>الرئيسية - إدارة البلاغات</title>
   <link rel="manifest" href="/manifest.webmanifest" />
-  <meta name="theme-color" content="#1d4ed8" />
+  <link rel="stylesheet" href="/layout-defaults.css" />
+  <meta name="theme-color" content="#f6faff" />
   <meta name="apple-mobile-web-app-title" content="إدارة البلاغات" />
   <link rel="apple-touch-icon" href="/images/logo.png" />
   <style>
     :root {
-      --bg: #07111f;
-      --bg-2: #0f172a;
-      --card: rgba(255, 255, 255, 0.08);
-      --card-border: rgba(255, 255, 255, 0.12);
-      --text: #eff6ff;
-      --muted: #bfdbfe;
-      --accent: #38bdf8;
-      --accent-2: #2563eb;
-      --danger: #fb7185;
+      --mobile-bg: #f6faff;
+      --mobile-surface: rgba(255, 255, 255, .9);
+      --mobile-surface-solid: #fff;
+      --mobile-text: #0b2447;
+      --mobile-muted: #64748b;
+      --mobile-primary: #0875cf;
+      --mobile-primary-dark: #055ba5;
+      --mobile-border: rgba(8, 117, 207, .09);
+      --mobile-shadow: 0 9px 25px rgba(30, 93, 151, .12);
+      --mobile-icon-bg: linear-gradient(145deg, #f8fbff, #e4f1fd);
+      --mobile-danger: #dc2626;
     }
 
     * { box-sizing: border-box; }
 
-    body {
-      margin: 0;
-      min-height: 100vh;
-      font-family: Tahoma, Arial, sans-serif;
-      color: var(--text);
+    body.app-shell {
+      color: var(--mobile-text);
       background:
-        radial-gradient(circle at top right, rgba(56, 189, 248, 0.24), transparent 34%),
-        radial-gradient(circle at top left, rgba(37, 99, 235, 0.22), transparent 28%),
-        linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+        radial-gradient(ellipse at 5% 10%, rgba(147, 197, 253, .24), transparent 32%),
+        radial-gradient(ellipse at 95% 26%, rgba(191, 219, 254, .28), transparent 32%),
+        linear-gradient(180deg, #fbfdff 0%, var(--mobile-bg) 58%, #edf6ff 100%);
+      transition: color .2s ease, background .2s ease;
     }
 
-    .page {
-      width: min(760px, calc(100vw - 20px));
+    body.app-shell.dark-mode {
+      --mobile-bg: #071525;
+      --mobile-surface: rgba(15, 35, 58, .94);
+      --mobile-surface-solid: #10243c;
+      --mobile-text: #eff6ff;
+      --mobile-muted: #a9bed6;
+      --mobile-primary: #4db6ff;
+      --mobile-primary-dark: #2399eb;
+      --mobile-border: rgba(147, 197, 253, .13);
+      --mobile-shadow: 0 10px 26px rgba(0, 0, 0, .3);
+      --mobile-icon-bg: linear-gradient(145deg, #173754, #0d2842);
+      background:
+        radial-gradient(ellipse at 5% 10%, rgba(14, 116, 184, .22), transparent 32%),
+        radial-gradient(ellipse at 95% 26%, rgba(29, 78, 216, .16), transparent 34%),
+        linear-gradient(180deg, #07111f 0%, var(--mobile-bg) 100%);
+    }
+
+    body.app-shell > .mobile-page {
+      width: min(var(--app-page-max-width), calc(100vw - var(--app-page-side-gap)));
       min-height: 100vh;
-      margin: 0 auto;
-      padding: 16px 0 24px;
-      display: grid;
-      gap: 14px;
-      align-content: start;
+      margin: 0;
+      padding: 14px 14px calc(104px + env(safe-area-inset-bottom));
+      gap: 16px;
+      position: relative;
+      overflow: hidden;
     }
 
-    .hero,
-    .panel {
-      border: 1px solid var(--card-border);
-      border-radius: 22px;
-      background: var(--card);
-      box-shadow: 0 18px 50px rgba(2, 6, 23, 0.32);
-      backdrop-filter: blur(18px);
+    .mobile-page::before,
+    .mobile-page::after {
+      content: "";
+      position: absolute;
+      z-index: -1;
+      width: 420px;
+      height: 170px;
+      border: 24px solid rgba(147, 197, 253, .13);
+      border-radius: 50%;
+      transform: rotate(-24deg);
+      pointer-events: none;
     }
+
+    .mobile-page::before { top: 70px; left: -250px; }
+    .mobile-page::after { top: 190px; right: -270px; }
+
+    .menu-button {
+      position: absolute;
+      z-index: 3;
+      top: calc(18px + env(safe-area-inset-top));
+      right: 18px;
+      width: 46px;
+      height: 46px;
+      padding: 9px;
+      border: 0;
+      border-radius: 14px;
+      color: var(--mobile-primary);
+      background: rgba(255, 255, 255, .72);
+      box-shadow: 0 5px 18px rgba(37, 99, 235, .08);
+      cursor: pointer;
+      backdrop-filter: blur(12px);
+    }
+
+    .dark-mode .menu-button { background: rgba(15, 35, 58, .82); }
+    .menu-button svg { width: 100%; height: 100%; }
 
     .hero {
-      padding: 16px;
+      min-height: 310px;
       display: grid;
-      gap: 8px;
-    }
-
-    .brand {
-      display: grid;
-      justify-items: center;
-      gap: 8px;
+      place-items: center;
+      padding: calc(22px + env(safe-area-inset-top)) 10px 4px;
       text-align: center;
     }
 
-    .brand img {
-      width: 58px;
-      height: 58px;
-      border-radius: 50%;
-      object-fit: cover;
-      flex: 0 0 auto;
-      border: 1px solid rgba(255, 255, 255, 0.18);
+    .hero img {
+      width: min(250px, 68vw);
+      max-height: 280px;
+      object-fit: contain;
+      filter: drop-shadow(0 13px 18px rgba(18, 93, 153, .12));
     }
 
-    .brand strong {
-      font-size: 18px;
-      line-height: 1.25;
-      letter-spacing: .01em;
-    }
-
-    .btn {
-      border: 0;
-      border-radius: 16px;
-      padding: 12px 16px;
-      font: inherit;
-      font-weight: 700;
-      cursor: pointer;
-      color: #fff;
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 48px;
-      transition: transform .18s ease, background .18s ease;
-    }
-
-    .btn:hover { transform: translateY(-1px); }
-
-    .btn.primary { background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
-    .btn.secondary { background: rgba(255, 255, 255, 0.12); border: 1px solid var(--card-border); }
-
-    .panel {
-      padding: 14px;
+    .services {
       display: grid;
-      gap: 10px;
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 12px;
     }
 
-    .card {
+    .service-card {
+      min-width: 0;
+      min-height: 137px;
+      padding: 14px 7px 12px;
+      display: grid;
+      grid-template-rows: 68px auto;
+      align-items: center;
+      justify-items: center;
+      gap: 8px;
+      border: 1px solid var(--mobile-border);
+      border-radius: 20px;
+      color: var(--mobile-text);
+      background: var(--mobile-surface);
+      text-decoration: none;
+      box-shadow: var(--mobile-shadow);
+      backdrop-filter: blur(12px);
+      transition: transform .16s ease, box-shadow .16s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .service-card:active { transform: scale(.97); }
+    .service-card[hidden] { display: none; }
+
+    .service-icon {
+      width: 68px;
+      height: 68px;
       display: grid;
       place-items: center;
-      gap: 0;
-      min-height: 72px;
-      padding: 12px 14px;
-      border-radius: 18px;
-      border: 1px solid var(--card-border);
-      background: rgba(15, 23, 42, 0.28);
-      color: var(--text);
-      text-decoration: none;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+      border-radius: 20px;
+      color: var(--mobile-primary);
+      background: var(--mobile-icon-bg);
     }
 
-    .card strong {
-      font-size: 15px;
-      line-height: 1.3;
+    .service-icon svg {
+      width: 42px;
+      height: 42px;
+      stroke: currentColor;
+    }
+
+    .service-card strong {
+      max-width: 100%;
+      font-size: clamp(13px, 3.6vw, 16px);
+      line-height: 1.35;
       text-align: center;
+      overflow-wrap: anywhere;
     }
 
-    .card .tag,
-    .card span {
-      display: none;
-    }
-
-    .footer {
-      margin-top: 2px;
-      padding: 0 14px;
+    .bottom-nav {
+      position: fixed;
+      z-index: 12;
+      right: max(calc(var(--app-page-side-gap) / 2), calc((100vw - var(--app-page-max-width)) / 2));
+      bottom: 0;
+      width: min(var(--app-page-max-width), calc(100vw - var(--app-page-side-gap)));
+      min-height: calc(80px + env(safe-area-inset-bottom));
+      padding: 9px 16px calc(7px + env(safe-area-inset-bottom));
       display: grid;
-      gap: 10px;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 4px;
+      border: 1px solid var(--mobile-border);
+      border-bottom: 0;
+      border-radius: 28px 28px 0 0;
+      background: var(--mobile-surface);
+      box-shadow: 0 -9px 28px rgba(15, 64, 109, .1);
+      backdrop-filter: blur(18px);
     }
 
-    .logout-btn {
-      width: 100%;
-      background: linear-gradient(135deg, #ef4444, #b91c1c);
-      color: #fff;
+    .nav-item {
+      min-width: 0;
+      padding: 2px 3px;
+      display: grid;
+      justify-items: center;
+      align-content: center;
+      gap: 2px;
       border: 0;
-      border-radius: 18px;
-      padding: 0;
+      color: #7b8797;
+      background: transparent;
+      text-decoration: none;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .nav-item svg { width: 29px; height: 29px; stroke: currentColor; }
+    .nav-item span { font-size: 12px; font-weight: 700; white-space: nowrap; }
+    .nav-item.active { color: var(--mobile-primary); }
+    .nav-item.active::after {
+      content: "";
+      width: 44px;
+      height: 3px;
+      border-radius: 999px;
+      background: currentColor;
+    }
+    .nav-item[hidden] { display: none; }
+
+    .drawer-overlay {
+      position: fixed;
+      z-index: 20;
+      inset: 0;
+      opacity: 0;
+      visibility: hidden;
+      background: rgba(2, 15, 30, .38);
+      transition: opacity .2s ease, visibility .2s ease;
+    }
+
+    .drawer-overlay.open { opacity: 1; visibility: visible; }
+
+    .drawer {
+      position: absolute;
+      top: 0;
+      right: max(calc(var(--app-page-side-gap) / 2), calc((100vw - var(--app-page-max-width)) / 2));
+      width: min(84vw, 360px);
+      height: 100%;
+      padding: calc(34px + env(safe-area-inset-top)) 20px 24px;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 28px;
+      color: var(--mobile-text);
+      background: var(--mobile-surface-solid);
+      box-shadow: -18px 0 45px rgba(2, 15, 30, .2);
+      transform: translateX(105%);
+      transition: transform .24s ease;
+    }
+
+    .drawer-overlay.open .drawer { transform: translateX(0); }
+
+    .drawer-profile {
+      display: grid;
+      grid-template-columns: 72px minmax(0, 1fr);
+      align-items: center;
+      gap: 14px;
+    }
+
+    .profile-avatar {
+      width: 72px;
+      height: 72px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      color: #55b9ff;
+      background: #17364f;
+    }
+
+    .profile-avatar img { width: 100%; height: 100%; border-radius: inherit; object-fit: cover; }
+    .profile-details { min-width: 0; display: grid; gap: 4px; }
+    .profile-details strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 17px; }
+    .profile-details span { color: var(--mobile-muted); font-size: 12px; }
+
+    .drawer-menu {
+      display: grid;
+      align-content: start;
+      gap: 8px;
+    }
+
+    .drawer-item {
+      width: 100%;
+      min-height: 54px;
+      padding: 11px 10px;
+      display: grid;
+      grid-template-columns: 28px 1fr auto;
+      align-items: center;
+      gap: 11px;
+      border: 0;
+      border-bottom: 1px solid var(--mobile-border);
+      color: var(--mobile-text);
+      background: transparent;
+      text-decoration: none;
       font: inherit;
       font-weight: 700;
-      height: 72px;
+      text-align: right;
       cursor: pointer;
-      text-align: center;
-      display: grid;
-      place-items: center;
-      transition: transform .18s ease, background .18s ease;
     }
 
-    .logout-btn strong {
-      font-size: 15px;
-      line-height: 1.3;
+    .drawer-item svg { width: 24px; height: 24px; stroke: currentColor; }
+    .drawer-item.danger { color: var(--mobile-danger); margin-top: 18px; }
+    .drawer-item[hidden] { display: none; }
+
+    .theme-state {
+      color: var(--mobile-muted);
+      font-size: 12px;
+      font-weight: 400;
     }
 
-    .logout-btn:hover { transform: translateY(-1px); }
+    @media (max-width: 390px) {
+      body.app-shell > .mobile-page { padding-inline: 9px; }
+      .services { gap: 8px; }
+      .service-card { min-height: 124px; border-radius: 17px; padding-inline: 4px; }
+      .service-icon { width: 60px; height: 60px; border-radius: 17px; }
+      .service-icon svg { width: 37px; height: 37px; }
+      .hero { min-height: 285px; }
+    }
 
-    @media (max-width: 640px) {
-      .page { width: min(100vw, calc(100vw - 14px)); padding-top: 10px; }
-      .grid { grid-template-columns: 1fr; }
-      .hero h1 { font-size: 22px; }
-      .footer { padding: 0 14px; }
+    @media (min-width: 521px) {
+      body.app-shell > .mobile-page {
+        border-inline: 1px solid rgba(148, 163, 184, .15);
+        box-shadow: 0 0 45px rgba(15, 64, 109, .08);
+      }
     }
   </style>
 </head>
-<body>
-  <main class="page">
-    <section class="hero">
-      <div class="brand">
-        <img src="/images/logo.png" alt="شعار الإدارة" />
-        <strong>إدارة البلاغات</strong>
-      </div>
+<body class="app-shell">
+  <main class="mobile-page">
+    <button class="menu-button" id="menuBtn" type="button" aria-label="فتح القائمة" aria-expanded="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true">
+        <path d="M4 6h16M4 12h16M4 18h16"></path>
+      </svg>
+    </button>
+
+    <section class="hero" aria-label="إدارة البلاغات">
+      <img src="/images/logo.png" alt="هاتف الطوارئ 112" />
     </section>
 
-    <section class="panel">
-      <div class="grid">
-        <a class="card" href="/employees.html" data-page-key="employees">
-          <strong>الموظفين</strong>
-        </a>
-        <a class="card" href="/daily.html" data-page-key="daily">
-          <strong>اليوميات</strong>
-        </a>
-        <a class="card" href="/query.html" data-page-key="query">
-          <strong>الاستعلام</strong>
-        </a>
-        <a class="card" href="/mobile/statistics.html" data-page-key="statistics">
-          <strong>الاحصائيات</strong>
-        </a>
-        <a class="card" href="/holidays.html" data-page-key="holidays">
-          <strong>الإجازات</strong>
-        </a>
-        <a class="card" href="/reduction.html" data-page-key="reduction">
-          <strong>تخفيف العمل</strong>
-        </a>
-        <a class="card" href="/transfers.html" data-page-key="transfers">
-          <strong>التنقلات</strong>
-        </a>
-        <a class="card" href="/outgoing.html" data-page-key="outgoing">
-          <strong>الصادر</strong>
-        </a>
-        <a class="card" href="/incoming.html" data-page-key="incoming">
-          <strong>الوارد</strong>
-        </a>
-        <a class="card" href="#" id="forceListBtn" data-page-key="archive">
-          <strong>كشف القوة</strong>
-        </a>
-        <a class="card" href="/outside-employees.html" data-page-key="outsideEmployees">
-          <strong>خارج الإدارة</strong>
-        </a>
-        <a class="card" href="/archive.html" data-page-key="archive">
-          <strong>الأرشيف</strong>
-        </a>
-      </div>
-    </section>
-
-    <section class="footer">
-      <button class="logout-btn" id="logoutBtn" type="button"><strong>تسجيل الخروج</strong></button>
+    <section class="services" aria-label="خدمات النظام">
+      <a class="service-card" href="/mobile/employees.html" data-page-key="employees">
+        <span class="service-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"></path></svg></span>
+        <strong>الموظفين</strong>
+      </a>
+      <a class="service-card" href="/mobile/daily.html" data-page-key="daily">
+        <span class="service-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M16 3v4M8 3v4M3 10h18"></path><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"></path></svg></span>
+        <strong>اليوميات</strong>
+      </a>
+      <a class="service-card" href="/mobile/query.html" data-page-key="query">
+        <span class="service-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg></span>
+        <strong>الاستعلام</strong>
+      </a>
+      <a class="service-card" href="/mobile/statistics.html" data-page-key="statistics">
+        <span class="service-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"></path></svg></span>
+        <strong>الإحصائيات</strong>
+      </a>
+      <a class="service-card" href="/mobile/holidays.html" data-page-key="holidays">
+        <span class="service-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M16 3v4M8 3v4M3 10h18M8 15l2 2 5-5"></path></svg></span>
+        <strong>الإجازات</strong>
+      </a>
+      <a class="service-card" href="/mobile/reduction.html" data-page-key="reduction">
+        <span class="service-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"></rect><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18M10 12v2h4v-2"></path></svg></span>
+        <strong>تخفيف العمل</strong>
+      </a>
+      <a class="service-card" href="/mobile/transfers.html" data-page-key="transfers">
+        <span class="service-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3l4 4-4 4M3 7h18M7 21l-4-4 4-4M21 17H3"></path></svg></span>
+        <strong>التنقلات</strong>
+      </a>
+      <a class="service-card" href="/mobile/outgoing.html" data-page-key="outgoing">
+        <span class="service-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4Z"></path><path d="M22 2 11 13"></path></svg></span>
+        <strong>الصادر</strong>
+      </a>
+      <a class="service-card" href="/mobile/incoming.html" data-page-key="incoming">
+        <span class="service-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16l2 11v5H2v-5Z"></path><path d="M2 15h5l2 3h6l2-3h5M12 3v8M8 7l4 4 4-4"></path></svg></span>
+        <strong>الوارد</strong>
+      </a>
+      <a class="service-card" href="/mobile/department-mail.html" data-page-key="departmentMail">
+        <span class="service-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="m3 7 9 6 9-6M8 3v4M16 3v4"></path></svg></span>
+        <strong>بريد الأقسام</strong>
+      </a>
+      <a class="service-card" href="/force-list.html" data-page-key="forceList">
+        <span class="service-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"></rect><path d="M9 3h6v4H9zM9 12h6M9 16h6"></path></svg></span>
+        <strong>كشف القوة</strong>
+      </a>
+      <a class="service-card" href="/mobile/outside-employees.html" data-page-key="outsideEmployees">
+        <span class="service-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18M5 21V7l7-4v18M12 9h7v12M8 10h1M8 14h1M8 18h1M15 13h1M15 17h1"></path></svg></span>
+        <strong>خارج الإدارة</strong>
+      </a>
+      <a class="service-card" href="/archive.html" data-page-key="archive">
+        <span class="service-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18v15H3zM5 3h14v3H5zM9 11h6"></path></svg></span>
+        <strong>الأرشيف</strong>
+      </a>
     </section>
   </main>
 
+  <nav class="bottom-nav" aria-label="التنقل الرئيسي">
+    <a class="nav-item active" href="/mobile-dashboard.html" aria-current="page">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 11 9-8 9 8"></path><path d="M5 10v11h14V10M9 21v-7h6v7"></path></svg>
+      <span>الرئيسية</span>
+    </a>
+    <a class="nav-item" href="/mobile/query.html" data-page-key="query">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg>
+      <span>الاستعلام</span>
+    </a>
+    <a class="nav-item" href="/mobile/daily.html" data-page-key="daily">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M16 3v4M8 3v4M3 10h18"></path></svg>
+      <span>اليوميات</span>
+    </a>
+    <a class="nav-item" href="/mobile-profile.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V21h-4v-.08A1.7 1.7 0 0 0 8.96 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.56-1.03H3v-4h.08A1.7 1.7 0 0 0 4.6 8.96a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 8.96 4.6 1.7 1.7 0 0 0 10 3.08V3h4v.08a1.7 1.7 0 0 0 1.03 1.52 1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06a1.7 1.7 0 0 0-.34 1.88A1.7 1.7 0 0 0 20.92 10H21v4h-.08A1.7 1.7 0 0 0 19.4 15Z"></path></svg>
+      <span>الإعدادات</span>
+    </a>
+  </nav>
+
+  <div class="drawer-overlay" id="drawerOverlay" aria-hidden="true">
+    <aside class="drawer" id="sideDrawer" aria-label="قائمة المستخدم">
+      <div class="drawer-profile">
+        <span class="profile-avatar" aria-hidden="true">
+          <img id="profileAvatarImage" src="/default-profile-avatar.svg" alt="" />
+        </span>
+        <div class="profile-details">
+          <strong id="profileName">المستخدم</strong>
+          <span id="profileUsername"></span>
+        </div>
+      </div>
+
+      <div class="drawer-menu">
+        <a class="drawer-item" href="/mobile-profile.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0M19 4v4M17 6h4"></path></svg>
+          <span>الملف الشخصي</span>
+          <span aria-hidden="true">‹</span>
+        </a>
+        <a class="drawer-item" href="/mobile-password.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"></path></svg>
+          <span>تعديل كلمة السر</span>
+          <span aria-hidden="true">‹</span>
+        </a>
+        <button class="drawer-item" id="themeToggleBtn" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"></path></svg>
+          <span>الوضع الليلي</span>
+          <span class="theme-state" id="themeState">متوقف</span>
+        </button>
+        <a class="drawer-item admin-only" id="desktopModeBtn" href="/dashboard.html" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"></rect><path d="M8 20h8M12 16v4"></path></svg>
+          <span>الوضع العادي</span>
+          <span class="theme-state" id="desktopModeState">متوقف</span>
+        </a>
+        <button class="drawer-item danger" id="logoutBtn" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 17l5-5-5-5M15 12H3M15 3h5a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1h-5"></path></svg>
+          <span>تسجيل الخروج</span>
+          <span></span>
+        </button>
+      </div>
+    </aside>
+  </div>
+
   <script src="/install-shortcut.js"></script>
-  <script src="/force-list.js"></script>
+  <script src="/profile-image-store.js"></script>
+  <script src="/text-encoding.js"></script>
   <script>
-    document.getElementById('forceListBtn').addEventListener('click', (event) => {
-      event.preventDefault();
-      window.openLatestForceList();
-    });
     const token = sessionStorage.getItem('authToken');
     if (!token) {
       window.location.href = '/login.html';
@@ -248,6 +458,7 @@
     function parseJwtPayload(value) {
       try {
         const payload = String(value || '').split('.')[1];
+        if (!payload) return null;
         const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
         return JSON.parse(atob(normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=')));
       } catch {
@@ -255,14 +466,91 @@
       }
     }
 
-    const currentUser = parseJwtPayload(token);
-    const currentRole = String(currentUser && currentUser.role || '').trim().toLowerCase();
-    const allowedPages = new Set(Array.isArray(currentUser && currentUser.allowedPages) ? currentUser.allowedPages : []);
+    const parsedUser = parseJwtPayload(token);
+    const decodeUserText = window.MainProjectTextEncoding.decodeUtf8Mojibake;
+    const currentUser = parsedUser
+      ? {
+          ...parsedUser,
+          name: decodeUserText(parsedUser.name),
+          username: decodeUserText(parsedUser.username)
+        }
+      : null;
+    const currentRole = String(currentUser?.role || '').trim().toLowerCase();
+    const allowedPages = new Set(Array.isArray(currentUser?.allowedPages) ? currentUser.allowedPages : []);
+    const menuBtn = document.getElementById('menuBtn');
+    const drawerOverlay = document.getElementById('drawerOverlay');
+    const themeToggleBtn = document.getElementById('themeToggleBtn');
+    const themeState = document.getElementById('themeState');
+    const desktopModeBtn = document.getElementById('desktopModeBtn');
+    const desktopModeState = document.getElementById('desktopModeState');
+    const profileAvatarImage = document.getElementById('profileAvatarImage');
+
+    if (!currentUser) {
+      sessionStorage.removeItem('authToken');
+      window.location.href = '/login.html';
+    }
+
+    document.getElementById('profileName').textContent = currentUser?.name || currentUser?.username || 'المستخدم';
+    document.getElementById('profileUsername').textContent = currentUser?.name && currentUser?.username
+      ? currentUser.username
+      : '';
+    async function loadProfileImage() {
+      try {
+        const userKey = window.profileImageStore.getUserKey(currentUser);
+        const image = await window.profileImageStore.get(userKey);
+        if (!image) return;
+        profileAvatarImage.src = URL.createObjectURL(image);
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
     if (currentRole !== 'admin') {
       document.querySelectorAll('[data-page-key]').forEach((link) => {
         link.hidden = !allowedPages.has(String(link.dataset.pageKey || ''));
       });
+      document.querySelectorAll('.admin-only').forEach((element) => {
+        element.hidden = true;
+      });
+    } else {
+      desktopModeBtn.hidden = false;
     }
+
+    function setDrawerOpen(isOpen) {
+      drawerOverlay.classList.toggle('open', isOpen);
+      drawerOverlay.setAttribute('aria-hidden', String(!isOpen));
+      menuBtn.setAttribute('aria-expanded', String(isOpen));
+      document.body.style.overflow = isOpen ? 'hidden' : '';
+    }
+
+    menuBtn.addEventListener('click', () => setDrawerOpen(true));
+    drawerOverlay.addEventListener('click', (event) => {
+      if (event.target === drawerOverlay) setDrawerOpen(false);
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') setDrawerOpen(false);
+    });
+
+    function applyTheme(theme) {
+      const isDark = theme === 'dark';
+      document.body.classList.toggle('dark-mode', isDark);
+      themeState.textContent = isDark ? 'مفعل' : 'متوقف';
+      document.querySelector('meta[name="theme-color"]').content = isDark ? '#071525' : '#f6faff';
+    }
+
+    const savedTheme = localStorage.getItem('mobileTheme') === 'dark' ? 'dark' : 'light';
+    applyTheme(savedTheme);
+    desktopModeState.textContent = sessionStorage.getItem('uiMode') === 'desktop' ? 'مفعل' : 'متوقف';
+    loadProfileImage();
+    themeToggleBtn.addEventListener('click', () => {
+      const nextTheme = document.body.classList.contains('dark-mode') ? 'light' : 'dark';
+      localStorage.setItem('mobileTheme', nextTheme);
+      applyTheme(nextTheme);
+    });
+    desktopModeBtn.addEventListener('click', () => {
+      sessionStorage.setItem('uiMode', 'desktop');
+      desktopModeState.textContent = 'مفعل';
+    });
 
     if (typeof window.initShortcutInstallGate === 'function') {
       window.initShortcutInstallGate({

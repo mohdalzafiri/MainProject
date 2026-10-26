@@ -362,6 +362,62 @@ body.app-shell tbody tr.selected {
   background: #dbeafe;
 }
 
+.view-only .view-only-write-panel {
+  display: none !important;
+}
+
+.view-only tbody tr,
+.view-only .mobile-employee-card,
+.view-only .mobile-daily-card {
+  cursor: pointer;
+}
+
+.view-only-detail-card {
+  margin-bottom: 14px;
+  padding: 16px;
+  border: 1px solid #bfdbfe;
+  border-radius: 16px;
+  background: linear-gradient(145deg, #eff6ff, #ffffff);
+  box-shadow: 0 10px 24px rgba(30, 64, 175, 0.08);
+}
+
+.view-only-detail-card h3 {
+  margin: 0 0 12px;
+  color: #1e3a8a;
+  font-size: 20px;
+}
+
+.view-only-detail-grid {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.view-only-detail-item {
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid #dbeafe;
+  border-radius: 11px;
+  background: #ffffff;
+}
+
+.view-only-detail-item dt {
+  margin: 0 0 4px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.view-only-detail-item dd {
+  margin: 0;
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
 body.app-shell .mono {
   direction: ltr;
   unicode-bidi: isolate;
@@ -404,5 +460,9 @@ body.app-shell .mono {
 
   body.app-shell .header h1 {
     font-size: 24px;
+  }
+
+  .view-only-detail-grid {
+    grid-template-columns: 1fr;
   }
 }

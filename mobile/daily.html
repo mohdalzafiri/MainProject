@@ -35,6 +35,36 @@
       justify-content: flex-start;
     }
 
+    .mobile-view-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      padding: 3px;
+      border: 1px solid #bfdbfe;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.9);
+      box-shadow: 0 4px 12px rgba(30, 64, 175, 0.08);
+    }
+
+    .mobile-view-toggle button {
+      min-height: 32px;
+      padding: 5px 10px;
+      border: 0;
+      border-radius: 7px;
+      color: #475569;
+      background: transparent;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .mobile-view-toggle button.active {
+      color: #fff;
+      background: #2563eb;
+      box-shadow: 0 3px 8px rgba(37, 99, 235, 0.22);
+    }
+
     .summary-panel {
       min-width: 0;
       background: linear-gradient(135deg, #f8fbff 0%, #eef4ff 100%);
@@ -206,8 +236,108 @@
       color: #7c3aed;
     }
 
-    .table-wrap table {
-      min-width: 100%;
+    body.app-shell .table-wrap table {
+      min-width: 1050px;
+      border-collapse: collapse;
+    }
+
+    body.app-shell .table-wrap {
+      border: 1px solid #d1d5db;
+      border-radius: 0;
+      background: #fff;
+    }
+
+    body.app-shell .table-wrap th,
+    body.app-shell .table-wrap td {
+      border: 1px solid #d1d5db;
+    }
+
+    body.app-shell .table-wrap td {
+      background: transparent;
+    }
+
+    body.app-shell .table-wrap th {
+      background: #f8fafc;
+    }
+
+    body.app-shell .table-wrap tbody tr.selected td {
+      background: #eff6ff;
+    }
+
+    body.app-shell .table-wrap .status-badge {
+      display: none;
+    }
+
+    .mobile-daily-cards {
+      display: none;
+      gap: 12px;
+    }
+
+    .mobile-daily-card {
+      display: grid;
+      gap: 10px;
+      padding: 14px;
+      border: 1px solid var(--ui-border);
+      border-radius: 16px;
+      background: #fff;
+      text-align: right;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+    }
+
+    .mobile-daily-card.selected {
+      border-color: #60a5fa;
+      box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.16);
+    }
+
+    .mobile-daily-card-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .mobile-daily-card-head strong {
+      font-size: 15px;
+      line-height: 1.5;
+    }
+
+    .mobile-daily-card-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .mobile-daily-card-item,
+    .mobile-daily-card-note {
+      display: grid;
+      gap: 3px;
+      padding: 8px 10px;
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      border-radius: 12px;
+      background: #f8fafc;
+    }
+
+    .mobile-daily-card-item span:first-child {
+      color: var(--ui-muted);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .mobile-daily-card-item span:last-child,
+    .mobile-daily-card-note {
+      color: var(--ui-text);
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.5;
+      overflow-wrap: anywhere;
+    }
+
+    .daily-shell.card-view .table-wrap {
+      display: none;
+    }
+
+    .daily-shell.card-view .mobile-daily-cards {
+      display: grid;
     }
 
     .badge.soft {
@@ -240,6 +370,14 @@
       font-family: inherit;
       font-size: 13px;
       background: #fff;
+    }
+
+    .time-input {
+      direction: ltr;
+      unicode-bidi: isolate;
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+      color-scheme: light;
     }
 
     .row-leave {
@@ -320,6 +458,45 @@
     }
 
     @media (max-width: 720px) {
+      .daily-header {
+        position: relative;
+      }
+
+      .top-panel .placeholder-cell {
+        display: none;
+      }
+
+      .top-panel .form-grid > .field:nth-child(1) {
+        grid-column: 1 !important;
+        grid-row: 1;
+      }
+
+      .top-panel .form-grid > .field:nth-child(2) {
+        grid-column: 2 !important;
+        grid-row: 1;
+      }
+
+      .top-panel .form-grid > .field:nth-child(4) {
+        grid-column: 1 !important;
+        grid-row: 2;
+      }
+
+      .top-panel .form-grid > .field:nth-child(5) {
+        grid-column: 2 !important;
+        grid-row: 2;
+      }
+
+      .top-panel .form-grid > .field:nth-child(6) {
+        grid-column: 1 !important;
+        grid-row: 3;
+      }
+
+      .mobile-view-toggle {
+        position: absolute;
+        left: 0;
+        bottom: 0;
+      }
+
       .daily-shell {
         gap: 12px;
       }
@@ -336,8 +513,8 @@
         flex: 1 1 100%;
       }
 
-      .table-wrap table {
-        min-width: 100%;
+      body.app-shell .table-wrap table {
+        min-width: 1050px;
       }
     }
   </style>
@@ -352,6 +529,10 @@
       </div>
       <div class="actions">
         <button type="button" class="btn dark" id="backBtn">العودة للرئيسية</button>
+      </div>
+      <div class="mobile-view-toggle" aria-label="طريقة عرض بيانات اليوميات">
+        <button type="button" id="tableViewBtn" class="active" aria-pressed="true">الجدول</button>
+        <button type="button" id="cardViewBtn" aria-pressed="false">البطاقات</button>
       </div>
     </header>
 
@@ -412,6 +593,22 @@
         </div>
       </form>
       <div id="statusLine" class="status-line"></div>
+      <section class="daily-scanner-panel" aria-labelledby="dailyScannerTitle">
+        <h3 id="dailyScannerTitle">ماسح مستندات اليومية</h3>
+        <p>اختر سجلًا محفوظًا، ثم التقط صفحات المستند وحدّد زوايا الورقة. ستُجمع الصفحات في ملف PDF واحد باسم تلقائي.</p>
+        <div class="daily-scanner-actions">
+          <button type="button" class="btn primary" id="dailyScanCaptureBtn" disabled>التقاط / اختيار صفحة</button>
+          <button type="button" class="btn success" id="dailyScanAddBtn" disabled>إضافة الصفحة المحددة</button>
+          <button type="button" class="btn warning" id="dailyScanUndoBtn" disabled>حذف آخر صفحة</button>
+          <button type="button" class="btn success" id="dailyScanSaveBtn" disabled>إنشاء وحفظ PDF</button>
+          <button type="button" class="btn danger" id="dailyScanDeleteBtn" hidden>حذف PDF المحفوظ</button>
+        </div>
+        <input id="dailyScanInput" type="file" accept="image/*" capture="environment" hidden />
+        <p id="dailyScanCornersHint" hidden>اسحب الزوايا الخضراء لتحديد حدود الورقة، ثم أضف الصفحة.</p>
+        <canvas id="dailyScanCanvas" hidden aria-label="معاينة الصورة وحدود الورقة"></canvas>
+        <p id="dailyScanPageCount">صفحات PDF: 0</p>
+        <a id="dailyScanSavedFile" href="#" hidden></a>
+      </section>
     </section>
 
     <section class="panel">
@@ -449,6 +646,7 @@
           <tbody id="rows"></tbody>
         </table>
       </div>
+      <div id="mobileRows" class="mobile-daily-cards" aria-live="polite"></div>
     </section>
 
     <section class="panel summary-panel">
@@ -471,6 +669,8 @@
     </section>
   </div>
 
+  <script src="/daily-scanner.js"></script>
+  <script src="/status-catalog.js"></script>
   <script>
     const authToken = sessionStorage.getItem('authToken');
     if (!authToken) window.location.href = '/';
@@ -493,8 +693,8 @@
       window.location.href = '/';
     }
 
-    const STATUS_OPTIONS = ['حضور', 'تأخير', 'تأخير+عقوبة', 'استئذان', 'غياب', 'حضور بعد غياب', 'طبية', 'اجازة', 'تخفيف عمل', 'دورة', 'تكليف'];
-    const EDITABLE_TIME_STATUSES = ['حضور', 'حضور بعد غياب', 'تأخير', 'تأخير+عقوبة', 'استئذان', 'تخفيف عمل'];
+    const STATUS_OPTIONS = MainProjectStatusCatalog.statuses;
+    const EDITABLE_TIME_STATUSES = MainProjectStatusCatalog.timedStatuses;
     const PERIOD_DEFAULTS = {
       'نوبة صبح': { inTime: '08:00', outTime: '16:00' },
       'نوبة عصر': { inTime: '16:00', outTime: '00:00' },
@@ -510,6 +710,9 @@
     const sectionInput = document.getElementById('section');
     const periodInput = document.getElementById('period');
     const rowsBody = document.getElementById('rows');
+    const mobileRows = document.getElementById('mobileRows');
+    const tableViewBtn = document.getElementById('tableViewBtn');
+    const cardViewBtn = document.getElementById('cardViewBtn');
     const countLabel = document.getElementById('countLabel');
     const searchNameInput = document.getElementById('searchName');
     const employeeSuggestionsList = document.getElementById('employeeSuggestions');
@@ -542,6 +745,14 @@
     let departmentSectionRows = [];
     let selectedRecord = null;
     let currentRows = [];
+    const scannerRole = String(currentUser?.role || currentUser?.username || '').trim().toLowerCase();
+    const scannerEditablePages = Array.isArray(currentUser?.editablePages) ? currentUser.editablePages : currentUser?.allowedPages;
+    const dailyScanner = window.initDailyScanner({
+      authToken,
+      canEdit: scannerRole === 'admin'
+        || (scannerRole !== 'view' && Array.isArray(scannerEditablePages) && scannerEditablePages.includes('daily')),
+      onStatus: showStatus
+    });
     let visibleRows = [];
     let basePeriods = [];
     let employeeSuggestionMap = new Map();
@@ -549,6 +760,19 @@
     let suggestionRequestToken = 0;
     let suggestionDebounceHandle = null;
     let pendingAddedEmployeeName = '';
+
+    function setMobileView(mode) {
+      const showCards = mode === 'cards';
+      document.querySelector('.daily-shell').classList.toggle('card-view', showCards);
+      tableViewBtn.classList.toggle('active', !showCards);
+      cardViewBtn.classList.toggle('active', showCards);
+      tableViewBtn.setAttribute('aria-pressed', String(!showCards));
+      cardViewBtn.setAttribute('aria-pressed', String(showCards));
+    }
+
+    tableViewBtn.addEventListener('click', () => setMobileView('table'));
+    cardViewBtn.addEventListener('click', () => setMobileView('cards'));
+    setMobileView('table');
 
     function showStatus(message, isError = false) {
       statusLine.className = `status-line show ${isError ? 'error' : 'ok'}`;
@@ -724,7 +948,10 @@
 
         departmentSectionRows = Array.isArray(data.departmentSections) ? data.departmentSections : [];
         basePeriods = Array.isArray(data.periods) ? data.periods : [];
-        populateSelect(departmentInput, Array.isArray(data.departments) ? data.departments : []);
+        const departments = Array.isArray(data.departments)
+          ? data.departments.filter((value) => String(value || '').trim() !== 'إدارة البلاغات')
+          : [];
+        populateSelect(departmentInput, departments);
         populateSectionOptions(sectionInput.value);
         populateSelect(periodInput, basePeriods);
         return true;
@@ -1010,7 +1237,7 @@
         return 'row-leave';
       }
       if (status === 'دورة') return 'row-course';
-      if (['تأخير', 'تأخير+عقوبة', 'استئذان'].includes(status)) return 'row-delay';
+      if (['أذن', 'استئذان', 'تخفيف عمل'].includes(status)) return 'row-delay';
       if (status === 'غياب') return 'row-absent';
       return '';
     }
@@ -1042,7 +1269,7 @@
 
       const presentCount = countStatus(['حضور', 'حضور بعد غياب']);
       const absentCount = countStatus(['غياب']);
-      const delayCount = countStatus(['تأخير', 'تأخير+عقوبة', 'استئذان']);
+      const delayCount = countStatus(['أذن', 'استئذان']);
       const leaveCount = countStatus(['اجازة']);
       const courseCount = countStatus(['دورة']);
       const detentionCount = absentCount + leaveCount + courseCount;
@@ -1077,12 +1304,27 @@
       }
     }
 
-    function markSelectedRow(rowElement, item) {
+    function markSelectedRecord(visualElement, item) {
+      if (!dailyScanner.setRecord(item, inferDailyTable(item.Department))) return;
       Array.from(rowsBody.querySelectorAll('tr')).forEach((row) => row.classList.remove('selected'));
-      rowElement.classList.add('selected');
+      Array.from(mobileRows.querySelectorAll('.mobile-daily-card')).forEach((card) => card.classList.remove('selected'));
+      visualElement.classList.add('selected');
       selectedRecord = { ...item };
       searchNameInput.value = String(item.Name || '').trim();
       clearStatus();
+    }
+
+    function markSelectedRow(rowElement, item) {
+      markSelectedRecord(rowElement, item);
+    }
+
+    function getStatusBadgeClass(status) {
+      if (status === 'حضور' || status === 'حضور بعد غياب') return 'present';
+      if (status === 'غياب') return 'absent';
+      if (status === 'اجازة') return 'leave';
+      if (status === 'دورة') return 'course';
+      if (['أذن', 'استئذان', 'تخفيف عمل'].includes(status)) return 'delay';
+      return '';
     }
 
     async function saveRowChanges(item, payload, successMessage = '') {
@@ -1108,6 +1350,38 @@
       updateSummaryPanel(visibleRows);
     }
 
+    function formatPermissionDuration(minutesValue) {
+      const totalMinutes = Math.max(0, Number(minutesValue) || 0);
+      const hours = Math.floor(totalMinutes / 60);
+      const minutes = totalMinutes % 60;
+      return `${hours}:${String(minutes).padStart(2, '0')}`;
+    }
+
+    async function showPermissionSummary(item) {
+      const table = inferDailyTable(item.Department);
+      const params = new URLSearchParams({
+        today: item.Today || todayInput.value,
+        empId: item.EmpID || '',
+        name: item.Name || '',
+        table: table || '',
+        id: item.ID || ''
+      });
+      const summary = await requestJson(`/api/daily-logs/permission-summary?${params.toString()}`, {
+        headers: getHeaders()
+      });
+      const remainingCount = Math.max(0, Number(summary.remainingCount) - 1);
+      const remainingMinutes = Math.max(0, Number(summary.remainingMinutes) - 120);
+      const exceedsLimit = Boolean(summary.exceeded) || Number(summary.remainingCount) <= 0;
+
+      if (exceedsLimit) {
+        showStatus(`تنبيه: تجاوز ${item.Name || 'الموظف'} الحد الشهري للأذن (4 مرات أو 12:00 ساعة).`, true);
+        return false;
+      }
+
+      showStatus(`رصيد الأذن المتاح للموظف بعد هذه الأذن: ${remainingCount} مرات و${formatPermissionDuration(remainingMinutes)} ساعة.`);
+      return true;
+    }
+
     function createStatusSelect(item) {
       const status = String(item.Status || '').trim();
       const wrapper = document.createElement('div');
@@ -1126,7 +1400,7 @@
         badge.classList.add('leave');
       } else if (status === 'دورة') {
         badge.classList.add('course');
-      } else if (['تأخير', 'تأخير+عقوبة', 'استئذان'].includes(status)) {
+      } else if (['أذن', 'استئذان', 'تخفيف عمل'].includes(status)) {
         badge.classList.add('delay');
       }
 
@@ -1136,22 +1410,33 @@
         const option = document.createElement('option');
         option.value = optionStatus;
         option.textContent = optionStatus;
-        if (status === optionStatus) option.selected = true;
+        if (MainProjectStatusCatalog.normalizeStatus(status) === optionStatus) option.selected = true;
         select.appendChild(option);
       });
 
       select.addEventListener('click', (event) => event.stopPropagation());
       select.addEventListener('change', async (event) => {
         const nextStatus = event.target.value;
+        if (MainProjectStatusCatalog.isPermissionStatus(nextStatus)) {
+          const permissionAllowed = await showPermissionSummary(item);
+          if (!permissionAllowed) {
+            select.value = MainProjectStatusCatalog.normalizeStatus(item.Status) || 'حضور';
+            return;
+          }
+        }
+
         const payload = { Status: nextStatus };
+        if (MainProjectStatusCatalog.isAdjustedStatus(nextStatus)) {
+          payload.Type = '';
+        }
 
         if (!EDITABLE_TIME_STATUSES.includes(nextStatus)) {
           payload.InTime = '';
           payload.OutTime = '';
         } else {
           const defaults = PERIOD_DEFAULTS[String(item.Period || '').trim()] || { inTime: '', outTime: '' };
-          payload.InTime = item.InTime || defaults.inTime;
-          payload.OutTime = item.OutTime || defaults.outTime;
+          payload.InTime = defaults.inTime;
+          payload.OutTime = defaults.outTime;
         }
 
         await saveRowChanges(item, payload, 'تم تحديث الحالة بنجاح.');
@@ -1167,10 +1452,12 @@
       const input = document.createElement('input');
       input.type = 'time';
       input.className = 'time-input mono';
+      input.lang = 'en-GB';
+      input.dir = 'ltr';
       input.value = String(item[key] || '').trim();
-      const currentStatus = String(item.Status || '').trim();
+      const currentStatus = MainProjectStatusCatalog.normalizeStatus(item.Status);
       input.disabled = !EDITABLE_TIME_STATUSES.includes(currentStatus);
-      if (input.disabled) input.title = 'تعديل الوقت متاح فقط لحالات الحضور والتأخير والاستئذان والتخفيف.';
+      if (input.disabled) input.title = 'تعديل الوقت متاح فقط لحالات الحضور والأذن وتخفيف العمل.';
 
       input.addEventListener('click', (event) => event.stopPropagation());
       input.addEventListener('change', async (event) => {
@@ -1181,10 +1468,52 @@
       return input;
     }
 
+    function createDescriptionSelect(item) {
+      const status = String(item.Status || '').trim();
+      if (!MainProjectStatusCatalog.isAdjustedStatus(status)) {
+        return document.createTextNode(String(item.Type || '').trim() || (status === 'دورة' ? 'دورة' : ''));
+      }
+
+      const select = document.createElement('select');
+      select.className = 'status-select';
+      const currentDescription = String(item.Type || '').trim();
+      [
+        { value: '', label: '-- اختر الوصف --' },
+        { value: 'بداية الدوام', label: 'بداية الدوام' },
+        { value: 'نهاية الدوام', label: 'نهاية الدوام' }
+      ].forEach(({ value, label }) => {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = label;
+        option.selected = currentDescription === value;
+        select.appendChild(option);
+      });
+
+      select.addEventListener('click', (event) => event.stopPropagation());
+      select.addEventListener('change', async (event) => {
+        const description = event.target.value;
+        const defaults = PERIOD_DEFAULTS[String(item.Period || '').trim()] || { inTime: '', outTime: '' };
+        const times = MainProjectStatusCatalog.getAdjustedTimes(defaults, description);
+        const message = MainProjectStatusCatalog.isPermissionStatus(status)
+          ? 'تم تحديث وصف الأذن وخصم ساعتين من الدوام بنجاح.'
+          : 'تم تحديث وصف تخفيف العمل وخصم ساعتين من الدوام بنجاح.';
+        await saveRowChanges(item, {
+          Status: MainProjectStatusCatalog.normalizeStatus(status),
+          Type: description,
+          InTime: times.inTime,
+          OutTime: times.outTime
+        }, message);
+        applyNameFilterAndRender();
+      });
+      return select;
+    }
+
     function renderRows(items) {
       rowsBody.innerHTML = '';
+      mobileRows.innerHTML = '';
       if (!Array.isArray(items) || items.length === 0) {
         rowsBody.innerHTML = '<tr><td colspan="10">لاتوجد بيانات حالياً.</td></tr>';
+        mobileRows.innerHTML = '<article class="mobile-daily-card"><div class="mobile-daily-card-note">لاتوجد بيانات حالياً.</div></article>';
         countLabel.textContent = 'عدد السجلات: 0';
         updateSummaryPanel([]);
         return;
@@ -1213,22 +1542,49 @@
           <td></td>
           <td class="mono">${formatDateYmdSlash(item.Startdate || '')}</td>
           <td class="mono">${formatDateYmdSlash(item.Enddate || '')}</td>
-          <td>${description}</td>
+          <td></td>
           <td>${item.Note ?? ''}</td>
         `;
 
         const statusCell = tr.children[2];
         const inCell = tr.children[4];
         const outCell = tr.children[5];
+        const descriptionCell = tr.children[8];
         statusCell.style.padding = '6px';
         inCell.style.padding = '6px';
         outCell.style.padding = '6px';
+        descriptionCell.style.padding = '6px';
         statusCell.appendChild(createStatusSelect(item));
         inCell.appendChild(createTimeInput(item, 'InTime'));
         outCell.appendChild(createTimeInput(item, 'OutTime'));
+        descriptionCell.appendChild(createDescriptionSelect(item));
 
         tr.addEventListener('click', () => markSelectedRow(tr, item));
         rowsBody.appendChild(tr);
+
+        const status = String(item.Status || '').trim();
+        const card = document.createElement('article');
+        card.className = 'mobile-daily-card';
+        if (selectedRecord?.ID && String(selectedRecord.ID) === String(item.ID)) {
+          card.classList.add('selected');
+        }
+        card.innerHTML = `
+          <div class="mobile-daily-card-head">
+            <strong>${index + 1}. ${item.Name ?? ''}</strong>
+            <span class="status-badge ${getStatusBadgeClass(status)}">${status || '—'}</span>
+          </div>
+          <div class="mobile-daily-card-grid">
+            <div class="mobile-daily-card-item"><span>الفترة</span><span>${item.Period ?? ''}</span></div>
+            <div class="mobile-daily-card-item"><span>القسم</span><span>${item.Department ?? ''}</span></div>
+            <div class="mobile-daily-card-item"><span>الحضور</span><span class="mono">${String(item.InTime || '').trim() || '--'}</span></div>
+            <div class="mobile-daily-card-item"><span>الانصراف</span><span class="mono">${String(item.OutTime || '').trim() || '--'}</span></div>
+            <div class="mobile-daily-card-item"><span>بداية</span><span class="mono">${formatDateYmdSlash(item.Startdate || '') || '--'}</span></div>
+            <div class="mobile-daily-card-item"><span>نهاية</span><span class="mono">${formatDateYmdSlash(item.Enddate || '') || '--'}</span></div>
+          </div>
+          <div class="mobile-daily-card-note">${description || 'بدون وصف'}</div>
+        `;
+        card.addEventListener('click', () => markSelectedRecord(card, item));
+        mobileRows.appendChild(card);
       });
 
       countLabel.textContent = `عدد السجلات: ${items.length}`;
@@ -1257,6 +1613,7 @@
       if (!today || !department || !section) {
         currentRows = [];
         visibleRows = [];
+        dailyScanner.clear();
         syncPeriodOptionsFromRows([]);
         clearEmployeeSuggestions();
         renderRows([]);
@@ -1267,6 +1624,15 @@
       const data = await requestJson(query ? `/api/daily-logs/search?${query}` : '/api/daily-logs', { headers: getHeaders() });
       currentRows = Array.isArray(data) ? data : [];
       syncPeriodOptionsFromRows(currentRows);
+      const selectedPeriod = String(periodInput.value || '').trim();
+      const dailyRecord = selectedPeriod
+        ? currentRows.find((item) => String(item.Period || '').trim() === selectedPeriod)
+        : null;
+      if (dailyRecord) {
+        dailyScanner.setRecord(dailyRecord, inferDailyTable(dailyRecord.Department));
+      } else {
+        dailyScanner.clear();
+      }
       applyNameFilterAndRender();
       scheduleEmployeeSuggestionsLoad();
     }
@@ -1296,6 +1662,7 @@
       if (Number(result?.added || 0) > 0) {
         searchNameInput.value = '';
         selectedRecord = null;
+        dailyScanner.clear();
       }
       await refreshDailyView();
     }
@@ -1343,6 +1710,7 @@
         pendingAddedEmployeeName = employeeName;
         searchNameInput.value = '';
         selectedRecord = null;
+        dailyScanner.clear();
         showStatus(result?.message || 'تمت إضافة بيانات الموظف إلى اليومية.');
       } else {
         showStatus(result?.message || 'تعذر إضافة الموظف لليومية المعروضة.', true);
@@ -1380,6 +1748,7 @@
 
       showStatus('تم حذف بيانات اليومية للموظف بنجاح.');
       selectedRecord = null;
+      dailyScanner.clear();
       searchNameInput.value = '';
       await refreshDailyView();
     }
@@ -1439,6 +1808,7 @@
 
       showStatus('تم حذف سجل اليومية بنجاح.');
       selectedRecord = null;
+      dailyScanner.clear();
       searchNameInput.value = '';
       await refreshDailyView();
     }
@@ -1600,7 +1970,7 @@
     });
 
     backBtn.addEventListener('click', () => {
-      window.location.href = sessionStorage.getItem('uiMode') === 'mobile' ? '/mobile/dashboard.html' : '/dashboard.html';
+      window.location.href = '/mobile-dashboard.html';
     });
 
     form.addEventListener('submit', (event) => {

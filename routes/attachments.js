@@ -3,6 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const multer = require("multer");
 const { db, logSystem } = require("../database");
+const { isWithinDataScope } = require("../auth/dataScope");
 const { removeSync } = require("../utils/fsCompat");
 const router = express.Router();
 const upload = multer({
@@ -15,7 +16,8 @@ const moduleConfig = {
   courses: { table: "Course", pageKey: "courses", pageName: "Course" },
   transfers: { table: "Transfer", pageKey: "transfers", pageName: "Transfer" },
   outgoing: { table: "OutgoingDocuments", pageKey: "outgoing", pageName: "Outgoing" },
-  incoming: { table: "IncomingDocuments", pageKey: "incoming", pageName: "Incoming" }
+  incoming: { table: "IncomingDocuments", pageKey: "incoming", pageName: "Incoming" },
+  departmentmail: { table: "DepartmentMail", pageKey: "departmentMail", pageName: "DepartmentMail", scoped: true }
 };
 function parseRecordId(rawValue) {
   const value = Number(rawValue || 0);
@@ -49,9 +51,9 @@ function ensureAllowed(req, moduleKey, method) {
   }
   return { ok: true, config };
 }
-async function ensureRecordExists(config, recordId) {
-  const row = await db.prepare(`SELECT ID FROM ${config.table} WHERE ID = ? LIMIT 1`).get(recordId);
-  return Boolean(row);
+async function ensureRecordExists(config, recordId, access) {
+  const row = await db.prepare(`SELECT * FROM ${config.table} WHERE ID = ? LIMIT 1`).get(recordId);
+  return Boolean(row) && (!config.scoped || isWithinDataScope(row, access));
 }
 function readImageFiles(moduleKey, recordId) {
   const directory = getRecordDirectory(moduleKey, recordId);
@@ -85,7 +87,7 @@ router.get("/:module/:recordId", async (req, res) => {
   if (!recordId) {
     return res.status(400).json({ message: "\u0645\u0639\u0631\u0651\u0641 \u0627\u0644\u0633\u062C\u0644 \u063A\u064A\u0631 \u0635\u0627\u0644\u062D." });
   }
-  if (!await ensureRecordExists(access.config, recordId)) {
+  if (!await ensureRecordExists(access.config, recordId, req.access)) {
     return res.status(404).json({ message: "\u0627\u0644\u0633\u062C\u0644 \u0627\u0644\u0645\u0637\u0644\u0648\u0628 \u063A\u064A\u0631 \u0645\u0648\u062C\u0648\u062F." });
   }
   const images = readImageFiles(moduleKey, recordId);
@@ -102,7 +104,7 @@ router.post("/:module/:recordId", upload.single("image"), async (req, res) => {
   if (!recordId) {
     return res.status(400).json({ message: "\u0645\u0639\u0631\u0651\u0641 \u0627\u0644\u0633\u062C\u0644 \u063A\u064A\u0631 \u0635\u0627\u0644\u062D." });
   }
-  if (!await ensureRecordExists(access.config, recordId)) {
+  if (!await ensureRecordExists(access.config, recordId, req.access)) {
     return res.status(404).json({ message: "\u0627\u0644\u0633\u062C\u0644 \u0627\u0644\u0645\u0637\u0644\u0648\u0628 \u063A\u064A\u0631 \u0645\u0648\u062C\u0648\u062F." });
   }
   if (!req.file) {
@@ -146,7 +148,7 @@ router.delete("/:module/:recordId/:fileName", async (req, res) => {
   if (!recordId || !/^\d{3}\.jpg$/i.test(fileName)) {
     return res.status(400).json({ message: "\u0628\u064A\u0627\u0646\u0627\u062A \u0635\u0648\u0631\u0629 \u0627\u0644\u0645\u0633\u062A\u0646\u062F \u063A\u064A\u0631 \u0635\u0627\u0644\u062D\u0629." });
   }
-  if (!await ensureRecordExists(access.config, recordId)) {
+  if (!await ensureRecordExists(access.config, recordId, req.access)) {
     return res.status(404).json({ message: "\u0627\u0644\u0633\u062C\u0644 \u0627\u0644\u0645\u0637\u0644\u0648\u0628 \u063A\u064A\u0631 \u0645\u0648\u062C\u0648\u062F." });
   }
   const recordDirectory = getRecordDirectory(moduleKey, recordId);

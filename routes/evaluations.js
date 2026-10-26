@@ -102,6 +102,18 @@ function isAssignmentEntry(text) {
   return content.includes('تكليف');
 }
 
+function isWorkReductionEntry(text) {
+  return normalizeText(text).includes('تخفيف عمل');
+}
+
+function isCourseEntry(text) {
+  return normalizeText(text).includes('دورة');
+}
+
+function isPresentAfterAbsenceEntry(text) {
+  return normalizeText(text).includes('حضور بعد غياب');
+}
+
 function isOccasionalEntry(text) {
   return normalizeText(text).includes('عرضي');
 }
@@ -116,8 +128,11 @@ function classifyDailyEntry(row) {
   if (isMedicalEntry(bucketText)) return 'medical';
   if (isLeaveEntry(bucketText)) return 'leave';
   if (isLicenseEntry(bucketText)) return 'license';
+  if (isWorkReductionEntry(bucketText)) return 'reduction';
+  if (isCourseEntry(bucketText)) return 'course';
   if (isOccasionalEntry(bucketText)) return 'occasional';
   if (isWorkInterruptionEntry(bucketText)) return 'workInterruption';
+  if (isPresentAfterAbsenceEntry(bucketText)) return 'return';
   if (isPresentEntry(bucketText)) return 'present';
   if (isAbsentEntry(bucketText)) return 'absent';
   if (isDelayEntry(bucketText)) return 'delay';
@@ -148,10 +163,7 @@ function getDelayMinutes(row) {
 }
 
 function getPermissionMinutes(row) {
-  const start = getTimeMinutes(row.InTime);
-  const end = getTimeMinutes(row.OutTime);
-  if (start === null || end === null || start === end) return 0;
-  return end > start ? end - start : (24 * 60) - start + end;
+  return row ? 120 : 0;
 }
 
 function getMonthKey(value) {
@@ -173,10 +185,14 @@ function resolveMetrics(metrics) {
   return {
     totalCount: toNumber(getMetricValue(metrics, 'totalCount', 'TotalCount')),
     presentCount: toNumber(getMetricValue(metrics, 'presentCount', 'PresentCount')),
+    returnCount: toNumber(getMetricValue(metrics, 'returnCount', 'ReturnCount')),
     licenseCount: toNumber(getMetricValue(metrics, 'licenseCount', 'LicenseCount')),
     licenseMinutes: toNumber(getMetricValue(metrics, 'licenseMinutes', 'LicenseMinutes')),
+    reductionCount: toNumber(getMetricValue(metrics, 'reductionCount', 'ReductionCount')),
+    reductionMinutes: toNumber(getMetricValue(metrics, 'reductionMinutes', 'ReductionMinutes')),
     absentCount: toNumber(getMetricValue(metrics, 'absentCount', 'AbsentCount')),
     leaveCount: toNumber(getMetricValue(metrics, 'leaveCount', 'LeaveCount')),
+    courseCount: toNumber(getMetricValue(metrics, 'courseCount', 'CourseCount')),
     medicalCount: toNumber(getMetricValue(metrics, 'medicalCount', 'MedicalCount')),
     delayCount: toNumber(getMetricValue(metrics, 'delayCount', 'DelayCount')),
     delayMinutes: toNumber(getMetricValue(metrics, 'delayMinutes', 'DelayMinutes')),
@@ -191,7 +207,7 @@ function calculatePercent(metrics) {
   const resolved = resolveMetrics(metrics);
   const denominator = resolved.totalCount || 0;
   if (!denominator) return 0;
-  return Number(((resolved.presentCount / denominator) * 100).toFixed(2));
+  return Number((((resolved.presentCount + resolved.returnCount) / denominator) * 100).toFixed(2));
 }
 
 function getEvaluationProfile(percent, metrics) {
@@ -209,7 +225,8 @@ function getEvaluationProfile(percent, metrics) {
   if (levelIndex < 0) levelIndex = levels.length - 1;
 
   const deductionCount = resolved.absentCount + resolved.workInterruptionCount;
-  const hasHighAbsence = deductionCount >= resolved.presentCount && (resolved.presentCount + deductionCount) >= 5;
+  const attendanceCount = resolved.presentCount + resolved.returnCount;
+  const hasHighAbsence = deductionCount >= attendanceCount && (attendanceCount + deductionCount) >= 5;
   if (hasHighAbsence && levelIndex < levels.length - 1) {
     levelIndex += 1;
   }
@@ -222,12 +239,14 @@ function buildPerformanceReason(metrics) {
   const resolved = resolveMetrics(metrics);
   const reasons = [];
 
-  if (resolved.presentCount === resolved.totalCount && resolved.totalCount > 0) {
+  if ((resolved.presentCount + resolved.returnCount) === resolved.totalCount && resolved.totalCount > 0) {
     return 'حضور كامل';
   }
 
-  if (resolved.presentCount === 0 && (resolved.licenseCount + resolved.delayCount) === resolved.totalCount && resolved.totalCount > 0) {
-    return 'استئذان أو تأخير طوال الفترة';
+  if ((resolved.presentCount + resolved.returnCount) === 0
+      && (resolved.licenseCount + resolved.reductionCount) === resolved.totalCount
+      && resolved.totalCount > 0) {
+    return 'أذن أو تخفيف عمل طوال الفترة';
   }
 
   if (resolved.presentCount === 0 && resolved.totalCount > 0) {
@@ -238,14 +257,18 @@ function buildPerformanceReason(metrics) {
     if (resolved.occasionalCount) reasons.push(`عرضي ${resolved.occasionalCount}`);
     if (resolved.workInterruptionCount) reasons.push(`انقطاع عن العمل ${resolved.workInterruptionCount}`);
     if (resolved.delayCount) reasons.push(`تأخير ${resolved.delayCount}`);
-    if (resolved.licenseCount) reasons.push(`استئذان ${resolved.licenseCount}`);
+    if (resolved.licenseCount) reasons.push(`أذن ${resolved.licenseCount}`);
+    if (resolved.reductionCount) reasons.push(`تخفيف عمل ${resolved.reductionCount}`);
+    if (resolved.courseCount) reasons.push(`دورة ${resolved.courseCount}`);
     if (resolved.otherCount) reasons.push(`أخرى ${resolved.otherCount}`);
     return reasons.slice(0, 2).join('، ');
   }
 
   if (resolved.delayCount) reasons.push(`تأخير ${resolved.delayCount}`);
-  if (resolved.licenseCount) reasons.push(`استئذان ${resolved.licenseCount}`);
+  if (resolved.licenseCount) reasons.push(`أذن ${resolved.licenseCount}`);
+  if (resolved.reductionCount) reasons.push(`تخفيف عمل ${resolved.reductionCount}`);
   if (resolved.leaveCount) reasons.push(`إجازات ${resolved.leaveCount}`);
+  if (resolved.courseCount) reasons.push(`دورة ${resolved.courseCount}`);
   if (resolved.medicalCount) reasons.push(`طبية ${resolved.medicalCount}`);
   if (resolved.assignmentCount) reasons.push(`تكليف ${resolved.assignmentCount}`);
   if (resolved.absentCount) reasons.push(`غياب ${resolved.absentCount}`);
@@ -271,11 +294,15 @@ function createEmptySummaryRow(groupKey, name) {
     GroupKey: groupKey,
     Name: name,
     PresentCount: 0,
+    ReturnCount: 0,
     LicenseCount: 0,
     LicenseMinutes: 0,
     LicenseUsageByMonth: {},
+    ReductionCount: 0,
+    ReductionMinutes: 0,
     AbsentCount: 0,
     LeaveCount: 0,
+    CourseCount: 0,
     MedicalCount: 0,
     DelayCount: 0,
     DelayMinutes: 0,
@@ -402,11 +429,15 @@ function summarizeRows(rows, scope) {
         GroupKey: groupKey,
         Name: displayName,
         PresentCount: 0,
+        ReturnCount: 0,
         LicenseCount: 0,
         LicenseMinutes: 0,
         LicenseUsageByMonth: {},
+        ReductionCount: 0,
+        ReductionMinutes: 0,
         AbsentCount: 0,
         LeaveCount: 0,
+        CourseCount: 0,
         MedicalCount: 0,
         DelayCount: 0,
         DelayMinutes: 0,
@@ -448,6 +479,22 @@ function summarizeRows(rows, scope) {
         monthlyUsage.minutes += permissionMinutes;
         item.LicenseUsageByMonth[monthKey] = monthlyUsage;
       }
+      return;
+    }
+
+    if (classification === 'reduction') {
+      item.ReductionCount += 1;
+      item.ReductionMinutes += getPermissionMinutes(row);
+      return;
+    }
+
+    if (classification === 'course') {
+      item.CourseCount += 1;
+      return;
+    }
+
+    if (classification === 'return') {
+      item.ReturnCount += 1;
       return;
     }
 
@@ -495,7 +542,7 @@ function summarizeRows(rows, scope) {
         .map(([month, usage]) => `${month}: ${usage.count} مرات / ${formatDuration(usage.minutes)} ساعة`)
       : [];
     const licenseLimitNote = exceededMonths.length
-      ? `تجاوز حد الاستئذان الشهري (${exceededMonths.join(' - ')})`
+      ? `تجاوز حد الأذن الشهري (${exceededMonths.join(' - ')})`
       : '';
 
     return {

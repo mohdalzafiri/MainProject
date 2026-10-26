@@ -269,13 +269,13 @@
             <tr>
               <th>الاسم</th>
               <th>عدد الحضور</th>
-              <th>عدد الرخص<br>(مرات / ساعات)</th>
-              <th>عدد<br>التأخير<br>(ساعات)</th>
               <th>عدد<br>الغياب</th>
+              <th>حضور بعد غياب</th>
+              <th>عدد الأذونات<br>(مرات / ساعات)</th>
+              <th>تخفيف العمل<br>(مرات / ساعات)</th>
               <th>عدد الاجازات</th>
-              <th>عدد الطبيات</th>
-              <th>عدد العرضي</th>
-              <th>انقطاع<br>عن العمل (خصم)</th>
+              <th>عدد الدورات</th>
+              <th>عدد التكليفات</th>
               <th>النسبة المئوية</th>
               <th>التقييم</th>
               <th>ملاحظات</th>
@@ -541,13 +541,13 @@
         row.innerHTML = `
           <td>${escapeHtml(item.Name || '')}</td>
           <td class="mono performance-value">${escapeHtml(item.PresentCount ?? 0)}</td>
-          <td class="mono performance-value">${formatLicenseUsage(item.LicenseCount, item.LicenseMinutes)}</td>
-          <td class="mono performance-value">${formatDelayDuration(item.DelayMinutes)}</td>
           <td class="mono performance-value">${escapeHtml(item.AbsentCount ?? 0)}</td>
+          <td class="mono performance-value">${escapeHtml(item.ReturnCount ?? 0)}</td>
+          <td class="mono performance-value">${formatLicenseUsage(item.LicenseCount, item.LicenseMinutes)}</td>
+          <td class="mono performance-value">${formatLicenseUsage(item.ReductionCount, item.ReductionMinutes)}</td>
           <td class="mono performance-value">${escapeHtml(item.LeaveCount ?? 0)}</td>
-          <td class="mono performance-value">${escapeHtml(item.MedicalCount ?? 0)}</td>
-          <td class="mono performance-value">${escapeHtml(item.OccasionalCount ?? 0)}</td>
-          <td class="mono performance-value">${escapeHtml(item.WorkInterruptionCount ?? 0)}</td>
+          <td class="mono performance-value">${escapeHtml(item.CourseCount ?? 0)}</td>
+          <td class="mono performance-value">${escapeHtml(item.AssignmentCount ?? 0)}</td>
           <td class="mono performance-value">${escapeHtml(item.Percent ?? 0)}%</td>
           <td>${escapeHtml(item.Evaluation || '')}</td>
           <td>${escapeHtml(item.Notes || '')}</td>
@@ -693,13 +693,13 @@
         <tr class="${Number(item.Percent ?? 0) < 50 ? 'performance-low' : 'performance-high'}">
           <td>${escapeHtml(item.Name || '')}</td>
           <td class="performance-value">${escapeHtml(item.PresentCount ?? 0)}</td>
-          <td class="performance-value">${formatLicenseUsage(item.LicenseCount, item.LicenseMinutes)}</td>
-          <td class="performance-value">${formatDelayDuration(item.DelayMinutes)}</td>
           <td class="performance-value">${escapeHtml(item.AbsentCount ?? 0)}</td>
+          <td class="performance-value">${escapeHtml(item.ReturnCount ?? 0)}</td>
+          <td class="performance-value">${formatLicenseUsage(item.LicenseCount, item.LicenseMinutes)}</td>
+          <td class="performance-value">${formatLicenseUsage(item.ReductionCount, item.ReductionMinutes)}</td>
           <td class="performance-value">${escapeHtml(item.LeaveCount ?? 0)}</td>
-          <td class="performance-value">${escapeHtml(item.MedicalCount ?? 0)}</td>
-          <td class="performance-value">${escapeHtml(item.OccasionalCount ?? 0)}</td>
-          <td class="performance-value">${escapeHtml(item.WorkInterruptionCount ?? 0)}</td>
+          <td class="performance-value">${escapeHtml(item.CourseCount ?? 0)}</td>
+          <td class="performance-value">${escapeHtml(item.AssignmentCount ?? 0)}</td>
           <td class="performance-value">${escapeHtml(item.Percent ?? 0)}%</td>
           <td>${escapeHtml(item.Evaluation || '')}</td>
           <td>${escapeHtml(item.Notes || '')}</td>
@@ -741,13 +741,13 @@
               <tr>
                 <th>الاسم</th>
                 <th>عدد الحضور</th>
-                <th>عدد الرخص<br>(مرات / ساعات)</th>
-                <th>عدد<br>التأخير<br>(ساعات)</th>
                 <th>عدد<br>الغياب</th>
+                <th>حضور بعد غياب</th>
+                <th>عدد الأذونات<br>(مرات / ساعات)</th>
+                <th>تخفيف العمل<br>(مرات / ساعات)</th>
                 <th>عدد الاجازات</th>
-                <th>عدد الطبيات</th>
-                <th>عدد العرضي</th>
-                <th>انقطاع<br>عن العمل (خصم)</th>
+                <th>عدد الدورات</th>
+                <th>عدد التكليفات</th>
                 <th>النسبة المئوية</th>
                 <th>التقييم</th>
                 <th>ملاحظات</th>
@@ -829,7 +829,7 @@
     });
 
     backBtn.addEventListener('click', () => {
-      window.location.href = sessionStorage.getItem('uiMode') === 'mobile' ? '/mobile/dashboard.html' : '/dashboard.html';
+      window.location.href = sessionStorage.getItem('uiMode') === 'mobile' ? '/mobile-dashboard.html' : '/dashboard.html';
     });
 
     const now = new Date();

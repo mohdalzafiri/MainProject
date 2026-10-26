@@ -1,5 +1,6 @@
 ﻿const express = require('express');
 const { db, logSystem, registerDatabaseInitializer } = require('../database');
+const { filterByDataScope, isWithinDataScope } = require('../auth/dataScope');
 
 const router = express.Router();
 const columns = ['EmpID', 'Name', 'Department', 'Section', 'Status', 'Type', 'Startdate', 'Enddate', 'Days', 'Note', 'UserName'];
@@ -85,7 +86,7 @@ function buildUpdateStatement(payload, id) {
 
 router.get('/', async (req, res) => {
   const records = (await db.prepare('SELECT * FROM Holiday ORDER BY Startdate DESC').all());
-  res.json(records);
+  res.json(filterByDataScope(records, req.access));
 });
 
 router.get('/:id', async (req, res) => {
@@ -95,10 +96,16 @@ router.get('/:id', async (req, res) => {
   }
 
   const record = (await db.prepare('SELECT * FROM Holiday WHERE ID = ?').get(id));
-  return record ? res.json(record) : res.status(404).json({ message: 'السجل غير موجود' });
+  return record && isWithinDataScope(record, req.access)
+    ? res.json(record)
+    : res.status(404).json({ message: 'السجل غير موجود' });
 });
 
 router.post('/', async (req, res) => {
+  if (!isWithinDataScope(req.body, req.access)) {
+    return res.status(403).json({ message: 'لا تملك صلاحية إضافة إجازة خارج نطاق القسم أو النوبة المسموحة.' });
+  }
+
   const duplicate = (await findDuplicateHoliday(req.body));
   if (duplicate) {
     return res.status(409).json({ message: 'لا يمكن إدخال نفس الإجازة مرتين لنفس الموظف.' });
@@ -118,6 +125,14 @@ router.put('/:id', async (req, res) => {
   const id = Number(req.params.id);
   if (!id) {
     return res.status(400).json({ message: 'معرّف غير صالح' });
+  }
+
+  const currentRecord = (await db.prepare('SELECT * FROM Holiday WHERE ID = ?').get(id));
+  if (!currentRecord || !isWithinDataScope(currentRecord, req.access)) {
+    return res.status(404).json({ message: 'السجل غير موجود للتعديل' });
+  }
+  if (!isWithinDataScope({ ...currentRecord, ...req.body }, req.access)) {
+    return res.status(403).json({ message: 'لا تملك صلاحية نقل الإجازة خارج نطاق القسم أو النوبة المسموحة.' });
   }
 
   const duplicate = (await findDuplicateHoliday(req.body, id));
@@ -145,6 +160,11 @@ router.delete('/:id', async (req, res) => {
     return res.status(400).json({ message: 'معرّف غير صالح' });
   }
 
+  const currentRecord = (await db.prepare('SELECT * FROM Holiday WHERE ID = ?').get(id));
+  if (!currentRecord || !isWithinDataScope(currentRecord, req.access)) {
+    return res.status(404).json({ message: 'السجل غير موجود للحذف' });
+  }
+
   const result = (await db.prepare('DELETE FROM Holiday WHERE ID = ?').run(id));
   if (result.changes === 0) {
     return res.status(404).json({ message: 'السجل غير موجود للحذف' });
@@ -155,4 +175,3 @@ router.delete('/:id', async (req, res) => {
 });
 
 module.exports = router;
-

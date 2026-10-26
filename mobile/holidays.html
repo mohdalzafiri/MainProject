@@ -368,9 +368,7 @@
         <div class="grid">
           <div class="field">
             <label for="name">اسم الموظف</label>
-            <select id="name">
-              <option value="">-- اختر --</option>
-            </select>
+            <input id="name" type="text" autocomplete="off" placeholder="اكتب اسم الموظف" />
           </div>
 
           <div class="field">
@@ -498,6 +496,7 @@
   </div>
 
   <script src="/record-photos.js"></script>
+  <script src="/query-name-completion.js"></script>
   <script>
     const authToken = sessionStorage.getItem('authToken');
     if (!authToken) {
@@ -561,6 +560,7 @@
     let allHolidays = [];
     let allEmployees = [];
     let selectedEmployee = null;
+    attachQueryNameCompletion(nameInput, () => allEmployees.map((item) => String(item.Name || '').trim()));
     let holidaySort = { key: null, direction: 'asc' };
     const recordPhotos = initRecordPhotos({
       moduleKey: 'holidays',
@@ -716,27 +716,6 @@
       }
     }
 
-    function populateNameOptions() {
-      const uniqueNames = Array.from(new Set(
-        allEmployees
-          .map((item) => String(item.Name || '').trim())
-          .filter(Boolean)
-      ));
-
-      const current = String(nameInput.value || '').trim();
-      nameInput.innerHTML = '<option value="">-- اختر --</option>';
-      uniqueNames.forEach((name) => {
-        const option = document.createElement('option');
-        option.value = name;
-        option.textContent = name;
-        nameInput.appendChild(option);
-      });
-
-      if (current && uniqueNames.includes(current)) {
-        nameInput.value = current;
-      }
-    }
-
     function normalizeTypeToken(value) {
       return String(value || '')
         .trim()
@@ -860,6 +839,11 @@
 
       if (requiredErrors.length) {
         showStatus(`الحقول الإلزامية ناقصة: ${requiredErrors.join(' - ')}`, true);
+        return false;
+      }
+
+      if (!selectedEmployee || String(selectedEmployee.Name || '').trim() !== String(nameInput.value || '').trim()) {
+        showStatus('اختر اسم الموظف من القائمة أثناء الكتابة.', true);
         return false;
       }
 
@@ -1060,7 +1044,6 @@
 
       if (!data) return;
       allEmployees = (Array.isArray(data) ? data : []).filter((item) => String(item?.Status || '').trim() === 'نشط');
-      populateNameOptions();
       setSelectedEmployeeByName(nameInput.value);
     }
 
@@ -1441,6 +1424,17 @@
       setSelectedEmployeeByName(nameInput.value);
     });
 
+    nameInput.addEventListener('input', () => {
+      if (!String(nameInput.value || '').trim()) {
+        selectedEmployee = null;
+        departmentInput.value = '';
+        sectionInput.value = '';
+        return;
+      }
+
+      setSelectedEmployeeByName(nameInput.value);
+    });
+
     nameFilterInput.addEventListener('input', () => {
       applyNameFilter();
     });
@@ -1550,7 +1544,7 @@
     });
 
     backBtn.addEventListener('click', () => {
-      window.location.href = sessionStorage.getItem('uiMode') === 'mobile' ? '/mobile/dashboard.html' : '/dashboard.html';
+      window.location.href = '/mobile-dashboard.html';
     });
 
     (async () => {

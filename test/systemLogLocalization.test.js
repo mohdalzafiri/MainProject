@@ -12,6 +12,7 @@ test('translates system-log actions and pages to Arabic', () => {
   assert.equal(translateAction('UnknownAction'), 'عملية نظام');
   assert.equal(translateTarget('categories'), 'مجلدات الأرشيف');
   assert.equal(translateTarget('Database'), 'قاعدة البيانات');
+  assert.equal(translateTarget('DepartmentMail'), 'بريد الأقسام');
   assert.equal(translateTarget('UnknownPage'), 'النظام');
 });
 

@@ -17,22 +17,18 @@ Approved connection channels:
    http://localhost:5000
    localhost serves interface files only and proxies API/archive requests to an approved server channel.
 
-External browser access:
-1) Double-click RUN_PROGRAM.bat from a device outside the server network.
-2) Or open RUN_PROGRAM.url directly.
-3) RUN_PROGRAM.bat displays "الموقع متاح" when the server responds and opens the login page.
-4) It displays "الموقع مغلق" when the server cannot be reached.
-
-Public login URL:
-http://37.34.208.209:5000/login.html
-
 Installed application access inside the administration:
 1) Keep the project files on the client device.
-2) Double-click RUN_LOCAL_PROGRAM.bat.
+2) Double-click RUN_PROGRAM.bat. RUN_LOCAL_PROGRAM.bat provides the same behavior.
 3) The local client serves the pages from this device at http://localhost:5000.
 4) API and archive requests are proxied to http://PC-SERVER:5000.
-5) The local client never opens or copies database.db. PC-SERVER remains the only database owner.
-6) Do not run RUN_LOCAL_PROGRAM.bat on LAPTOP-ABDULLAH; that laptop remains a gateway only.
+5) If the PC-SERVER host name is unavailable, the launcher tries http://169.254.61.2:5000.
+6) The local client never opens or copies database.db. PC-SERVER remains the only database owner.
+7) Do not run this package on LAPTOP-ABDULLAH; that laptop remains a gateway only.
+8) RUN_PROGRAM.url points to localhost and works after RUN_PROGRAM.bat has started the local interface.
+
+External browser-only devices that cannot install this package must use:
+http://37.34.208.209:5000/login.html
 
 Static public IP setup:
 1) Connect the PC-SERVER Ethernet cable directly to LAPTOP-ABDULLAH.

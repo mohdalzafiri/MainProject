@@ -49,9 +49,29 @@ function buildCorsOptions() {
 app.use(cors(buildCorsOptions()));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+app.use((req, res, next) => {
+  if (req.method === 'GET' && req.path.toLowerCase().endsWith('.html')) {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+  }
+  next();
+});
+
+app.get('/mobile', (req, res) => {
+  res.redirect(302, '/mobile-dashboard.html');
+});
+
+app.get('/mobile/dashboard.html', (req, res) => {
+  res.redirect(302, '/mobile-dashboard.html');
+});
 
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/archive-files', express.static(archiveRoutes.archiveRoot || path.join(__dirname, 'Archive')));
+
+app.get('/force-list.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'archive-folder.html'));
+});
 
 app.get(/^\/mobile\/(.+)$/, (req, res, next) => {
   const requested = req.params[0];
@@ -89,10 +109,6 @@ app.use('/api', apiRoutes);
 
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'login.html'));
-});
-
-app.get('/mobile', (req, res) => {
-  res.redirect(302, '/mobile/dashboard.html');
 });
 
 // Start server

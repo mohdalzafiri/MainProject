@@ -7,6 +7,9 @@
 - `localhost` is a local interface channel only. Client devices must never start a local API server or database.
 - `PC-SERVER` remains the only API/database owner.
 - `LAPTOP-ABDULLAH` remains a network gateway only and must not run the local client, API, or database.
+- `PC-Hessa` and `PC-Nora` are the two permanent subordinate data-entry clients. Their deployed client folders are `X:\MainProject.Api` (`\\PC-Hessa\Desktop\MainProject.Api`) and `Y:\MainProject.Api` (`\\PC-Nora\Desktop\MainProject.Api`).
+- Do not rebuild or deploy updates to `PC-Hessa` or `PC-Nora` unless the user explicitly requests updating those devices. When explicitly requested, rebuild the portable local client and mirror the validated client-only package to both subordinate client folders. Each client must run `RUN_PROGRAM.bat`, serve the interface at `http://localhost:5000`, and proxy API/archive requests to `PC-SERVER`.
+- Never deploy `server.js`, `database.js`, a database file, or backend ownership to `PC-Hessa` or `PC-Nora`; they are interface clients only.
 - Do not introduce temporary domains, Cloudflare Tunnel, or other tunnel URLs unless the user explicitly reverses this decision.
 - External browser-only devices must connect to the central/public server channel.
 
@@ -48,6 +51,14 @@ When creating new frontend pages (especially inside `public/`), apply these defa
 - Reuse the same formatting helper for new pages that record or display activity logs.
 - Keep formatting behavior consistent across `dashboard`, `login`, and future interfaces.
 
+## Daily Status Catalog
+- Keep daily status input options in this exact order: `حضور`, `غياب`, `حضور بعد غياب`, `أذن`, `تخفيف عمل`, `اجازة`, `دورة`, `تكليف`.
+- Use `/status-catalog.js` as the shared frontend source for these values and their normalization rules.
+- Treat historical `استئذان`, `إذن`, and `اذن` values as aliases of `أذن`; save all new permission records as `أذن`.
+- `أذن` and `تخفيف عمل` use only `بداية الدوام` or `نهاية الدوام` as descriptions.
+- Selecting `بداية الدوام` moves the original period start forward by two hours. Selecting `نهاية الدوام` moves the original period end back by two hours.
+- Always recalculate from the period's original default times so switching descriptions never compounds the two-hour adjustment.
+
 ## Print Label Naming
 - In all current and future print templates, use `اسم الموظف` as the field label instead of `الاسم الرباعي`.
 
@@ -60,10 +71,18 @@ When creating new frontend pages (especially inside `public/`), apply these defa
 - In all current and future tables, when a table has no rows, show exactly this text in the empty row: `لاتوجد بيانات حالياً.`
 - Do not use page-specific or explanatory wording for empty tables.
 
+## Default CRUD Buttons
+- For current and future CRUD table interfaces, use the project-standard toolbar in this order:
+  - Green success button: `إضافة بيانات`
+  - Orange warning button: `تعديل بيانات`
+  - Red danger button: `حذف بيانات`
+  - Blue primary button: `طباعة بيانات`
+- Reuse the existing `.btn.success`, `.btn.warning`, `.btn.danger`, and `.btn.primary` styles instead of introducing page-specific CRUD button colors.
+
 ## Employee Name Search
 - Employee name inputs show a suggestion list that narrows while typing; the user can pick a name from it (mouse or arrow keys + Enter).
 - Suggested names must respect the user's data scope (department/section/subsection); admin is exempt.
 
 ## System Version
-- Current system version: 3.3.0 (shown on public/login.html for regular and mobile, and in package.json).
+- Current system version: 3.3.1 (shown on public/login.html for regular and mobile, and in package.json).
 - Bump only the last number (patch) when the user explicitly orders a version update at the end of a change; keep both places in sync.

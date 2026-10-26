@@ -513,6 +513,14 @@
       background: #fff;
     }
 
+    .time-input {
+      direction: ltr;
+      unicode-bidi: isolate;
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+      color-scheme: light;
+    }
+
     .row-leave {
       background: #dbeafe;
     }
@@ -740,6 +748,22 @@
             </div>
           </form>
           <div id="statusLine" class="status-line"></div>
+          <section class="daily-scanner-panel" aria-labelledby="dailyScannerTitle">
+            <h3 id="dailyScannerTitle">ماسح مستندات اليومية</h3>
+            <p>اختر سجلًا محفوظًا، ثم التقط صفحات المستند وحدّد زوايا الورقة. ستُجمع الصفحات في ملف PDF واحد باسم تلقائي.</p>
+            <div class="daily-scanner-actions">
+              <button type="button" class="btn primary" id="dailyScanCaptureBtn" disabled>التقاط / اختيار صفحة</button>
+              <button type="button" class="btn success" id="dailyScanAddBtn" disabled>إضافة الصفحة المحددة</button>
+              <button type="button" class="btn warning" id="dailyScanUndoBtn" disabled>حذف آخر صفحة</button>
+              <button type="button" class="btn success" id="dailyScanSaveBtn" disabled>إنشاء وحفظ PDF</button>
+              <button type="button" class="btn danger" id="dailyScanDeleteBtn" hidden>حذف PDF المحفوظ</button>
+            </div>
+            <input id="dailyScanInput" type="file" accept="image/*" capture="environment" hidden />
+            <p id="dailyScanCornersHint" hidden>اسحب الزوايا الخضراء لتحديد حدود الورقة، ثم أضف الصفحة.</p>
+            <canvas id="dailyScanCanvas" hidden aria-label="معاينة الصورة وحدود الورقة"></canvas>
+            <p id="dailyScanPageCount">صفحات PDF: 0</p>
+            <a id="dailyScanSavedFile" href="#" hidden></a>
+          </section>
         </section>
 
         <section class="panel">
@@ -837,6 +861,8 @@
     </div>
     <iframe id="dailyPageFrame" class="daily-page-frame" title="واجهة مرتبطة"></iframe>
   </dialog>
+  <script src="/daily-scanner.js"></script>
+  <script src="/status-catalog.js"></script>
   <script>
     const form = document.getElementById('dailyForm');
     const todayInput = document.getElementById('today');
@@ -929,6 +955,13 @@
     let departmentSectionRows = [];
     let selectedRecord = null;
     let currentRows = [];
+    const editablePages = Array.isArray(currentUser?.editablePages) ? currentUser.editablePages : currentUser?.allowedPages;
+    const dailyScanner = window.initDailyScanner({
+      authToken,
+      canEdit: currentRole === 'admin'
+        || (currentRole !== 'view' && Array.isArray(editablePages) && editablePages.includes('daily')),
+      onStatus: showStatus
+    });
     let visibleRows = [];
     let basePeriods = [];
     let employeeSuggestionMap = new Map();
@@ -969,8 +1002,8 @@
       { Department: 'الخدمات المساندة', Section: 'صباحاً' }
     ];
 
-    const STATUS_OPTIONS = ['حضور', 'تأخير', 'تأخير+عقوبة', 'استئذان', 'غياب', 'حضور بعد غياب', 'اجازة', 'تخفيف عمل', 'دورة', 'تكليف', 'انقطاع عن العمل'];
-    const PRESERVE_TIMES_STATUSES = ['تأخير', 'حضور بعد غياب', 'استئذان'];
+    const STATUS_OPTIONS = MainProjectStatusCatalog.statuses;
+    const EDITABLE_TIME_STATUSES = MainProjectStatusCatalog.timedStatuses;
     const PERIOD_DEFAULTS = {
       'نوبة صبح': { inTime: '08:00', outTime: '16:00' },
       'نوبة عصر': { inTime: '16:00', outTime: '00:00' },
@@ -1165,7 +1198,9 @@
 
         departmentSectionRows = Array.isArray(data.departmentSections) ? data.departmentSections : [];
         basePeriods = Array.isArray(data.periods) ? data.periods : [];
-        const departments = Array.isArray(data.departments) ? data.departments : [];
+        const departments = Array.isArray(data.departments)
+          ? data.departments.filter((value) => String(value || '').trim() !== 'إدارة البلاغات')
+          : [];
         populateSelect(departmentInput, departments);
         populateSectionOptions(sectionInput.value);
         populateSelect(periodInput, basePeriods);
@@ -1295,6 +1330,7 @@
       if (editDate) bulkDateEditDialog.close();
       if (editPeriod) bulkPeriodEditDialog.close();
       selectedRecord = null;
+      dailyScanner.clear();
       searchNameInput.value = '';
       await refreshDailyView();
       showStatus(result?.message || 'تم تعديل اليومية بنجاح.');
@@ -1517,7 +1553,7 @@
         return 'row-leave';
       }
       if (status === 'دورة') return 'row-course';
-      if (['تأخير', 'تأخير+عقوبة', 'استئذان'].includes(status)) return 'row-delay';
+      if (['أذن', 'استئذان', 'تخفيف عمل'].includes(status)) return 'row-delay';
       if (['غياب', 'انقطاع عن العمل'].includes(status)) return 'row-absent';
       return '';
     }
@@ -1527,7 +1563,7 @@
       if (status === 'حضور' || status === 'حضور بعد غياب') return 'status-present';
       if (['غياب', 'انقطاع عن العمل'].includes(status)) return 'status-absent';
       if (status === 'اجازة') return 'status-leave';
-      if (['تأخير', 'تأخير+عقوبة', 'استئذان'].includes(status)) return 'status-delay';
+      if (['أذن', 'استئذان', 'تخفيف عمل'].includes(status)) return 'status-delay';
       if (status === 'دورة') return 'status-course';
       return '';
     }
@@ -1564,7 +1600,7 @@
 
       const presentCount = countStatus(['حضور', 'حضور بعد غياب']);
       const absentCount = countStatus(['غياب']);
-      const delayCount = countStatus(['تأخير', 'تأخير+عقوبة', 'استئذان']);
+      const delayCount = countStatus(['أذن', 'استئذان']);
       const leaveCount = countStatus(['اجازة']);
       const courseCount = countStatus(['دورة']);
       const detentionCount = absentCount + countStatus(['انقطاع عن العمل']) + leaveCount + courseCount;
@@ -1611,6 +1647,7 @@
     }
 
     function markSelectedRecord(item, visualElement = null) {
+      if (!dailyScanner.setRecord(item, inferDailyTable(item.Department))) return;
       clearSelectedRowIndicators();
       if (visualElement) {
         visualElement.classList.add('selected');
@@ -1688,51 +1725,32 @@
         headers: getHeaders()
       });
       const remainingCount = Math.max(0, Number(summary.remainingCount) - 1);
-      const remainingMinutes = Math.max(0, Number(summary.remainingMinutes));
+      const remainingMinutes = Math.max(0, Number(summary.remainingMinutes) - 120);
       const exceedsLimit = Boolean(summary.exceeded) || Number(summary.remainingCount) <= 0;
 
       if (exceedsLimit) {
-        showStatus(`تنبيه: تجاوز ${item.Name || 'الموظف'} الحد الشهري للاستئذان (4 مرات أو 12:00 ساعة).`, true);
+        showStatus(`تنبيه: تجاوز ${item.Name || 'الموظف'} الحد الشهري للأذن (4 مرات أو 12:00 ساعة).`, true);
         return false;
       }
 
-      showStatus(`رصيد الاستئذان المتاح للموظف بعد هذا الاستئذان: ${remainingCount} مرات و${formatPermissionDuration(remainingMinutes)} ساعة.`);
+      showStatus(`رصيد الأذن المتاح للموظف بعد هذه الأذن: ${remainingCount} مرات و${formatPermissionDuration(remainingMinutes)} ساعة.`);
       return true;
     }
 
     function createDescriptionSelect(item) {
       const status = String(item.Status || '').trim();
-      if (!['غياب', 'اجازة', 'تخفيف عمل'].includes(status)) {
+      if (!MainProjectStatusCatalog.isAdjustedStatus(status)) {
         return document.createTextNode(String(item.Type || '').trim() || (status === 'دورة' ? 'دورة' : ''));
       }
 
       const select = document.createElement('select');
       select.className = 'status-select';
-      const currentDescription = String(item.Type || '').trim() || String(item.Note || '').trim();
-      const options = status === 'غياب'
-        ? [
-          { value: '', label: '-- اختياري --' },
-          { value: 'طبية', label: 'طبية' },
-          { value: 'عرضي', label: 'عرضي' },
-          { value: 'انقطاع عن العمل (خصم)', label: 'انقطاع عن العمل (خصم)' }
-        ]
-        : status === 'اجازة'
-          ? [
-            { value: '', label: '-- اختر نوع الاجازة --' },
-            { value: 'سنوية', label: 'سنوية' },
-            { value: 'مجلس طبي', label: 'مجلس طبي' },
-            { value: 'أمومة', label: 'أمومة' },
-            { value: 'وضع', label: 'وضع' },
-            { value: 'تفرغ دراسي', label: 'تفرغ دراسي' },
-            { value: 'تفرغ رياضي', label: 'تفرغ رياضي' },
-            { value: 'اجازة دورية', label: 'اجازة دورية' },
-            { value: 'اجازة طارئة', label: 'اجازة طارئة' }
-          ]
-          : [
+      const currentDescription = String(item.Type || '').trim();
+      const options = [
           { value: '', label: '-- اختر الوصف --' },
           { value: 'بداية الدوام', label: 'بداية الدوام' },
           { value: 'نهاية الدوام', label: 'نهاية الدوام' }
-          ];
+        ];
       options.forEach(({ value, label }) => {
         const option = document.createElement('option');
         option.value = value;
@@ -1742,12 +1760,19 @@
       });
       select.addEventListener('click', (event) => event.stopPropagation());
       select.addEventListener('change', async (event) => {
-        const message = status === 'غياب'
-          ? 'تم تحديث وصف الغياب بنجاح.'
-          : status === 'اجازة'
-            ? 'تم تحديث نوع الاجازة وإضافتها للسجل المرتبط بنجاح.'
-            : 'تم تحديث وصف تخفيف العمل بنجاح.';
-        await saveRowChanges(item, { Type: event.target.value }, message);
+        const description = event.target.value;
+        const defaults = PERIOD_DEFAULTS[String(item.Period || '').trim()] || { inTime: '', outTime: '' };
+        const times = MainProjectStatusCatalog.getAdjustedTimes(defaults, description);
+        const message = MainProjectStatusCatalog.isPermissionStatus(status)
+          ? 'تم تحديث وصف الأذن وخصم ساعتين من الدوام بنجاح.'
+          : 'تم تحديث وصف تخفيف العمل وخصم ساعتين من الدوام بنجاح.';
+        await saveRowChanges(item, {
+          Status: MainProjectStatusCatalog.normalizeStatus(status),
+          Type: description,
+          InTime: times.inTime,
+          OutTime: times.outTime
+        }, message);
+        applyNameFilterAndRender();
       });
       return select;
     }
@@ -1759,35 +1784,38 @@
         const option = document.createElement('option');
         option.value = status;
         option.textContent = status;
-        if (String(item.Status || '').trim() === status) option.selected = true;
+        if (MainProjectStatusCatalog.normalizeStatus(item.Status) === status) option.selected = true;
         select.appendChild(option);
       });
 
       select.addEventListener('click', (event) => event.stopPropagation());
       select.addEventListener('change', async (event) => {
         const nextStatus = event.target.value;
-        if (nextStatus === 'استئذان') {
+        if (MainProjectStatusCatalog.isPermissionStatus(nextStatus)) {
           const permissionAllowed = await showPermissionSummary(item);
           if (!permissionAllowed) {
-            select.value = String(item.Status || '').trim() || 'حضور';
+            select.value = MainProjectStatusCatalog.normalizeStatus(item.Status) || 'حضور';
             return;
           }
         }
 
         const payload = { Status: nextStatus };
+        if (MainProjectStatusCatalog.isAdjustedStatus(nextStatus)) {
+          payload.Type = '';
+        }
 
-        if (!['حضور', ...PRESERVE_TIMES_STATUSES].includes(nextStatus)) {
+        if (!EDITABLE_TIME_STATUSES.includes(nextStatus)) {
           payload.InTime = '';
           payload.OutTime = '';
         } else {
           const defaults = PERIOD_DEFAULTS[String(item.Period || '').trim()] || { inTime: '', outTime: '' };
-          payload.InTime = item.InTime || defaults.inTime;
-          payload.OutTime = item.OutTime || defaults.outTime;
+          payload.InTime = defaults.inTime;
+          payload.OutTime = defaults.outTime;
         }
 
         await saveRowChanges(item, payload, 'تم تحديث الحالة بنجاح.');
         applyNameFilterAndRender();
-        if (nextStatus === 'استئذان') {
+        if (MainProjectStatusCatalog.isPermissionStatus(nextStatus)) {
           await showPermissionSummary(item);
         }
       });
@@ -1797,6 +1825,7 @@
 
     function findReductionForRow(item) {
       if (!item) return null;
+      if (MainProjectStatusCatalog.isPermissionStatus(item.Status)) return null;
 
       const targetDate = String(item.Today || item.Startdate || '').trim();
       if (!targetDate) return null;
@@ -1827,7 +1856,12 @@
       const input = document.createElement('input');
       input.type = 'time';
       input.className = 'time-input mono';
+      input.lang = 'en-GB';
+      input.dir = 'ltr';
       input.value = String(item[key] || '').trim();
+      const currentStatus = MainProjectStatusCatalog.normalizeStatus(item.Status);
+      input.disabled = !EDITABLE_TIME_STATUSES.includes(currentStatus);
+      if (input.disabled) input.title = 'تعديل الوقت متاح فقط لحالات الحضور والأذن وتخفيف العمل.';
 
       const wrapper = document.createElement('div');
       wrapper.className = 'time-cell-wrap';
@@ -1862,16 +1896,9 @@
       input.addEventListener('change', async (event) => {
         const value = String(event.target.value || '').trim();
         const payload = { [key]: value };
-        const currentStatus = String(item.Status || '').trim();
         const successMessage = value
-          ? PRESERVE_TIMES_STATUSES.includes(currentStatus)
-            ? 'تم حفظ تعديل وقت الحضور والانصراف.'
-            : 'تم حفظ تعديل الوقت وإضافة تخفيف العمل تلقائياً.'
+          ? 'تم حفظ تعديل وقت الحضور والانصراف.'
           : 'تم مسح تعديل الوقت وحفظ اليومية.';
-        if (value && !PRESERVE_TIMES_STATUSES.includes(currentStatus)) {
-          payload.Status = 'تخفيف عمل';
-          payload.Type = key === 'InTime' ? 'بداية الدوام' : 'نهاية الدوام';
-        }
         await saveRowChanges(item, payload, successMessage);
         applyNameFilterAndRender();
       });
@@ -1884,7 +1911,7 @@
       mobileRows.innerHTML = '';
       if (!Array.isArray(items) || items.length === 0) {
         rowsBody.innerHTML = '<tr><td colspan="9">لاتوجد بيانات حالياً.</td></tr>';
-        mobileRows.innerHTML = '<div class="mobile-daily-card"><div class="mobile-daily-card-note">لا توجد بيانات متاحة للمعايير الحالية.</div></div>';
+        mobileRows.innerHTML = '<div class="mobile-daily-card"><div class="mobile-daily-card-note">لاتوجد بيانات حالياً.</div></div>';
         countLabel.textContent = 'عدد السجلات: 0';
         updateSummaryPanel([]);
         return;
@@ -1987,6 +2014,7 @@
       if (!today || !department || !section) {
         currentRows = [];
         visibleRows = [];
+        dailyScanner.clear();
         syncPeriodOptionsFromRows([]);
         clearEmployeeSuggestions();
         renderRows([]);
@@ -1997,6 +2025,15 @@
       const data = await requestJson(query ? `/api/daily-logs/search?${query}` : '/api/daily-logs', { headers: getHeaders() });
       currentRows = Array.isArray(data) ? data : [];
       syncPeriodOptionsFromRows(currentRows);
+      const selectedPeriod = String(periodInput.value || '').trim();
+      const dailyRecord = selectedPeriod
+        ? currentRows.find((item) => String(item.Period || '').trim() === selectedPeriod)
+        : null;
+      if (dailyRecord) {
+        dailyScanner.setRecord(dailyRecord, inferDailyTable(dailyRecord.Department));
+      } else {
+        dailyScanner.clear();
+      }
       applyNameFilterAndRender();
       scheduleEmployeeSuggestionsLoad();
     }
@@ -2026,6 +2063,7 @@
       if (Number(result?.added || 0) > 0) {
         searchNameInput.value = '';
         selectedRecord = null;
+        dailyScanner.clear();
       }
       await refreshDailyView();
     }
@@ -2073,6 +2111,7 @@
         pendingAddedEmployeeName = employeeName;
         searchNameInput.value = '';
         selectedRecord = null;
+        dailyScanner.clear();
         showStatus(result?.message || 'تمت إضافة بيانات الموظف إلى اليومية.');
       } else {
         showStatus(result?.message || 'تعذر إضافة الموظف لليومية المعروضة.', true);
@@ -2110,6 +2149,7 @@
 
       showStatus('تم حذف بيانات اليومية للموظف بنجاح.');
       selectedRecord = null;
+      dailyScanner.clear();
       searchNameInput.value = '';
       await refreshDailyView();
     }
@@ -2137,6 +2177,7 @@
 
       showStatus('تم حذف سجل اليومية بنجاح.');
       selectedRecord = null;
+      dailyScanner.clear();
       searchNameInput.value = '';
       await refreshDailyView();
     }

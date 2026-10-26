@@ -1,6 +1,8 @@
 const express = require('express');
 const { db, dailyTables, isValidDailyTable, logSystem } = require('../database');
 const { filterByDataScope, isWithinDataScope } = require('../auth/dataScope');
+const { ensureDailyScanSectionDirectory } = require('../services/dailyScanStorage');
+const statusCatalog = require('../public/status-catalog');
 
 const router = express.Router();
 
@@ -64,21 +66,23 @@ function toSlashDate(value) {
   return `${parts[0]}/${parts[1]}/${parts[2]}`;
 }
 
-function getTimeMinutes(value) {
-  const match = String(value || '').trim().match(/^(\d{1,2}):(\d{2})$/);
-  if (!match) return null;
-
-  const hours = Number(match[1]);
-  const minutes = Number(match[2]);
-  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
-  return (hours * 60) + minutes;
+function getPermissionMinutes() {
+  return 120;
 }
 
-function getPermissionMinutes(inTime, outTime) {
-  const start = getTimeMinutes(inTime);
-  const end = getTimeMinutes(outTime);
-  if (start === null || end === null || start === end) return 0;
-  return end > start ? end - start : (24 * 60) - start + end;
+function applyStatusRules(payload) {
+  const normalized = { ...payload };
+  normalized.Status = statusCatalog.normalizeStatus(normalized.Status);
+
+  if (statusCatalog.isAdjustedStatus(normalized.Status)) {
+    const description = String(normalized.Type || '').trim();
+    const defaults = periodTimes[String(normalized.Period || '').trim()] || { inTime: '', outTime: '' };
+    const times = statusCatalog.getAdjustedTimes(defaults, description);
+    normalized.InTime = times.inTime;
+    normalized.OutTime = times.outTime;
+  }
+
+  return normalized;
 }
 
 function getMonthBounds(value) {
@@ -113,7 +117,7 @@ async function getMonthlyPermissionUsage(record, excludedTable = '', excludedId 
   const records = (await db.prepare(`
     SELECT SourceTable, ID, InTime, OutTime
     FROM (${getPermissionSourceQuery()}) AS DailyPermissions
-    WHERE TRIM(Status) = 'استئذان'
+    WHERE TRIM(Status) IN ('أذن', 'استئذان', 'إذن', 'اذن')
       AND date(REPLACE(Today, '/', '-')) BETWEEN date(?) AND date(?)
       AND (
         (EmpID IS NOT NULL AND CAST(EmpID AS TEXT) = ?)
@@ -125,25 +129,25 @@ async function getMonthlyPermissionUsage(record, excludedTable = '', excludedId 
 
   return {
     count: records.length,
-    minutes: records.reduce((sum, item) => sum + getPermissionMinutes(item.InTime, item.OutTime), 0)
+    minutes: records.reduce((sum) => sum + getPermissionMinutes(), 0)
   };
 }
 
 async function validateMonthlyPermissionLimit(record, excludedTable = '', excludedId = 0) {
-  if (String(record.Status || '').trim() !== 'استئذان') return '';
+  if (!statusCatalog.isPermissionStatus(record.Status)) return '';
 
   const usage = (await getMonthlyPermissionUsage(record, excludedTable, excludedId));
   const totalCount = usage.count + 1;
-  const totalMinutes = usage.minutes + getPermissionMinutes(record.InTime, record.OutTime);
+  const totalMinutes = usage.minutes + getPermissionMinutes();
 
   if (totalCount > 4) {
-    return `لا يمكن تسجيل الاستئذان: الحد الشهري هو 4 استئذانات، والمستخدم حاليًا ${totalCount} استئذانات.`;
+    return `لا يمكن تسجيل الأذن: الحد الشهري هو 4 أذونات، والمستخدم حاليًا ${totalCount} أذونات.`;
   }
 
   if (totalMinutes > (12 * 60)) {
     const hours = Math.floor(totalMinutes / 60);
     const minutes = totalMinutes % 60;
-    return `لا يمكن تسجيل الاستئذان: إجمالي ساعات الاستئذان للشهر أصبح ${hours}:${String(minutes).padStart(2, '0')} ويتجاوز الحد المسموح 12:00 ساعة.`;
+    return `لا يمكن تسجيل الأذن: إجمالي ساعات الأذن للشهر أصبح ${hours}:${String(minutes).padStart(2, '0')} ويتجاوز الحد المسموح 12:00 ساعة.`;
   }
 
   return '';
@@ -314,7 +318,7 @@ router.get('/filters', async (req, res) => {
         SortOrder: row.SortOrder
       })),
       periods,
-      statuses: ['حضور', 'تأخير', 'تأخير+عقوبة', 'استئذان', 'غياب', 'حضور بعد غياب', 'طبية', 'اجازة', 'دورة', 'تكليف', 'عرضي', 'انقطاع عن العمل']
+      statuses: statusCatalog.statuses
     });
   } catch (error) {
     console.error(error);
@@ -323,7 +327,7 @@ router.get('/filters', async (req, res) => {
       departments: [],
       departmentSections: [],
       periods,
-      statuses: ['حضور', 'تأخير', 'تأخير+عقوبة', 'استئذان', 'غياب', 'حضور بعد غياب', 'طبية', 'اجازة', 'دورة', 'تكليف', 'عرضي', 'انقطاع عن العمل']
+      statuses: statusCatalog.statuses
     });
   }
 });
@@ -347,7 +351,7 @@ router.get('/permission-summary', async (req, res) => {
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'تعذر حساب رصيد الاستئذان الشهري للموظف.' });
+    res.status(500).json({ message: 'تعذر حساب رصيد الأذن الشهري للموظف.' });
   }
 });
 
@@ -608,6 +612,8 @@ router.post('/generate', async (req, res) => {
         continue;
       }
 
+      ensureDailyScanSectionDirectory(employeeSection);
+
       const leave = (await findLeaveForDate(empID, name, today));
       const course = leave ? null : (await findCourseForDate(empID, name, today));
 
@@ -671,13 +677,16 @@ router.post('/table/:table', async (req, res) => {
     return res.status(400).json({ message: 'اسم جدول غير صالح' });
   }
 
-  const payload = { ...req.body };
+  const payload = applyStatusRules(req.body);
   const day = String(payload.Day || '').trim() || getArabicDay(payload.Today);
   const todayValue = toSlashDate(payload.Today);
   const period = String(payload.Period || '').trim();
 
   if (!todayValue || !payload.Department || !period || !payload.Name) {
     return res.status(400).json({ message: 'البيانات الأساسية غير مكتملة لإضافة سجل اليومية.' });
+  }
+  if (!statusCatalog.statuses.includes(payload.Status)) {
+    return res.status(400).json({ message: 'الحالة المختارة غير معتمدة في اليومية.' });
   }
   if (!isWithinDataScope(payload, req.access)) {
     return res.status(403).json({ message: 'لا تملك صلاحية إضافة سجل خارج القسم أو النوبة المسموحة.' });
@@ -700,6 +709,7 @@ router.post('/table/:table', async (req, res) => {
     return res.status(400).json({ message: 'البيانات المرسلة غير كاملة' });
   }
 
+  ensureDailyScanSectionDirectory(payload.Section);
   const result = (await db.prepare(statement.sql).run(statement.values));
   (await logSystem({ userName: req.body.userName || 'system', action: 'Add', page: table, details: `Added daily record ID=${result.lastInsertRowid}` }));
   res.json({ id: result.lastInsertRowid });
@@ -788,7 +798,7 @@ router.put('/table/:table/:id', async (req, res) => {
     return res.status(400).json({ message: 'معرّف غير صالح أو جدول غير صالح' });
   }
 
-  const payload = { ...req.body };
+  let payload = { ...req.body };
   if (Object.prototype.hasOwnProperty.call(payload, 'Today')) {
     payload.Today = toSlashDate(payload.Today);
   }
@@ -802,6 +812,12 @@ router.put('/table/:table/:id', async (req, res) => {
   }
   if (!isWithinDataScope({ ...current, ...payload }, req.access)) {
     return res.status(403).json({ message: 'لا تملك صلاحية نقل السجل خارج القسم أو النوبة المسموحة.' });
+  }
+
+  payload = applyStatusRules({ ...current, ...payload });
+  const currentStatus = statusCatalog.normalizeStatus(current.Status);
+  if (!statusCatalog.statuses.includes(payload.Status) && payload.Status !== currentStatus) {
+    return res.status(400).json({ message: 'الحالة المختارة غير معتمدة في اليومية.' });
   }
 
   const permissionLimitError = (await validateMonthlyPermissionLimit({ ...current, ...payload }, table, id));

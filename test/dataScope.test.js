@@ -21,7 +21,7 @@ test('admin bypasses every data scope restriction', () => {
   }, access), true);
 });
 
-test('non-admin is restricted by explicit department, section, and subsection permissions', () => {
+test('non-admin custom scope is restricted by department and section only', () => {
   const access = {
     isAdmin: false,
     allowedDepartments: ['البلاغات'],
@@ -32,13 +32,14 @@ test('non-admin is restricted by explicit department, section, and subsection pe
   assert.equal(isWithinDataScope({
     Department: 'البلاغات',
     Section: 'أ - البلاغات',
-    SubSection: 'شعبة 1'
+    SubSection: 'شعبة أخرى'
   }, access), true);
   assert.equal(isWithinDataScope({
     Department: 'البلاغات',
     Section: 'ب - البلاغات',
     SubSection: 'شعبة 1'
   }, access), false);
+  assert.deepEqual(getDataScope(access).subSections, []);
 });
 
 test('legacy users fall back to their assigned scope when explicit permissions are empty', () => {

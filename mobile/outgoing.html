@@ -917,7 +917,7 @@
     printBtn.addEventListener('click', printRecord);
     refreshBtn.addEventListener('click', loadRecords);
     backBtn.addEventListener('click', () => {
-      window.location.href = sessionStorage.getItem('uiMode') === 'mobile' ? '/mobile/dashboard.html' : '/dashboard.html';
+      window.location.href = '/mobile-dashboard.html';
     });
 
     setCurrentUser();

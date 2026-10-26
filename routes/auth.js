@@ -1,7 +1,8 @@
-﻿const express = require('express');
+const express = require('express');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { db, logSystem, getCurrentTimestamp } = require('../database');
+const authMiddleware = require('../auth/auth');
 const {
   normalizeRole,
   getEffectiveAllowedPages,
@@ -211,6 +212,95 @@ router.post('/logout', async (req, res) => {
   });
 
   return res.json({ message: 'تم تسجيل الخروج بنجاح' });
+});
+
+router.get('/profile', authMiddleware, async (req, res) => {
+  try {
+    const profile = await db.prepare(`
+      SELECT
+        login.Username,
+        login.Name AS AccountName,
+        employee.ID AS EmployeeID,
+        employee.Name AS EmployeeName,
+        employee.Title,
+        employee.Rank,
+        employee.Work,
+        employee.Department,
+        employee.Section,
+        employee.Empdate,
+        employee.Startdate,
+        employee.FileNumber
+      FROM Login AS login
+      LEFT JOIN Main AS employee ON employee.ID = (
+        SELECT ID
+        FROM Main
+        WHERE TRIM(Name) = TRIM(login.Name)
+        ORDER BY
+          CASE WHEN TRIM(Status) = 'نشط' THEN 0 ELSE 1 END,
+          ID DESC
+        LIMIT 1
+      )
+      WHERE login.ID = ?
+      LIMIT 1
+    `).get(req.user.id);
+
+    if (!profile) {
+      return sendError(res, 404, 'المستخدم غير موجود');
+    }
+
+    return res.json({
+      username: profile.Username || '',
+      employeeName: profile.EmployeeName || profile.AccountName || '',
+      rank: profile.Title || '',
+      jobTitle: profile.Rank || '',
+      workplace: profile.Work || '',
+      department: profile.Department || '',
+      shift: profile.Section || '',
+      appointmentDate: profile.Empdate || '',
+      startDate: profile.Startdate || '',
+      fileNumber: profile.FileNumber || '',
+      employeeLinked: Boolean(profile.EmployeeID)
+    });
+  } catch (error) {
+    console.error(error);
+    return sendError(res, 500, 'تعذر تحميل بيانات الملف الشخصي');
+  }
+});
+
+router.post('/change-password', authMiddleware, async (req, res) => {
+  const newPassword = String(req.body.newPassword || '');
+  const confirmPassword = String(req.body.confirmPassword || '');
+  if (!newPassword) {
+    return sendError(res, 400, 'يرجى إدخال كلمة السر الجديدة');
+  }
+  if (newPassword !== confirmPassword) {
+    return sendError(res, 400, 'كلمتا السر غير متطابقتين');
+  }
+
+  try {
+    const result = await db.prepare(`
+      UPDATE Login
+      SET Password = ?, UpdatedAt = ?
+      WHERE ID = ?
+    `).run(newPassword, getCurrentTimestamp(), req.user.id);
+    if (result.changes === 0) {
+      return sendError(res, 404, 'المستخدم غير موجود');
+    }
+
+    await db.prepare('DELETE FROM RefreshSessions WHERE UserID = ?').run(req.user.id);
+    await logSystem({
+      userName: req.user.username || 'unknown',
+      role: req.user.role || '',
+      action: 'Update',
+      page: 'Login',
+      details: 'User changed own password'
+    });
+
+    return res.json({ message: 'تم حفظ كلمة السر الجديدة بنجاح' });
+  } catch (error) {
+    console.error(error);
+    return sendError(res, 500, 'تعذر حفظ كلمة السر الجديدة');
+  }
 });
 
 module.exports = router;

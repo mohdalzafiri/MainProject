@@ -24,8 +24,11 @@ test('normalizes supported roles and defaults unknown roles to user', () => {
 
 test('normalizes archive permission keys', () => {
   assert.equal(normalizePageKey('archive'), 'archive');
+  assert.equal(normalizePageKey('force-list'), 'forceList');
+  assert.equal(normalizePageKey('forceList'), 'forceList');
   assert.equal(normalizePageKey('confidential-books'), 'confidentialBooks');
   assert.equal(normalizePageKey('confidentialBooks'), 'confidentialBooks');
+  assert.equal(normalizePageKey('department-mail'), 'departmentMail');
 });
 
 test('parses JSON and legacy comma-separated permissions', () => {
@@ -45,12 +48,13 @@ test('non-admin permissions reject admin and unknown page keys', () => {
   assert.deepEqual(allowedPages, ['employees']);
 });
 
-test('archive and confidential books permissions remain independent', () => {
+test('archive, force list, and confidential books permissions remain independent', () => {
   assert.deepEqual(getEffectiveAllowedPages(false, ['archive']), ['archive']);
+  assert.deepEqual(getEffectiveAllowedPages(false, ['forceList']), ['forceList']);
   assert.deepEqual(getEffectiveAllowedPages(false, ['confidentialBooks']), ['confidentialBooks']);
   assert.deepEqual(
-    getEffectiveAllowedPages(false, ['archive', 'confidentialBooks']),
-    ['archive', 'confidentialBooks']
+    getEffectiveAllowedPages(false, ['archive', 'forceList', 'confidentialBooks']),
+    ['archive', 'forceList', 'confidentialBooks']
   );
 });
 
@@ -59,6 +63,11 @@ test('query and statistics permissions remain independent', () => {
   assert.deepEqual(getEffectiveAllowedPages(false, ['statistics']), ['statistics']);
   assert.deepEqual(getEffectiveAllowedPages(false, ['query', 'statistics']), ['query', 'statistics']);
   assert.equal(serializeAllowedPages(['query']), '["query"]');
+});
+
+test('department mail permission remains independent', () => {
+  assert.deepEqual(getEffectiveAllowedPages(false, ['departmentMail']), ['departmentMail']);
+  assert.equal(serializeAllowedPages(['departmentMail']), '["departmentMail"]');
 });
 
 test('legacy page permissions remain editable until explicitly configured', () => {

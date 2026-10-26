@@ -338,7 +338,7 @@
         systemlog: 'سجل النظام', administrative: 'النماذج الإدارية',
         administrativeforms: 'النماذج الإدارية', administrativetemplate: 'قوالب النماذج الإدارية',
         archive: 'الأرشيف', categories: 'مجلدات الأرشيف', attachments: 'المرفقات',
-        incoming: 'الوارد', outgoing: 'الصادر', reduction: 'تخفيف العمل',
+        incoming: 'الوارد', outgoing: 'الصادر', departmentmail: 'بريد الأقسام', reduction: 'تخفيف العمل',
         database: 'قاعدة البيانات', api: 'واجهة النظام', outsideemployees: 'الموظفين خارج الإدارة',
         'outside-employees': 'الموظفين خارج الإدارة', 'system-log': 'سجل النظام'
       };
@@ -624,7 +624,7 @@
     });
 
     backBtn.addEventListener('click', () => {
-      window.location.href = sessionStorage.getItem('uiMode') === 'mobile' ? '/mobile/dashboard.html' : '/dashboard.html';
+      window.location.href = sessionStorage.getItem('uiMode') === 'mobile' ? '/mobile-dashboard.html' : '/dashboard.html';
     });
 
     syncDateDisplays();

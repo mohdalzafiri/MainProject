@@ -53,6 +53,7 @@ function translateTarget(target) {
     attachments: 'المرفقات',
     incoming: 'الوارد',
     outgoing: 'الصادر',
+    departmentmail: 'بريد الأقسام',
     reduction: 'تخفيف العمل',
     database: 'قاعدة البيانات',
     api: 'واجهة النظام'
@@ -84,6 +85,7 @@ function translateMobileRequest(text) {
     holidays: 'الإجازات',
     outgoing: 'الصادر',
     incoming: 'الوارد',
+    'department-mail': 'بريد الأقسام',
     statistics: 'الإحصائيات',
     transfers: 'التنقلات',
     archive: 'الأرشيف',
@@ -221,7 +223,7 @@ function translateCategory(category) {
   const value = String(category || '').trim();
   const map = {
     circulars: 'التعاميم',
-    statements: 'الكشوف',
+    statements: 'كشف القوة',
     forms: 'النماذج',
     'confidential-books': 'الكتب السرية',
     general: 'عام',

@@ -319,7 +319,7 @@
   backBtn.addEventListener('click', () => {
     const isMobile = window.location.pathname.startsWith('/mobile/')
       || sessionStorage.getItem('uiMode') === 'mobile';
-    window.location.href = isMobile ? '/mobile/dashboard.html' : '/dashboard.html';
+    window.location.href = isMobile ? '/mobile-dashboard.html' : '/dashboard.html';
   });
 
   renderRows();

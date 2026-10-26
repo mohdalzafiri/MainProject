@@ -211,9 +211,11 @@ async function serializeRow(row) {
 router.get('/categories', async (req, res) => {
   try {
     const requestedParent = normalizeCategory(req.query.parent);
+    const requestedKey = normalizeCategory(req.query.key);
     const allCategories = (await listArchiveCategories(db));
     const parent = requestedParent ? (await getArchiveCategory(db, requestedParent)) : null;
     const categories = await Promise.all(allCategories
+      .filter((category) => !requestedKey || category.KeyName === requestedKey)
       .filter((category) => parent ? Number(category.ParentID) === Number(parent.ID) : !category.ParentID)
       .map(async (category) => ({
       ...category,
@@ -430,6 +432,48 @@ router.get('/download/:category/:id', async (req, res) => {
   }
 
   return res.download(actualPath, primaryFile);
+});
+
+router.delete('/force-list/:id', async (req, res) => {
+  const role = String((req.user && req.user.role) || '').trim().toLowerCase();
+  if (role !== 'admin') {
+    return res.status(403).json({ message: 'حذف كشف القوة متاح لمدير النظام فقط.' });
+  }
+
+  const recordId = Number(req.params.id || 0);
+  if (!recordId) {
+    return res.status(400).json({ message: 'معرّف كشف القوة غير صالح.' });
+  }
+
+  const row = await db.prepare(`
+    SELECT ID, FileName
+    FROM Archive
+    WHERE ID = ? AND Category = ?
+    LIMIT 1
+  `).get(recordId, 'statements');
+
+  if (!row) {
+    return res.status(404).json({ message: 'كشف القوة المطلوب غير موجود.' });
+  }
+
+  try {
+    const recordDirectory = path.join(await getCategoryDirectory('statements'), String(recordId));
+    removeSync(recordDirectory, { recursive: true, force: true });
+    await db.prepare('DELETE FROM Archive WHERE ID = ? AND Category = ?').run(recordId, 'statements');
+
+    await logSystem({
+      userName: normalize((req.user && (req.user.username || req.user.name)) || 'system'),
+      role: String((req.user && req.user.role) || '').trim().toLowerCase(),
+      action: 'Delete',
+      page: 'Archive',
+      details: `Deleted force list ID=${recordId}`
+    });
+
+    return res.json({ message: 'تم حذف كشف القوة بنجاح.' });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'تعذر حذف كشف القوة.' });
+  }
 });
 
 module.exports = router;

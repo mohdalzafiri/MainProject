@@ -20,10 +20,8 @@ function getDataScope(access = {}) {
 
   const explicitDepartments = normalizeValues(access.allowedDepartments);
   const explicitSections = normalizeValues(access.allowedSections);
-  const explicitSubSections = normalizeValues(access.allowedSubSections);
   const hasExplicitScope = explicitDepartments.length > 0
-    || explicitSections.length > 0
-    || explicitSubSections.length > 0;
+    || explicitSections.length > 0;
 
   return {
     isAdmin: false,
@@ -34,7 +32,7 @@ function getDataScope(access = {}) {
       ? explicitSections
       : normalizeValues([access.section]),
     subSections: hasExplicitScope
-      ? explicitSubSections
+      ? []
       : normalizeValues([access.subSection])
   };
 }

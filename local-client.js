@@ -67,13 +67,35 @@ function createLocalClientApp({
   const mobileDirectory = path.join(rootDirectory, 'mobile');
   const proxyToCentralServer = createProxyHandler(centralServerUrl);
 
+  app.use((req, res, next) => {
+    if (req.method === 'GET' && req.path.toLowerCase().endsWith('.html')) {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+    }
+    next();
+  });
+
   app.get('/local-health', (req, res) => {
     res.json({ status: 'ok', mode: 'local-client' });
   });
 
   app.use('/api', proxyToCentralServer);
   app.use('/archive-files', proxyToCentralServer);
+
+  app.get('/mobile', (req, res) => {
+    res.redirect(302, '/mobile-dashboard.html');
+  });
+
+  app.get('/mobile/dashboard.html', (req, res) => {
+    res.redirect(302, '/mobile-dashboard.html');
+  });
+
   app.use(express.static(publicDirectory));
+
+  app.get('/force-list.html', (req, res) => {
+    res.sendFile(path.join(publicDirectory, 'archive-folder.html'));
+  });
 
   app.get(/^\/mobile\/(.+)$/, (req, res, next) => {
     const requested = req.params[0];
@@ -95,10 +117,6 @@ function createLocalClientApp({
 
   app.get('/', (req, res) => {
     res.sendFile(path.join(publicDirectory, 'login.html'));
-  });
-
-  app.get('/mobile', (req, res) => {
-    res.redirect(302, '/mobile/dashboard.html');
   });
 
   return app;

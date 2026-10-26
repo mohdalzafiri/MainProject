@@ -1,6 +1,6 @@
 const DEFAULT_ARCHIVE_CATEGORIES = [
   { key: 'circulars', labelAr: 'التعاميم', sortOrder: 1 },
-  { key: 'statements', labelAr: 'الكشوف', sortOrder: 2 },
+  { key: 'statements', labelAr: 'كشف القوة', sortOrder: 2 },
   { key: 'forms', labelAr: 'النماذج', sortOrder: 3 },
   { key: 'confidential-books', labelAr: 'الكتب السرية', sortOrder: 4 }
 ];
@@ -41,6 +41,17 @@ async function ensureArchiveCategoriesTable(db, getCurrentTimestamp) {
     }
   });
   await seedDefaults();
+
+  const forceListNameOwner = await db.prepare(
+    'SELECT KeyName FROM ArchiveCategories WHERE LabelAr = ? LIMIT 1'
+  ).get('كشف القوة');
+  if (!forceListNameOwner || forceListNameOwner.KeyName === 'statements') {
+    await db.prepare(`
+      UPDATE ArchiveCategories
+      SET LabelAr = ?, UpdatedAt = ?
+      WHERE KeyName = ? AND LabelAr = ?
+    `).run('كشف القوة', timestamp, 'statements', 'الكشوف');
+  }
 }
 
 function normalizeCategoryKey(value) {

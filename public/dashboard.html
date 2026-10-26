@@ -363,7 +363,8 @@
       <div class="action-item" id="outsideAdminBtn"><span class="action-icon" aria-hidden="true">🏢</span><span>خارج الإدارة</span></div>
       <a class="action-item" id="newPage1Btn" href="/outgoing.html"><span class="action-icon" aria-hidden="true">📤</span><span>الصادر</span></a>
       <a class="action-item" id="newPage2Btn" href="/incoming.html"><span class="action-icon" aria-hidden="true">📥</span><span>الوارد</span></a>
-      <div class="action-item" id="forceListBtn"><span class="action-icon" aria-hidden="true">📋</span><span>كشف القوة</span></div>
+      <a class="action-item" id="departmentMailBtn" href="/department-mail.html"><span class="action-icon" aria-hidden="true">✉️</span><span>بريد الأقسام</span></a>
+      <a class="action-item" id="forceListBtn" href="/force-list.html"><span class="action-icon" aria-hidden="true">📋</span><span>كشف القوة</span></a>
     </div>
 
     <div class="summary-row">
@@ -501,7 +502,6 @@
   </div>
 
   <script src="/install-shortcut.js"></script>
-  <script src="/force-list.js"></script>
   <script>
     const logoutBtn = document.getElementById('logoutBtn');
     const employeesBtn = document.getElementById('employeesBtn');
@@ -522,6 +522,7 @@
     const settingsBtn = document.getElementById('settingsBtn');
     const outgoingBtn = document.getElementById('newPage1Btn');
     const incomingBtn = document.getElementById('newPage2Btn');
+    const departmentMailBtn = document.getElementById('departmentMailBtn');
     const todaySummaryRows = document.getElementById('todaySummaryRows');
     const leaveDailySummaryRows = document.getElementById('leaveDailySummaryRows');
     const authToken = sessionStorage.getItem('authToken');
@@ -560,7 +561,7 @@
 
     const currentRole = String(currentUser?.role || '').trim().toLowerCase();
     const isAdminUser = currentRole === 'admin';
-    const defaultAllowedPages = ['employees', 'daily', 'query', 'statistics', 'holidays', 'reduction', 'courses', 'transfers', 'outsideEmployees', 'outgoing', 'incoming', 'archive'];
+    const defaultAllowedPages = ['employees', 'daily', 'query', 'statistics', 'holidays', 'reduction', 'courses', 'transfers', 'outsideEmployees', 'outgoing', 'incoming', 'departmentMail', 'archive', 'forceList'];
     const allowedPages = Array.isArray(currentUser?.allowedPages) && currentUser.allowedPages.length
       ? currentUser.allowedPages
       : [];
@@ -578,7 +579,9 @@
       outsideEmployees: outsideAdminBtn,
       outgoing: outgoingBtn,
       incoming: incomingBtn,
+      departmentMail: departmentMailBtn,
       archive: document.getElementById('archiveBtn'),
+      forceList: document.getElementById('forceListBtn'),
       evaluations: evaluationsBtn,
       administrative: adminFormsBtn,
       systemLog: systemLogBtn,
@@ -604,11 +607,6 @@
           button.style.display = 'none';
         }
       });
-
-      if (!allowedPagesSet.has('archive')) {
-        document.getElementById('forceListBtn').style.display = 'none';
-      }
-
       if (recentActivitiesPanel) {
         recentActivitiesPanel.style.display = 'none';
       }
@@ -995,10 +993,6 @@
 
     coursesBtn.addEventListener('click', () => {
       window.location.href = '/courses.html';
-    });
-
-    document.getElementById('forceListBtn').addEventListener('click', () => {
-      window.openLatestForceList();
     });
 
     transfersBtn.addEventListener('click', () => {

@@ -212,6 +212,7 @@
       }
 
       categories
+        .filter((item) => item.KeyName !== 'statements')
         .filter((item) => item.KeyName !== 'confidential-books' || canViewConfidentialBooks)
         .forEach((item) => {
         const card = document.createElement('a');

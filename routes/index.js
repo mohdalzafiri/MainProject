@@ -10,6 +10,7 @@ const coursesRoutes = require('./courses');
 const administrativeRoutes = require('./administrative');
 const outgoingRoutes = require('./outgoing');
 const incomingRoutes = require('./incoming');
+const departmentMailRoutes = require('./departmentMail');
 const outsideEmployeesRoutes = require('./outsideEmployees');
 const dashboardRoutes = require('./dashboard');
 const systemLogRoutes = require('./systemLog');
@@ -17,6 +18,8 @@ const settingsRoutes = require('./settings');
 const archiveRoutes = require('./archive');
 const wordTemplatesRoutes = require('./wordTemplates');
 const attachmentsRoutes = require('./attachments');
+const dailyScansRoutes = require('./dailyScans');
+const departmentMailScansRoutes = require('./departmentMailScans');
 const authMiddleware = require('../auth/auth');
 const { logSystem } = require('../database');
 const { runWithRequestAuditContext } = require('../utils/requestAuditContext');
@@ -62,6 +65,8 @@ router.use((req, res, next) => {
 
 const routePageKeyMap = {
 	'/daily-logs': 'daily',
+	'/daily-scans': 'daily',
+	'/department-mail-scans': 'departmentMail',
 	'/attendance': 'daily',
 	'/evaluations': 'evaluations',
 	'/employees': 'employees',
@@ -72,6 +77,7 @@ const routePageKeyMap = {
 	'/administrative': 'administrative',
 	'/outgoing': 'outgoing',
 	'/incoming': 'incoming',
+	'/department-mail': 'departmentMail',
 	'/outside-employees': 'outsideEmployees',
 	'/dashboard': 'dashboard',
 	'/system-log': 'systemLog',
@@ -79,6 +85,25 @@ const routePageKeyMap = {
 	'/archive': 'archive',
 	'/word-templates': 'administrative'
 };
+
+function getArchivePageKey(req) {
+	if (!req.path.startsWith('/archive')) {
+		return '';
+	}
+
+	const category = String(
+		req.query.category
+		|| req.query.key
+		|| req.query.parent
+		|| ''
+	).trim();
+	const normalizedPath = String(req.path || '').replace(/\/+$/, '');
+	const pathTargetsForceList = normalizedPath.startsWith('/archive/force-list/')
+		|| normalizedPath.startsWith('/archive/preview/statements/')
+		|| normalizedPath.startsWith('/archive/download/statements/');
+
+	return category === 'statements' || pathTargetsForceList ? 'forceList' : 'archive';
+}
 
 const sharedEmployeesReadAllowedPages = new Set([
 	'employees',
@@ -90,6 +115,7 @@ const sharedEmployeesReadAllowedPages = new Set([
 	'courses',
 	'transfers',
 	'outsideEmployees',
+	'departmentMail',
 	'evaluations'
 ]);
 
@@ -167,7 +193,7 @@ function enforceRouteAccess(req, res, next) {
 		return next();
 	}
 
-	const pageKey = routePageKeyMap[routePath];
+	const pageKey = routePath === '/archive' ? getArchivePageKey(req) : routePageKeyMap[routePath];
 	const { isAdmin, isViewOnly, allowedPages, editablePages } = req.access || {};
 	const method = String(req.method || '').toUpperCase();
 	const isWriteMethod = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method);
@@ -203,6 +229,8 @@ router.use(attachAccessContext);
 router.use(enforceRouteAccess);
 
 router.use('/daily-logs', dailyLogsRoutes);
+router.use('/daily-scans', dailyScansRoutes);
+router.use('/department-mail-scans', departmentMailScansRoutes);
 router.use('/evaluations', evaluationsRoutes);
 router.use('/employees', employeesRoutes);
 router.use('/attendance', attendanceRoutes);
@@ -212,6 +240,7 @@ router.use('/courses', coursesRoutes);
 router.use('/administrative', administrativeRoutes);
 router.use('/outgoing', outgoingRoutes);
 router.use('/incoming', incomingRoutes);
+router.use('/department-mail', departmentMailRoutes);
 router.use('/outside-employees', outsideEmployeesRoutes);
 router.use('/dashboard', dashboardRoutes);
 router.use('/system-log', systemLogRoutes);

@@ -227,7 +227,7 @@ function ensureLoginTable() {
           AllowedPages = COALESCE(NULLIF(TRIM(AllowedPages), ''), '[]'),
           AllowedDepartments = COALESCE(NULLIF(TRIM(AllowedDepartments), ''), '[]'),
           AllowedSections = COALESCE(NULLIF(TRIM(AllowedSections), ''), '[]'),
-          AllowedSubSections = COALESCE(NULLIF(TRIM(AllowedSubSections), ''), '[]')
+          AllowedSubSections = '[]'
   `).run(timestamp, timestamp);
 
   const usersCount = db.prepare('SELECT COUNT(*) AS count FROM Login').get().count;
@@ -302,6 +302,41 @@ function ensureDepartmentSectionLookupTable() {
       db.prepare('ALTER TABLE DepartmentSectionLookup_New RENAME TO DepartmentSectionLookup').run();
     }
   }
+
+  const removedSections = [
+    'أ - صباحا البلاغات',
+    'أ - ليل البلاغات',
+    'أ - مساءا البلاغات',
+    'ب - صباحا البلاغات',
+    'ب - صباحا التدقيق',
+    'ب - ليل البلاغات',
+    'ب - مساءا البلاغات',
+    'ج - صباحا البلاغات',
+    'ج - ليل البلاغات',
+    'ج - مساءا البلاغات',
+    'ج - مساءا التدقيق',
+    'د - ليل البلاغات',
+    'أ - صباحا الخدمات',
+    'ب - صباحا الخدمات',
+    'ج - صباحا الخدمات',
+    'أ - صباحا العمليات',
+    'أ - ليل العمليات',
+    'أ - مساءا العمليات',
+    'ب - صباحا العمليات',
+    'ب - ليل العمليات',
+    'ب - مساءا العمليات',
+    'ج - صباحا العمليات',
+    'ج - ليل العمليات',
+    'ج - مساءا العمليات',
+    'الضباط',
+    'العسكريين',
+    'بدون نوبة'
+  ];
+  const removedSectionPlaceholders = removedSections.map(() => '?').join(', ');
+  db.prepare(`
+    DELETE FROM DepartmentSectionLookup
+    WHERE TRIM(Section) IN (${removedSectionPlaceholders})
+  `).run(...removedSections);
 
   const seedDefaults = [
     ['البلاغات', 'أ - البلاغات', ''],
@@ -476,6 +511,11 @@ function ensureWorkflowSubSectionColumns() {
   for (const tableName of dailyTables) {
     if (tableSet.has(tableName)) {
       ensureColumn(tableName, 'SubSection', 'TEXT', "''");
+      db.prepare(`
+        UPDATE ${quoteIdentifier(tableName)}
+        SET Status = 'أذن'
+        WHERE TRIM(Status) IN ('استئذان', 'إذن', 'اذن')
+      `).run();
     }
   }
 
@@ -562,6 +602,25 @@ function ensureOutgoingDocumentsTable() {
   `).run();
 
   ensureColumn('OutgoingDocuments', 'Notes', 'TEXT');
+}
+
+function ensureDepartmentMailTable() {
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS DepartmentMail (
+      ID INTEGER PRIMARY KEY AUTOINCREMENT,
+      MailNumber TEXT NOT NULL,
+      MailDate TEXT NOT NULL,
+      Subject TEXT NOT NULL,
+      Department TEXT NOT NULL,
+      Section TEXT NOT NULL,
+      Notes TEXT,
+      UserName TEXT,
+      CreatedAt TEXT NOT NULL,
+      UpdatedAt TEXT NOT NULL
+    )
+  `).run();
+
+  ensureColumn('DepartmentMail', 'Notes', 'TEXT');
 }
 
 function ensureHolidayTable() {
@@ -725,6 +784,7 @@ if (dbClient === 'postgres') {
   ensureAdministrativeFormsTable();
   ensureAdministrativeTemplateConfigsTable();
   ensureOutgoingDocumentsTable();
+  ensureDepartmentMailTable();
   ensureIncomingDocumentsTable();
   ensureHolidayTable();
   ensureCourseTable();

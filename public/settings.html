@@ -62,10 +62,6 @@
       margin-top: 12px;
     }
 
-    .lookup-row {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-
     .single-row {
       margin-top: 12px;
     }
@@ -79,7 +75,7 @@
 
     .scope-grid {
       display: grid;
-      grid-template-columns: minmax(0, 1.3fr) repeat(2, minmax(0, 1fr)) minmax(0, 0.7fr);
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 12px;
       margin-top: 10px;
       width: 100%;
@@ -297,6 +293,17 @@
     #lookupTable th:nth-child(7),
     #lookupTable td:nth-child(7) { width: 14%; }
 
+    #jobTitleTable {
+      table-layout: fixed;
+      min-width: 0;
+      width: 100%;
+    }
+
+    #jobTitleTable th:first-child,
+    #jobTitleTable td:first-child {
+      width: 80px;
+    }
+
     #templateConfigTable {
       table-layout: fixed;
       min-width: 0;
@@ -391,9 +398,7 @@
         <div class="single-row">
           <div class="field">
             <label for="fullName">اسم الموظف</label>
-            <select id="fullName">
-              <option value="">--اختر --</option>
-            </select>
+            <input id="fullName" type="text" placeholder="اكتب اسم الموظف" autocomplete="off" />
           </div>
         </div>
 
@@ -405,13 +410,6 @@
           <div class="field">
             <label for="section">النوبة</label>
             <input id="section" type="text" readonly />
-          </div>
-        </div>
-
-        <div class="single-row">
-          <div class="field">
-            <label for="subSection">الشعبة</label>
-            <input id="subSection" type="text" readonly />
           </div>
         </div>
 
@@ -475,10 +473,6 @@
                 <h3>النوبات</h3>
                 <div id="sectionPermissions" class="scope-list"></div>
               </div>
-              <div class="scope-column">
-                <h3>الشعب</h3>
-                <div id="subSectionPermissions" class="scope-list"></div>
-              </div>
             </div>
           </div>
         </div>
@@ -511,7 +505,6 @@
               <th>الاسم</th>
               <th>القسم</th>
               <th>النوبة</th>
-              <th>الشعبة</th>
               <th>الحالة</th>
               <th>تاريخ الإضافة</th>
               <th>آخر تحديث</th>
@@ -524,9 +517,9 @@
     </section>
 
     <section class="panel">
-      <h2>تعبئة / إظهار بيانات الأقسام والنوبات والشعب</h2>
+      <h2>تعبئة / إظهار بيانات الأقسام والنوبات</h2>
       <form id="lookupForm" autocomplete="off">
-        <div class="row lookup-row">
+        <div class="row">
           <div class="field">
             <label for="lookupDepartment">القسم</label>
             <input id="lookupDepartment" type="text" />
@@ -534,10 +527,6 @@
           <div class="field">
             <label for="lookupSection">النوبة</label>
             <input id="lookupSection" type="text" />
-          </div>
-          <div class="field">
-            <label for="lookupSubSection">الشعبة</label>
-            <input id="lookupSubSection" type="text" />
           </div>
         </div>
 
@@ -567,7 +556,7 @@
       <h2>صندوق عرض البيانات</h2>
       <div class="table-tools">
         <p id="lookupCountLabel">عدد السجلات: 0</p>
-        <input id="lookupSearchInput" class="table-search" placeholder="فلترة بالقسم أو النوبة أو الشعبة" />
+        <input id="lookupSearchInput" class="table-search" placeholder="فلترة بالقسم أو النوبة" />
         <button class="btn primary" type="button" id="lookupRefreshBtn">تحديث العرض</button>
       </div>
 
@@ -578,7 +567,6 @@
               <th>م</th>
               <th>القسم</th>
               <th>النوبة</th>
-              <th>الشعبة</th>
               <th>الحالة</th>
               <th>تاريخ الإضافة</th>
               <th>آخر تحديث</th>
@@ -726,24 +714,45 @@
     </section>
 
     <section class="panel">
-      <h2>إضافة المسمى الوظيفي</h2>
+      <h2>جدول المسميات الوظيفية</h2>
       <form id="jobTitleForm" autocomplete="off">
-        <div class="row">
+        <div class="single-row">
           <div class="field">
             <label for="jobTitleInput">المسمى الوظيفي</label>
-            <input id="jobTitleInput" type="text" placeholder="اكتب المسمى الوظيفي الجديد" />
+            <input id="jobTitleInput" type="text" placeholder="اكتب المسمى الوظيفي" />
           </div>
         </div>
 
         <div class="toolbar">
-          <button class="btn success" type="submit" id="jobTitleAddBtn">إضافة</button>
+          <button class="btn success" type="submit" id="jobTitleAddBtn">إضافة بيانات</button>
+          <button class="btn warning" type="button" id="jobTitleEditBtn">تعديل بيانات</button>
+          <button class="btn danger" type="button" id="jobTitleDeleteBtn">حذف بيانات</button>
+          <button class="btn primary" type="button" id="jobTitlePrintBtn">طباعة بيانات</button>
         </div>
 
         <div class="status-line" id="jobTitleStatusMsg"></div>
       </form>
+
+      <div class="table-tools" style="margin-top: 16px;">
+        <p id="jobTitleCountLabel">عدد المسميات: 0</p>
+      </div>
+
+      <div class="table-wrap">
+        <table id="jobTitleTable">
+          <thead>
+            <tr>
+              <th>م</th>
+              <th>المسمى الوظيفي</th>
+            </tr>
+          </thead>
+          <tbody id="jobTitleRows"></tbody>
+        </table>
+      </div>
     </section>
   </div>
 
+  <script src="/job-title-options.js"></script>
+  <script src="/query-name-completion.js"></script>
   <script>
     const authToken = sessionStorage.getItem('authToken');
     if (!authToken) {
@@ -753,7 +762,6 @@
     const fullNameSelect = document.getElementById('fullName');
     const departmentInput = document.getElementById('department');
     const sectionInput = document.getElementById('section');
-    const subSectionInput = document.getElementById('subSection');
     const usernameInput = document.getElementById('username');
     const passwordInput = document.getElementById('password');
     const permissionSelect = document.getElementById('permission');
@@ -762,14 +770,12 @@
     const pagePermissionsContainer = document.getElementById('pagePermissions');
     const departmentPermissionsContainer = document.getElementById('departmentPermissions');
     const sectionPermissionsContainer = document.getElementById('sectionPermissions');
-    const subSectionPermissionsContainer = document.getElementById('subSectionPermissions');
     const pagePermissionsSection = document.getElementById('pagePermissionsSection');
     const usersRows = document.getElementById('usersRows');
     const statusMsg = document.getElementById('statusMsg');
     const userIsActiveInput = document.getElementById('userIsActive');
     const lookupDepartmentInput = document.getElementById('lookupDepartment');
     const lookupSectionInput = document.getElementById('lookupSection');
-    const lookupSubSectionInput = document.getElementById('lookupSubSection');
     const lookupIsActiveInput = document.getElementById('lookupIsActive');
     const lookupRows = document.getElementById('lookupRows');
     const lookupStatusMsg = document.getElementById('lookupStatusMsg');
@@ -782,6 +788,11 @@
     const jobTitleForm = document.getElementById('jobTitleForm');
     const jobTitleInput = document.getElementById('jobTitleInput');
     const jobTitleStatusMsg = document.getElementById('jobTitleStatusMsg');
+    const jobTitleEditBtn = document.getElementById('jobTitleEditBtn');
+    const jobTitleDeleteBtn = document.getElementById('jobTitleDeleteBtn');
+    const jobTitlePrintBtn = document.getElementById('jobTitlePrintBtn');
+    const jobTitleRows = document.getElementById('jobTitleRows');
+    const jobTitleCountLabel = document.getElementById('jobTitleCountLabel');
     const archiveCategoryForm = document.getElementById('archiveCategoryForm');
     const archiveCategoryParentSelect = document.getElementById('archiveCategoryParent');
     const archiveCategoryArabicInput = document.getElementById('archiveCategoryArabic');
@@ -825,6 +836,16 @@
     let selectedTemplateConfigId = null;
     let pendingTemplateFile = null;
     let archiveCategories = [];
+    let jobTitles = [];
+    let selectedJobTitleId = null;
+    const employeeNameCompletion = attachQueryNameCompletion(
+      fullNameSelect,
+      () => employees.map((item) => String(item.Name || '').trim()),
+      { maxItems: 100 }
+    );
+    const jobTitleDisplayOrder = Array.isArray(window.JOB_TITLE_OPTIONS)
+      ? window.JOB_TITLE_OPTIONS
+      : [];
 
     const pagePermissionOptions = [
       { key: 'employees', label: 'الموظفين' },
@@ -838,7 +859,9 @@
       { key: 'outsideEmployees', label: 'خارج الإدارة' },
       { key: 'outgoing', label: 'الصادر' },
       { key: 'incoming', label: 'الوارد' },
-      { key: 'archive', label: 'الأرشيف' }
+      { key: 'departmentMail', label: 'بريد الأقسام' },
+      { key: 'archive', label: 'الأرشيف' },
+      { key: 'forceList', label: 'كشف القوة' }
     ];
 
     function uniqueValues(items) {
@@ -1101,13 +1124,11 @@
     function renderScopeColumns() {
       const departments = uniqueValues(departmentSections.map((item) => item.Department));
       const sections = uniqueValues(departmentSections.map((item) => item.Section));
-      const subSections = uniqueValues(departmentSections.map((item) => item.SubSection));
 
       const selectedPages = getSelectedGroupValues('pages');
       const selectedPageEdits = getSelectedGroupValues('pageEdits');
       const selectedDepartments = getSelectedGroupValues('departments');
       const selectedSections = getSelectedGroupValues('sections');
-      const selectedSubSections = getSelectedGroupValues('subSections');
 
       renderPagePermissionOptions();
       renderCheckboxOptions(
@@ -1120,17 +1141,11 @@
         sections.map((item) => ({ key: item, label: item })),
         'sections'
       );
-      renderCheckboxOptions(
-        subSectionPermissionsContainer,
-        subSections.map((item) => ({ key: item, label: item })),
-        'subSections'
-      );
 
       setSelectedGroupValues('pages', selectedPages);
       setSelectedGroupValues('pageEdits', selectedPageEdits);
       setSelectedGroupValues('departments', selectedDepartments);
       setSelectedGroupValues('sections', selectedSections);
-      setSelectedGroupValues('subSections', selectedSubSections);
       syncPageEditCheckboxStates();
     }
 
@@ -1157,7 +1172,6 @@
       setSelectedGroupValues('pageEdits', []);
       setSelectedGroupValues('departments', []);
       setSelectedGroupValues('sections', []);
-      setSelectedGroupValues('subSections', []);
     }
 
     function syncPageEditCheckboxStates() {
@@ -1199,7 +1213,6 @@
         Name: String(fullNameSelect.value || '').trim(),
         Department: String(departmentInput.value || '').trim(),
         Section: String(sectionInput.value || '').trim(),
-        SubSection: String(subSectionInput.value || '').trim(),
         Username: String(usernameInput.value || '').trim(),
         Password: String(passwordInput.value || '').trim(),
         Permission: selectedPermission,
@@ -1207,7 +1220,6 @@
         EditablePages: selectedPermission.toLowerCase() === 'admin' ? [] : getSelectedGroupValues('pageEdits'),
         AllowedDepartments: selectedPermission.toLowerCase() === 'admin' ? [] : getSelectedGroupValues('departments'),
         AllowedSections: selectedPermission.toLowerCase() === 'admin' ? [] : getSelectedGroupValues('sections'),
-        AllowedSubSections: selectedPermission.toLowerCase() === 'admin' ? [] : getSelectedGroupValues('subSections'),
         IsActive: Number(userIsActiveInput.value || 1)
       };
     }
@@ -1216,7 +1228,6 @@
       fullNameSelect.value = '';
       departmentInput.value = '';
       sectionInput.value = '';
-      subSectionInput.value = '';
       usernameInput.value = '';
       passwordInput.value = '';
       permissionSelect.value = '';
@@ -1245,10 +1256,15 @@
     function resetLookupForm() {
       lookupDepartmentInput.value = '';
       lookupSectionInput.value = '';
-      lookupSubSectionInput.value = '';
       lookupIsActiveInput.value = '';
       selectedLookupId = null;
       highlightSelectedLookupRow();
+    }
+
+    function resetJobTitleForm() {
+      jobTitleInput.value = '';
+      selectedJobTitleId = null;
+      highlightSelectedJobTitleRow();
     }
 
     function getTemplateConfigPayload() {
@@ -1313,32 +1329,23 @@
       const employee = employees.find((item) => String(item.Name || '').trim() === selectedName);
       departmentInput.value = employee ? String(employee.Department || '').trim() : '';
       sectionInput.value = employee ? String(employee.Section || '').trim() : '';
-      subSectionInput.value = employee ? String(employee.SubSection || '').trim() : '';
     }
 
     function renderEmployeesOptions() {
       const previous = fullNameSelect.value;
-      fullNameSelect.innerHTML = '<option value="">--اختر --</option>';
-
-      employees.forEach((item) => {
-        const option = document.createElement('option');
-        option.value = String(item.Name || '').trim();
-        option.textContent = String(item.Name || '').trim();
-        fullNameSelect.appendChild(option);
-      });
-
-      if (previous && employees.some((item) => String(item.Name || '').trim() === previous)) {
-        fullNameSelect.value = previous;
-      }
-
+      fullNameSelect.value = previous || '';
       updateDepartmentSectionFromName();
+    }
+
+    function hasValidEmployeeSelection() {
+      const selectedName = String(fullNameSelect.value || '').trim();
+      return selectedName && employees.some((item) => String(item.Name || '').trim() === selectedName);
     }
 
     function getLookupPayload() {
       return {
         Department: String(lookupDepartmentInput.value || '').trim(),
         Section: String(lookupSectionInput.value || '').trim(),
-        SubSection: String(lookupSubSectionInput.value || '').trim(),
         IsActive: Number(lookupIsActiveInput.value || 1)
       };
     }
@@ -1380,9 +1387,6 @@
       if (!sectionInput.value) {
         sectionInput.value = String(target.Section || '').trim();
       }
-      if (!subSectionInput.value) {
-        subSectionInput.value = String(target.SubSection || '').trim();
-      }
       usernameInput.value = String(target.Username || '').trim();
       passwordInput.value = String(target.Password || '');
       permissionSelect.value = String(target.Permission || '').trim();
@@ -1392,7 +1396,6 @@
       confidentialBooksAccess.value = allowedPages.includes('confidentialBooks') ? 'yes' : 'no';
       setSelectedGroupValues('departments', Array.isArray(target.AllowedDepartments) ? target.AllowedDepartments : []);
       setSelectedGroupValues('sections', Array.isArray(target.AllowedSections) ? target.AllowedSections : []);
-      setSelectedGroupValues('subSections', Array.isArray(target.AllowedSubSections) ? target.AllowedSubSections : []);
       applyPermissionMode();
       const defaultStatusValue = Number(target.IsActive) === 0 ? '0' : '1';
       userIsActiveInput.value = defaultStatusValue;
@@ -1437,7 +1440,7 @@
 
       if (!Array.isArray(users) || users.length === 0) {
         countLabel.textContent = 'عدد السجلات: 0';
-        usersRows.innerHTML = '<tr><td colspan="11">لاتوجد بيانات حالياً.</td></tr>';
+        usersRows.innerHTML = '<tr><td colspan="10">لاتوجد بيانات حالياً.</td></tr>';
         return;
       }
 
@@ -1456,7 +1459,6 @@
           <td>${item.Name || ''}</td>
           <td>${item.Department || ''}</td>
           <td>${item.Section || ''}</td>
-          <td>${item.SubSection || ''}</td>
           <td><span class="state-badge ${stateClass}">${stateLabel}</span></td>
           <td class="cell-time">${formatDateTime(item.CreatedAt || '')}</td>
           <td class="cell-time">${formatDateTime(item.UpdatedAt || '')}</td>
@@ -1477,7 +1479,6 @@
       selectedLookupId = Number(item.ID);
       lookupDepartmentInput.value = String(item.Department || '').trim();
       lookupSectionInput.value = String(item.Section || '').trim();
-      lookupSubSectionInput.value = String(item.SubSection || '').trim();
       lookupIsActiveInput.value = Number(item.IsActive) === 0 ? '0' : '1';
       highlightSelectedLookupRow();
       setLookupStatus(`تم اختيار السجل رقم ${selectedLookupId}.`);
@@ -1488,7 +1489,7 @@
       if (!keyword) return [...departmentSections];
 
       return departmentSections.filter((item) =>
-        [item.Department, item.Section, item.SubSection]
+        [item.Department, item.Section]
           .map((value) => String(value || '').toLowerCase())
           .some((value) => value.includes(keyword))
       );
@@ -1500,7 +1501,7 @@
 
       if (!Array.isArray(visibleDepartmentSections) || visibleDepartmentSections.length === 0) {
         lookupCountLabel.textContent = 'عدد السجلات: 0';
-        lookupRows.innerHTML = '<tr><td colspan="7">لاتوجد بيانات حالياً.</td></tr>';
+        lookupRows.innerHTML = '<tr><td colspan="6">لاتوجد بيانات حالياً.</td></tr>';
         return;
       }
 
@@ -1513,7 +1514,6 @@
           <td>${index + 1}</td>
           <td>${item.Department || ''}</td>
           <td>${item.Section || ''}</td>
-          <td>${item.SubSection || ''}</td>
           <td><span class="state-badge ${Number(item.IsActive) === 0 ? 'inactive' : 'active'}">${Number(item.IsActive) === 0 ? 'موقوف' : 'نشط'}</span></td>
           <td class="cell-time">${formatDateTime(item.CreatedAt || '')}</td>
           <td class="cell-time">${formatDateTime(item.UpdatedAt || '')}</td>
@@ -1527,6 +1527,44 @@
       });
 
       highlightSelectedLookupRow();
+    }
+
+    function highlightSelectedJobTitleRow() {
+      jobTitleRows.querySelectorAll('tr').forEach((row) => {
+        const rowId = Number(row.dataset.id || 0);
+        row.classList.toggle('selected', selectedJobTitleId && rowId === selectedJobTitleId);
+      });
+    }
+
+    function selectJobTitle(item) {
+      selectedJobTitleId = Number(item.ID || 0);
+      jobTitleInput.value = String(item.Title || '').trim();
+      highlightSelectedJobTitleRow();
+      setJobTitleStatus(`تم اختيار المسمى الوظيفي رقم ${selectedJobTitleId}.`);
+    }
+
+    function renderJobTitleRows() {
+      jobTitleRows.innerHTML = '';
+      jobTitleCountLabel.textContent = `عدد المسميات: ${jobTitles.length}`;
+
+      if (!jobTitles.length) {
+        jobTitleRows.innerHTML = '<tr><td colspan="2">لاتوجد بيانات حالياً.</td></tr>';
+        return;
+      }
+
+      jobTitles.forEach((item, index) => {
+        const row = document.createElement('tr');
+        row.dataset.id = String(item.ID || '');
+        const indexCell = document.createElement('td');
+        const titleCell = document.createElement('td');
+        indexCell.textContent = String(index + 1);
+        titleCell.textContent = String(item.Title || '');
+        row.append(indexCell, titleCell);
+        row.addEventListener('click', () => selectJobTitle(item));
+        jobTitleRows.appendChild(row);
+      });
+
+      highlightSelectedJobTitleRow();
     }
 
     function renderTemplateFilesOptions() {
@@ -1646,6 +1684,26 @@
       departmentSections = await response.json();
       renderDepartmentSectionRows();
       renderScopeColumns();
+    }
+
+    async function loadJobTitles() {
+      const response = await authorizedFetch('/api/employees/job-titles');
+      if (!response) return;
+      const payload = await response.json().catch(() => ([]));
+      if (!response.ok) {
+        throw new Error(payload.message || 'تعذر تحميل المسميات الوظيفية.');
+      }
+      const preferredOrder = new Map(jobTitleDisplayOrder.map((title, index) => [title, index]));
+      jobTitles = (Array.isArray(payload) ? payload : []).sort((left, right) => {
+        const leftOrder = preferredOrder.get(String(left.Title || '').trim());
+        const rightOrder = preferredOrder.get(String(right.Title || '').trim());
+        if (leftOrder !== undefined || rightOrder !== undefined) {
+          return (leftOrder ?? Number.MAX_SAFE_INTEGER) - (rightOrder ?? Number.MAX_SAFE_INTEGER);
+        }
+        return Number(left.SortOrder || 0) - Number(right.SortOrder || 0)
+          || Number(left.ID || 0) - Number(right.ID || 0);
+      });
+      renderJobTitleRows();
     }
 
     async function loadTemplateFiles() {
@@ -1834,6 +1892,10 @@
 
     async function addUser() {
       const payload = getPayloadFromForm();
+      if (!hasValidEmployeeSelection()) {
+        setStatus('يرجى اختيار اسم موظف من قائمة الاقتراحات.', 'error');
+        return;
+      }
       if (!payload.Username) {
         setStatus('يرجى إدخال اسم المستخدم.', 'error');
         return;
@@ -1875,6 +1937,11 @@
       }
 
       const payload = getPayloadFromForm();
+      const targetUser = users.find((item) => Number(item.ID) === Number(selectedUserId));
+      if (!isProtectedAdminUser(targetUser) && !hasValidEmployeeSelection()) {
+        setStatus('يرجى اختيار اسم موظف من قائمة الاقتراحات.', 'error');
+        return;
+      }
       if (!payload.Username) {
         setStatus('يرجى إدخال اسم المستخدم.', 'error');
         return;
@@ -2040,6 +2107,7 @@
           loadEmployees(),
           loadUsers(),
           loadDepartmentSections(),
+          loadJobTitles(),
           loadTemplateFiles(),
           loadTemplateConfigs(),
           loadArchiveCategories()
@@ -2097,7 +2165,6 @@
               <tr><td>اسم الموظف</td><td>${valueOrDash(payload.Name)}</td></tr>
               <tr><td>القسم</td><td>${valueOrDash(payload.Department)}</td></tr>
               <tr><td>النوبة</td><td>${valueOrDash(payload.Section)}</td></tr>
-              <tr><td>الشعبة</td><td>${valueOrDash(payload.SubSection)}</td></tr>
               <tr><td>اسم المستخدم</td><td>${valueOrDash(payload.Username)}</td></tr>
               <tr><td>كلمة السر</td><td>${valueOrDash(payload.Password)}</td></tr>
               <tr><td>الصلاحية</td><td>${valueOrDash(payload.Permission)}</td></tr>
@@ -2122,7 +2189,6 @@
           <td>${index + 1}</td>
           <td>${item.Department || ''}</td>
           <td>${item.Section || ''}</td>
-          <td>${item.SubSection || ''}</td>
           <td>${Number(item.IsActive) === 0 ? 'موقوف' : 'نشط'}</td>
           <td>${formatDateTime(item.CreatedAt || '')}</td>
           <td>${formatDateTime(item.UpdatedAt || '')}</td>
@@ -2140,7 +2206,7 @@
         <html lang="ar" dir="rtl">
         <head>
           <meta charset="UTF-8" />
-          <title>طباعة بيانات الأقسام والنوبات والشعب</title>
+          <title>طباعة بيانات الأقسام والنوبات</title>
           <style>
             body { font-family: Tahoma, Arial, sans-serif; margin: 24px; color: #0f172a; }
             h1 { margin: 0 0 16px; font-size: 26px; }
@@ -2151,7 +2217,7 @@
           </style>
         </head>
         <body>
-          <h1>بيانات الأقسام والنوبات والشعب</h1>
+          <h1>بيانات الأقسام والنوبات</h1>
           <p style="margin:0 0 12px;color:#475569;font-weight:700;">عدد السجلات: ${rowsToPrint.length}</p>
           <table>
             <thead>
@@ -2159,13 +2225,12 @@
                 <th>م</th>
                 <th>القسم</th>
                 <th>النوبة</th>
-                <th>الشعبة</th>
                 <th>الحالة</th>
                 <th>تاريخ الإضافة</th>
                 <th>آخر تحديث</th>
               </tr>
             </thead>
-            <tbody>${rowsHtml || '<tr><td colspan="7">لاتوجد بيانات حالياً.</td></tr>'}</tbody>
+            <tbody>${rowsHtml || '<tr><td colspan="6">لاتوجد بيانات حالياً.</td></tr>'}</tbody>
           </table>
         </body>
         </html>
@@ -2175,7 +2240,55 @@
       printWindow.print();
     }
 
+    function printJobTitleTable() {
+      const escapePrintHtml = (value) => String(value || '').replace(/[&<>'"]/g, (character) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+      })[character]);
+      const rowsHtml = jobTitles.map((item, index) => `
+        <tr>
+          <td>${index + 1}</td>
+          <td>${escapePrintHtml(item.Title)}</td>
+        </tr>
+      `).join('');
+      const printWindow = window.open('', '_blank', 'width=900,height=700');
+      if (!printWindow) {
+        setJobTitleStatus('تعذر فتح نافذة الطباعة. تحقق من مانع النوافذ المنبثقة.', 'error');
+        return;
+      }
+
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html lang="ar" dir="rtl">
+        <head>
+          <meta charset="UTF-8" />
+          <title>طباعة المسميات الوظيفية</title>
+          <style>
+            body { font-family: Tahoma, Arial, sans-serif; margin: 24px; color: #0f172a; }
+            h1 { margin: 0 0 16px; font-size: 26px; }
+            table { width: 100%; border-collapse: collapse; }
+            th, td { border: 1px solid #cbd5e1; padding: 10px; text-align: right; font-size: 14px; }
+            th { background: #f8fafc; }
+          </style>
+        </head>
+        <body>
+          <h1>المسميات الوظيفية</h1>
+          <table>
+            <thead><tr><th>م</th><th>المسمى الوظيفي</th></tr></thead>
+            <tbody>${rowsHtml || '<tr><td colspan="2">لاتوجد بيانات حالياً.</td></tr>'}</tbody>
+          </table>
+        </body>
+        </html>
+      `);
+      printWindow.document.close();
+      printWindow.focus();
+      printWindow.print();
+      setJobTitleStatus('');
+    }
+
     fullNameSelect.addEventListener('change', () => {
+      updateDepartmentSectionFromName();
+    });
+    fullNameSelect.addEventListener('input', () => {
       updateDepartmentSectionFromName();
     });
 
@@ -2184,7 +2297,7 @@
     });
 
     backBtn.addEventListener('click', () => {
-      window.location.href = sessionStorage.getItem('uiMode') === 'mobile' ? '/mobile/dashboard.html' : '/dashboard.html';
+      window.location.href = sessionStorage.getItem('uiMode') === 'mobile' ? '/mobile-dashboard.html' : '/dashboard.html';
     });
 
     refreshBtn.addEventListener('click', () => {
@@ -2265,11 +2378,26 @@
       }
     });
 
-    jobTitleForm.addEventListener('submit', async (event) => {
-      event.preventDefault();
-      const title = jobTitleInput.value.trim().replace(/\s+/g, ' ');
+    function normalizedJobTitleInput() {
+      return jobTitleInput.value.trim().replace(/\s+/g, ' ');
+    }
+
+    function jobTitleExists(title, excludedId = null) {
+      const normalizedTitle = String(title || '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('ar-KW');
+      return jobTitles.some((item) =>
+        Number(item.ID) !== Number(excludedId)
+        && String(item.Title || '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('ar-KW') === normalizedTitle
+      );
+    }
+
+    async function addJobTitle() {
+      const title = normalizedJobTitleInput();
       if (!title) {
         setJobTitleStatus('اكتب المسمى الوظيفي أولاً.', 'error');
+        return;
+      }
+      if (jobTitleExists(title)) {
+        setJobTitleStatus('هذا المسمى الوظيفي موجود مسبقاً.', 'error');
         return;
       }
 
@@ -2286,11 +2414,81 @@
           return;
         }
         setJobTitleStatus(`تمت إضافة المسمى الوظيفي: ${payload.Title || title}`, 'success');
-        jobTitleForm.reset();
+        await loadJobTitles();
+        resetJobTitleForm();
       } catch (error) {
         setJobTitleStatus(error.message || 'تعذر إضافة المسمى الوظيفي.', 'error');
       }
+    }
+
+    async function updateJobTitle() {
+      if (!selectedJobTitleId) {
+        setJobTitleStatus('اختر مسمى وظيفياً من الجدول أولاً.', 'error');
+        return;
+      }
+      const title = normalizedJobTitleInput();
+      if (!title) {
+        setJobTitleStatus('اكتب المسمى الوظيفي أولاً.', 'error');
+        return;
+      }
+      if (jobTitleExists(title, selectedJobTitleId)) {
+        setJobTitleStatus('هذا المسمى الوظيفي موجود مسبقاً.', 'error');
+        return;
+      }
+
+      try {
+        const response = await authorizedFetch(`/api/settings/job-titles/${selectedJobTitleId}`, {
+          method: 'PUT',
+          body: JSON.stringify({ Title: title })
+        });
+        if (!response) return;
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          setJobTitleStatus(payload.message || 'تعذر تعديل المسمى الوظيفي.', 'error');
+          return;
+        }
+        setJobTitleStatus(`تم تعديل المسمى الوظيفي إلى: ${payload.Title || title}`, 'success');
+        await loadJobTitles();
+        resetJobTitleForm();
+      } catch (error) {
+        setJobTitleStatus(error.message || 'تعذر تعديل المسمى الوظيفي.', 'error');
+      }
+    }
+
+    async function deleteJobTitle() {
+      if (!selectedJobTitleId) {
+        setJobTitleStatus('اختر مسمى وظيفياً من الجدول أولاً.', 'error');
+        return;
+      }
+      const selected = jobTitles.find((item) => Number(item.ID) === selectedJobTitleId);
+      const label = String(selected?.Title || jobTitleInput.value || '').trim();
+      if (!window.confirm(`هل أنت متأكد من حذف المسمى الوظيفي: ${label}؟`)) return;
+
+      try {
+        const response = await authorizedFetch(`/api/settings/job-titles/${selectedJobTitleId}`, {
+          method: 'DELETE'
+        });
+        if (!response) return;
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          setJobTitleStatus(payload.message || 'تعذر حذف المسمى الوظيفي.', 'error');
+          return;
+        }
+        setJobTitleStatus(payload.message || 'تم حذف المسمى الوظيفي بنجاح.', 'success');
+        await loadJobTitles();
+        resetJobTitleForm();
+      } catch (error) {
+        setJobTitleStatus(error.message || 'تعذر حذف المسمى الوظيفي.', 'error');
+      }
+    }
+
+    jobTitleForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      await addJobTitle();
     });
+    jobTitleEditBtn.addEventListener('click', updateJobTitle);
+    jobTitleDeleteBtn.addEventListener('click', deleteJobTitle);
+    jobTitlePrintBtn.addEventListener('click', printJobTitleTable);
 
     templateAddBtn.addEventListener('click', addTemplateConfig);
     templateEditBtn.addEventListener('click', updateTemplateConfig);

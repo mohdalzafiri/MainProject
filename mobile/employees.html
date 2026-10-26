@@ -365,6 +365,7 @@
     </section>
   </div>
 
+  <script src="/job-title-options.js"></script>
   <script>
     const authToken = sessionStorage.getItem('authToken');
 
@@ -1185,12 +1186,18 @@
           headers: { Authorization: 'Bearer ' + authToken }
         });
         const existing = new Set(Array.from(titleInput.options).map((option) => option.value.trim()));
-        (Array.isArray(data) ? data : []).forEach((item) => {
+        const preferredOrder = new Map((window.JOB_TITLE_OPTIONS || []).map((title, index) => [title, index]));
+        (Array.isArray(data) ? data : [])
+          .sort((left, right) =>
+            (preferredOrder.get(String(left.Title || '').trim()) ?? Number.MAX_SAFE_INTEGER)
+            - (preferredOrder.get(String(right.Title || '').trim()) ?? Number.MAX_SAFE_INTEGER)
+          )
+          .forEach((item) => {
           const title = String(item.Title || '').trim();
           if (!title || existing.has(title)) return;
           existing.add(title);
           titleInput.appendChild(new Option(title, title));
-        });
+          });
       } catch (error) {
         showStatus(error.message, true);
       }
@@ -1366,7 +1373,7 @@
     });
 
     backBtn.addEventListener('click', () => {
-      window.location.href = sessionStorage.getItem('uiMode') === 'mobile' ? '/mobile/dashboard.html' : '/dashboard.html';
+      window.location.href = '/mobile-dashboard.html';
     });
 
     loadDepartmentSections();

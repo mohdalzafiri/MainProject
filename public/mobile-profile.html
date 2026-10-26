@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>الملف الشخصي</title>
+  <link rel="stylesheet" href="/layout-defaults.css" />
+  <meta name="theme-color" content="#f6faff" />
+  <style>
+    :root {
+      --page-bg: #f6faff;
+      --surface: rgba(255, 255, 255, .94);
+      --text: #0b2447;
+      --muted: #64748b;
+      --primary: #0875cf;
+      --primary-dark: #055ba5;
+      --border: #d7e5f3;
+      --danger: #b91c1c;
+      --success: #166534;
+      --shadow: 0 18px 45px rgba(30, 93, 151, .14);
+    }
+
+    * { box-sizing: border-box; }
+
+    body.app-shell {
+      color: var(--text);
+      font-family: Tahoma, Arial, sans-serif;
+      background:
+        radial-gradient(ellipse at 5% 10%, rgba(147, 197, 253, .24), transparent 32%),
+        radial-gradient(ellipse at 95% 26%, rgba(191, 219, 254, .28), transparent 32%),
+        linear-gradient(180deg, #fbfdff 0%, var(--page-bg) 100%);
+    }
+
+    body.app-shell > .profile-page {
+      width: min(520px, 100vw);
+      min-height: 100vh;
+      padding: calc(24px + env(safe-area-inset-top)) 16px calc(28px + env(safe-area-inset-bottom));
+      display: grid;
+      grid-template-rows: auto 1fr;
+      align-content: start;
+      gap: 26px;
+    }
+
+    .page-header {
+      display: grid;
+      grid-template-columns: 46px 1fr 46px;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .back-button {
+      width: 46px;
+      height: 46px;
+      display: grid;
+      place-items: center;
+      border: 0;
+      border-radius: 14px;
+      color: var(--primary);
+      background: rgba(255, 255, 255, .88);
+      box-shadow: 0 6px 18px rgba(30, 93, 151, .1);
+      cursor: pointer;
+    }
+
+    .back-button svg { width: 25px; height: 25px; stroke: currentColor; }
+    .page-header h1 { margin: 0; font-size: 21px; text-align: center; }
+
+    .profile-card {
+      align-self: start;
+      padding: 28px 20px 24px;
+      display: grid;
+      gap: 22px;
+      border: 1px solid rgba(8, 117, 207, .1);
+      border-radius: 24px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .avatar-section {
+      display: grid;
+      justify-items: center;
+      gap: 12px;
+      text-align: center;
+    }
+
+    .avatar-button {
+      position: relative;
+      width: 132px;
+      height: 132px;
+      padding: 0;
+      border: 4px solid #fff;
+      border-radius: 50%;
+      color: #55b9ff;
+      background: #17364f;
+      box-shadow: 0 9px 25px rgba(11, 74, 124, .22);
+      cursor: pointer;
+      overflow: visible;
+    }
+
+    .avatar-button img {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    .camera-badge {
+      position: absolute;
+      right: 0;
+      bottom: 2px;
+      width: 38px;
+      height: 38px;
+      display: grid;
+      place-items: center;
+      border: 3px solid #fff;
+      border-radius: 50%;
+      color: #fff;
+      background: var(--primary);
+      box-shadow: 0 5px 13px rgba(8, 117, 207, .25);
+    }
+
+    .camera-badge svg { width: 20px; height: 20px; stroke: currentColor; }
+    .profile-rank-summary {
+      padding: 5px 12px;
+      border: 1px solid #bfdbfe;
+      border-radius: 999px;
+      color: var(--primary-dark);
+      background: #eff6ff;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .avatar-section strong { font-size: 19px; }
+    .avatar-section p { margin: 0; color: var(--muted); font-size: 13px; }
+
+    .reset-avatar-button {
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--primary-dark);
+      background: #fff;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .reset-avatar-button:disabled { opacity: .45; cursor: default; }
+
+    .profile-details {
+      display: grid;
+      gap: 10px;
+      border-top: 1px solid var(--border);
+      padding-top: 18px;
+    }
+
+    .detail-row {
+      min-height: 48px;
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      border-radius: 12px;
+      background: #f8fbff;
+    }
+
+    .detail-row span { color: var(--muted); font-size: 13px; }
+    .detail-row strong { max-width: 65%; font-size: 14px; text-align: left; overflow-wrap: anywhere; }
+
+    .status-message {
+      display: none;
+      padding: 11px 13px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .status-message.show { display: block; }
+    .status-message.error { color: var(--danger); background: #fee2e2; }
+    .status-message.success { color: var(--success); background: #dcfce7; }
+  </style>
+</head>
+<body class="app-shell">
+  <main class="profile-page">
+    <header class="page-header">
+      <button class="back-button" id="backBtn" type="button" aria-label="العودة إلى الرئيسية">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="m9 18 6-6-6-6"></path>
+        </svg>
+      </button>
+      <h1>الملف الشخصي</h1>
+      <span aria-hidden="true"></span>
+    </header>
+
+    <section class="profile-card">
+      <div class="avatar-section">
+        <button class="avatar-button" id="avatarButton" type="button" aria-label="اختيار صورة من ألبوم الصور">
+          <img id="avatarImage" src="/default-profile-avatar.svg" alt="الصورة الشخصية" />
+          <span class="camera-badge" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14.5 5 13 3h-2L9.5 5H5a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2Z"></path>
+              <circle cx="12" cy="12" r="4"></circle>
+            </svg>
+          </span>
+        </button>
+        <input id="profileImageInput" type="file" accept="image/*" hidden />
+        <span class="profile-rank-summary" id="profileRankSummary">—</span>
+        <strong id="profileName">المستخدم</strong>
+        <p>اضغط على الصورة لاختيار صورة من ألبوم الهاتف</p>
+        <button class="reset-avatar-button" id="resetAvatarBtn" type="button" disabled>استعادة الصورة الافتراضية</button>
+      </div>
+
+      <div class="profile-details">
+        <div class="detail-row"><span>اسم المستخدم</span><strong id="profileUsername">—</strong></div>
+        <div class="detail-row"><span>اسم الموظف</span><strong id="profileEmployeeName">—</strong></div>
+        <div class="detail-row"><span>المسمى الوظيفي</span><strong id="profileJobTitle">—</strong></div>
+        <div class="detail-row"><span>مقر العمل</span><strong id="profileWorkplace">—</strong></div>
+        <div class="detail-row"><span>القسم</span><strong id="profileDepartment">—</strong></div>
+        <div class="detail-row"><span>النوبة</span><strong id="profileSection">—</strong></div>
+        <div class="detail-row"><span>تاريخ التعيين</span><strong id="profileAppointmentDate">—</strong></div>
+        <div class="detail-row"><span>تاريخ المباشرة</span><strong id="profileStartDate">—</strong></div>
+        <div class="detail-row"><span>رقم الملف</span><strong id="profileFileNumber">—</strong></div>
+      </div>
+      <div class="status-message" id="statusMessage" role="status"></div>
+    </section>
+  </main>
+
+  <script src="/profile-image-store.js"></script>
+  <script>
+    const authToken = sessionStorage.getItem('authToken');
+    const defaultAvatarUrl = '/default-profile-avatar.svg';
+    if (!authToken) {
+      window.location.href = '/login.html';
+    }
+
+    const avatarButton = document.getElementById('avatarButton');
+    const avatarImage = document.getElementById('avatarImage');
+    const profileImageInput = document.getElementById('profileImageInput');
+    const resetAvatarBtn = document.getElementById('resetAvatarBtn');
+    const statusMessage = document.getElementById('statusMessage');
+    let previewUrl = '';
+    const currentProfile = parseJwtPayload(authToken);
+    const profileImageKey = window.profileImageStore.getUserKey(currentProfile);
+
+    function parseJwtPayload(value) {
+      try {
+        const payload = String(value || '').split('.')[1];
+        if (!payload) return null;
+        const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+        return JSON.parse(atob(normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=')));
+      } catch {
+        return null;
+      }
+    }
+
+    function setStatus(message, type = '') {
+      statusMessage.textContent = message || '';
+      statusMessage.className = 'status-message';
+      if (!message) return;
+      statusMessage.classList.add('show', type === 'success' ? 'success' : 'error');
+    }
+
+    function showAvatar(source) {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      previewUrl = String(source || '').startsWith('blob:') ? source : '';
+      avatarImage.src = source;
+    }
+
+    function formatDate(value) {
+      const raw = String(value || '').trim();
+      if (!raw) return '—';
+
+      const ymd = raw.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+      if (ymd) {
+        return `${ymd[1]}/${ymd[2].padStart(2, '0')}/${ymd[3].padStart(2, '0')}`;
+      }
+
+      const dmy = raw.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+      if (dmy) {
+        return `${dmy[3]}/${dmy[2].padStart(2, '0')}/${dmy[1].padStart(2, '0')}`;
+      }
+
+      return raw;
+    }
+
+    function fillSessionProfile(profile) {
+      document.getElementById('profileName').textContent = profile.name || profile.username || 'المستخدم';
+      document.getElementById('profileUsername').textContent = profile.username || '—';
+    }
+
+    async function loadProfile() {
+      const profile = parseJwtPayload(authToken);
+      if (profile) {
+        fillSessionProfile(profile);
+      } else {
+        setStatus('تعذر قراءة بيانات الملف الشخصي من جلسة الدخول.', 'error');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/auth/profile', {
+          headers: { Authorization: `Bearer ${authToken}` }
+        });
+        if (response.status === 401 || response.status === 403) {
+          sessionStorage.clear();
+          window.location.href = '/login.html';
+          return;
+        }
+
+        const result = await response.json();
+        if (!response.ok) {
+          throw new Error(result.message || 'تعذر تحميل بيانات الملف الشخصي.');
+        }
+
+        document.getElementById('profileName').textContent = result.employeeName || result.username || 'المستخدم';
+        document.getElementById('profileRankSummary').textContent = result.rank || '—';
+        document.getElementById('profileUsername').textContent = result.username || '—';
+        document.getElementById('profileEmployeeName').textContent = result.employeeName || '—';
+        document.getElementById('profileJobTitle').textContent = result.jobTitle || '—';
+        document.getElementById('profileWorkplace').textContent = result.workplace || '—';
+        document.getElementById('profileDepartment').textContent = result.department || '—';
+        document.getElementById('profileSection').textContent = result.shift || '—';
+        document.getElementById('profileAppointmentDate').textContent = formatDate(result.appointmentDate);
+        document.getElementById('profileStartDate').textContent = formatDate(result.startDate);
+        document.getElementById('profileFileNumber').textContent = result.fileNumber || '—';
+
+        if (!result.employeeLinked) {
+          setStatus('هذا المستخدم غير مرتبط بسجل موظف حتى الآن.', 'error');
+        }
+      } catch (error) {
+        setStatus(error.message || 'تعذر تحميل بيانات الملف الشخصي.', 'error');
+      }
+    }
+
+    async function loadProfileImage() {
+      try {
+        const image = await window.profileImageStore.get(profileImageKey);
+        if (!image) return;
+        showAvatar(URL.createObjectURL(image));
+        resetAvatarBtn.disabled = false;
+      } catch (error) {
+        setStatus(error.message || 'تعذر تحميل الصورة الشخصية.', 'error');
+      }
+    }
+
+    async function compressImage(file) {
+      const imageUrl = URL.createObjectURL(file);
+      try {
+        const image = new Image();
+        image.src = imageUrl;
+        await image.decode();
+        const maximumDimension = 900;
+        const scale = Math.min(1, maximumDimension / Math.max(image.naturalWidth, image.naturalHeight));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+        canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+        canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
+        const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', .86));
+        if (!blob) throw new Error('تعذر تجهيز الصورة المختارة.');
+        return new File([blob], 'profile.jpg', { type: 'image/jpeg' });
+      } finally {
+        URL.revokeObjectURL(imageUrl);
+      }
+    }
+
+    avatarButton.addEventListener('click', () => profileImageInput.click());
+    profileImageInput.addEventListener('change', async () => {
+      const file = profileImageInput.files?.[0];
+      if (!file) return;
+      if (!String(file.type || '').startsWith('image/')) {
+        setStatus('الملف المختار ليس صورة.', 'error');
+        return;
+      }
+
+      setStatus('جاري حفظ الصورة...');
+      try {
+        const preparedImage = await compressImage(file);
+        await window.profileImageStore.set(profileImageKey, preparedImage);
+        showAvatar(URL.createObjectURL(preparedImage));
+        profileImageInput.value = '';
+        resetAvatarBtn.disabled = false;
+        setStatus('تم حفظ الصورة على هذا الجهاز بنجاح.', 'success');
+      } catch (error) {
+        setStatus(error.message || 'تعذر حفظ الصورة على هذا الجهاز.', 'error');
+      }
+    });
+
+    resetAvatarBtn.addEventListener('click', async () => {
+      try {
+        await window.profileImageStore.remove(profileImageKey);
+        showAvatar(defaultAvatarUrl);
+        profileImageInput.value = '';
+        resetAvatarBtn.disabled = true;
+        setStatus('تمت استعادة الصورة الافتراضية بنجاح.', 'success');
+      } catch (error) {
+        setStatus(error.message || 'تعذر استعادة الصورة الافتراضية.', 'error');
+      }
+    });
+
+    document.getElementById('backBtn').addEventListener('click', () => {
+      window.location.href = '/mobile-dashboard.html';
+    });
+
+    loadProfile();
+    loadProfileImage();
+  </script>
+</body>
+</html>

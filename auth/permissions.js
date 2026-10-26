@@ -17,7 +17,9 @@ const CUSTOMIZABLE_NON_ADMIN_PAGE_KEYS = [
   'outsideEmployees',
   'outgoing',
   'incoming',
+  'departmentMail',
   'archive',
+  'forceList',
   'confidentialBooks'
 ];
 
@@ -47,7 +49,9 @@ function normalizePageKey(value) {
     outsideemployees: 'outsideEmployees',
     outgoing: 'outgoing',
     incoming: 'incoming',
+    departmentmail: 'departmentMail',
     archive: 'archive',
+    forcelist: 'forceList',
     confidentialbooks: 'confidentialBooks',
     settings: 'settings',
     administrative: 'administrative',

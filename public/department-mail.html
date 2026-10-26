@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>بريد الأقسام والنوبات</title>
+  <link rel="stylesheet" href="/layout-defaults.css" />
+  <script src="/role-access.js" defer></script>
+  <style>
+    body.app-shell { background: linear-gradient(180deg, #dfeaff 0%, #f8fbff 100%); }
+    .field.full { grid-column: 1 / -1; }
+    .table-search { width: min(360px, 100%); }
+    .doc-images-box {
+      margin-top: 16px;
+      padding: 14px;
+      border: 1px solid var(--ui-border);
+      border-radius: 14px;
+      background: #f8fafc;
+    }
+    .doc-images-head,
+    .doc-images-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      font-weight: 700;
+    }
+    .doc-images-view {
+      margin: 12px 0;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 8px;
+    }
+    .doc-images-frame {
+      min-height: 220px;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      background: #fff;
+    }
+    .doc-images-frame img {
+      display: none;
+      width: auto;
+      max-width: 100%;
+      max-height: 65vh;
+      object-fit: contain;
+    }
+    .doc-images-nav {
+      width: 38px;
+      height: 38px;
+      border: 0;
+      border-radius: 10px;
+      background: #1d4ed8;
+      color: #fff;
+      cursor: pointer;
+    }
+    .doc-images-nav:disabled { opacity: .45; cursor: default; }
+    table { min-width: 1050px; }
+    @media (max-width: 680px) {
+      .doc-images-view { grid-template-columns: 34px minmax(0, 1fr) 34px; }
+      .doc-images-frame { min-height: 170px; }
+      table { min-width: 900px; }
+    }
+  </style>
+</head>
+<body class="app-shell">
+  <main class="page app-page">
+    <header class="header">
+      <div>
+        <h1>بريد الأقسام والنوبات</h1>
+        <p>إدارة البريد الداخلي الموجّه إلى الأقسام والنوبات.</p>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn dark" id="backBtn">العودة للرئيسية</button>
+      </div>
+    </header>
+
+    <section class="panel">
+      <h2>تعبئة / إظهار البيانات</h2>
+      <form id="departmentMailForm" autocomplete="off">
+        <input id="recordId" type="hidden" />
+        <div class="grid">
+          <div class="field">
+            <label for="mailNumber" class="required">رقم البريد</label>
+            <input id="mailNumber" type="text" inputmode="numeric" required />
+          </div>
+          <div class="field">
+            <label for="mailDate" class="required">تاريخ البريد</label>
+            <div class="date-picker-wrap">
+              <input id="mailDateDisplay" class="date-display-input" type="text" placeholder="yyyy/mm/dd" readonly />
+              <button type="button" class="date-picker-trigger" data-picker-id="mailDate" aria-label="اختيار تاريخ البريد"></button>
+              <input id="mailDate" class="native-date-input" type="date" />
+            </div>
+          </div>
+          <div class="field full">
+            <label for="subject" class="required">الموضوع</label>
+            <input id="subject" type="text" required />
+          </div>
+          <div class="field">
+            <label for="department" class="required">القسم</label>
+            <select id="department" required><option value="">-- اختر --</option></select>
+          </div>
+          <div class="field">
+            <label for="section" class="required">النوبة</label>
+            <select id="section" required><option value="">-- اختر --</option></select>
+          </div>
+          <div class="field full admin-only-field" id="userNameField">
+            <label for="userName">اسم المستخدم</label>
+            <input id="userName" type="text" readonly />
+          </div>
+          <div class="field full">
+            <label for="notes">ملاحظات</label>
+            <textarea id="notes"></textarea>
+          </div>
+        </div>
+        <div class="toolbar">
+          <button type="submit" class="btn success" id="addBtn">إضافة بيانات</button>
+          <button type="button" class="btn warning" id="updateBtn">تعديل بيانات</button>
+          <button type="button" class="btn danger" id="deleteBtn">حذف بيانات</button>
+          <button type="button" class="btn primary" id="printBtn">طباعة بيانات</button>
+        </div>
+      </form>
+      <div id="statusLine" class="status-line"></div>
+
+      <section class="daily-scanner-panel" aria-labelledby="dailyScannerTitle">
+        <h3 id="dailyScannerTitle">المسح الضوئي لبريد الأقسام</h3>
+        <p>اختر سجلًا محفوظًا، ثم التقط صفحات المستند وحدّد زوايا الورقة. ستُجمع الصفحات في ملف PDF واحد باسم تلقائي.</p>
+        <div class="daily-scanner-actions">
+          <button type="button" class="btn primary" id="dailyScanCaptureBtn" disabled>التقاط / اختيار صفحة</button>
+          <button type="button" class="btn success" id="dailyScanAddBtn" disabled>إضافة الصفحة المحددة</button>
+          <button type="button" class="btn warning" id="dailyScanUndoBtn" disabled>حذف آخر صفحة</button>
+          <button type="button" class="btn success" id="dailyScanSaveBtn" disabled>إنشاء وحفظ PDF</button>
+          <button type="button" class="btn danger" id="dailyScanDeleteBtn" hidden>حذف PDF المحفوظ</button>
+        </div>
+        <input id="dailyScanInput" type="file" accept="image/*" capture="environment" hidden />
+        <p id="dailyScanCornersHint" hidden>اسحب الزوايا الخضراء لتحديد حدود الورقة، ثم أضف الصفحة.</p>
+        <canvas id="dailyScanCanvas" hidden aria-label="معاينة الصورة وحدود الورقة"></canvas>
+        <p id="dailyScanPageCount">صفحات PDF: 0</p>
+        <a id="dailyScanSavedFile" href="#" hidden></a>
+      </section>
+
+      <div class="doc-images-box">
+        <div class="doc-images-head">
+          <span>صور المستندات الرسمية</span>
+          <span id="docImageCount">0 / 0</span>
+        </div>
+        <div class="doc-images-view">
+          <button type="button" class="doc-images-nav" id="docImagePrevBtn" aria-label="الصورة السابقة">◀</button>
+          <div class="doc-images-frame">
+            <img id="docImagePreview" alt="صورة مستند" />
+            <div id="docImageEmpty">اختر سجلًا أولًا لعرض صور المستندات.</div>
+          </div>
+          <button type="button" class="doc-images-nav" id="docImageNextBtn" aria-label="الصورة التالية">▶</button>
+        </div>
+        <div class="doc-images-actions">
+          <button type="button" class="btn primary" id="docImageUploadBtn">تصوير/رفع مستند</button>
+          <input id="docImageInput" type="file" accept="image/*" capture="environment" hidden />
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>صندوق عرض البيانات</h2>
+      <div class="table-tools">
+        <p id="countLabel">عدد السجلات: 0</p>
+        <input id="tableSearch" class="table-search" type="search" placeholder="بحث في السجلات" />
+        <button type="button" class="btn dark" id="refreshBtn">تحديث العرض</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>م</th>
+              <th>رقم البريد</th>
+              <th>تاريخ البريد</th>
+              <th>الموضوع</th>
+              <th>القسم</th>
+              <th>النوبة</th>
+              <th>ملاحظات</th>
+              <th class="user-name-column">اسم المستخدم</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="/record-photos.js"></script>
+  <script src="/daily-scanner.js"></script>
+  <script>
+    const authToken = sessionStorage.getItem('authToken');
+    if (!authToken) window.location.href = '/';
+
+    function parseJwtPayload(token) {
+      try {
+        const payload = String(token || '').split('.')[1];
+        if (!payload) return null;
+        const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+        return JSON.parse(atob(normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=')));
+      } catch {
+        return null;
+      }
+    }
+
+    const currentUser = parseJwtPayload(authToken);
+    if (!currentUser) {
+      sessionStorage.removeItem('authToken');
+      window.location.href = '/';
+    }
+
+    const form = document.getElementById('departmentMailForm');
+    const recordIdInput = document.getElementById('recordId');
+    const mailNumberInput = document.getElementById('mailNumber');
+    const mailDateDisplayInput = document.getElementById('mailDateDisplay');
+    const mailDateInput = document.getElementById('mailDate');
+    const subjectInput = document.getElementById('subject');
+    const departmentInput = document.getElementById('department');
+    const sectionInput = document.getElementById('section');
+    const notesInput = document.getElementById('notes');
+    const userNameInput = document.getElementById('userName');
+    const userNameField = document.getElementById('userNameField');
+    const rowsBody = document.getElementById('rows');
+    const countLabel = document.getElementById('countLabel');
+    const tableSearch = document.getElementById('tableSearch');
+    const statusLine = document.getElementById('statusLine');
+    const addBtn = document.getElementById('addBtn');
+    const updateBtn = document.getElementById('updateBtn');
+    const deleteBtn = document.getElementById('deleteBtn');
+    const userNameColumnCells = () => document.querySelectorAll('.user-name-column');
+    const apiBase = '/api/department-mail';
+
+    let allRecords = [];
+    let departmentSections = [];
+    let selectedRowId = null;
+    const currentRole = String(currentUser?.role || '').trim().toLowerCase();
+    const editablePages = Array.isArray(currentUser?.editablePages) ? currentUser.editablePages : currentUser?.allowedPages;
+    const documentScanner = window.initDailyScanner({
+      authToken,
+      canEdit: currentRole === 'admin'
+        || (currentRole !== 'view' && Array.isArray(editablePages) && editablePages.includes('departmentMail')),
+      recordLabel: 'بريد الأقسام',
+      emptyMessage: 'اختر سجل بريد أقسام محفوظًا من الجدول لفتح ملف المسح.',
+      getRecordIdentity: (record) => String(record.ID || ''),
+      getApiBase: (record) => `/api/department-mail-scans/${encodeURIComponent(String(record.id))}`,
+      onStatus: showStatus
+    });
+    const recordPhotos = initRecordPhotos({
+      moduleKey: 'departmentmail',
+      authToken,
+      getRecordId: () => selectedRowId,
+      onStatus: showStatus
+    });
+
+    function isAdminUser() {
+      return String(currentUser?.role || '').trim().toLowerCase() === 'admin';
+    }
+
+    function showStatus(message, isError = false) {
+      statusLine.className = `status-line show ${isError ? 'error' : 'ok'}`;
+      statusLine.textContent = message;
+    }
+
+    function clearStatus() {
+      statusLine.className = 'status-line';
+      statusLine.textContent = '';
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function pad2(value) {
+      return String(value).padStart(2, '0');
+    }
+
+    function parseDate(value) {
+      const match = String(value || '').trim().replace(/-/g, '/').match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/);
+      return match ? new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])) : null;
+    }
+
+    function formatDate(value) {
+      const date = parseDate(value);
+      if (!date || Number.isNaN(date.getTime())) return '';
+      return `${date.getFullYear()}/${pad2(date.getMonth() + 1)}/${pad2(date.getDate())}`;
+    }
+
+    function toDateInput(value) {
+      return formatDate(value).replace(/\//g, '-');
+    }
+
+    function syncDateDisplay() {
+      mailDateDisplayInput.value = formatDate(mailDateInput.value);
+    }
+
+    function getHeaders() {
+      return {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${authToken}`
+      };
+    }
+
+    async function requestJson(url, options = {}) {
+      const response = await fetch(url, options);
+      if (response.status === 401) {
+        sessionStorage.removeItem('authToken');
+        window.location.href = '/';
+        return null;
+      }
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(String(data.message || '').trim() || 'تعذر إكمال العملية.');
+      return data;
+    }
+
+    function populateSelect(select, values, preferredValue = '') {
+      const uniqueValues = [...new Set(values.map((value) => String(value || '').trim()).filter(Boolean))];
+      if (preferredValue && !uniqueValues.includes(preferredValue)) uniqueValues.push(preferredValue);
+      select.innerHTML = '<option value="">-- اختر --</option>';
+      uniqueValues.forEach((value) => {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = value;
+        select.appendChild(option);
+      });
+      select.value = uniqueValues.includes(preferredValue) ? preferredValue : '';
+    }
+
+    function populateDepartments(preferredValue = '') {
+      populateSelect(departmentInput, departmentSections.map((item) => item.Department), preferredValue);
+    }
+
+    function populateSections(preferredValue = '') {
+      const department = String(departmentInput.value || '').trim();
+      populateSelect(
+        sectionInput,
+        departmentSections
+          .filter((item) => String(item.Department || '').trim() === department)
+          .map((item) => item.Section),
+        preferredValue
+      );
+    }
+
+    async function loadDepartmentSections() {
+      const data = await requestJson('/api/employees/department-sections', {
+        headers: { Authorization: `Bearer ${authToken}` }
+      });
+      departmentSections = Array.isArray(data) ? data : [];
+      const currentDepartment = departmentInput.value;
+      const currentSection = sectionInput.value;
+      populateDepartments(currentDepartment);
+      populateSections(currentSection);
+    }
+
+    function syncAdminFields() {
+      userNameInput.value = String(currentUser?.name || currentUser?.username || 'system');
+      if (userNameField) userNameField.style.display = isAdminUser() ? 'grid' : 'none';
+      userNameColumnCells().forEach((cell) => {
+        cell.style.display = isAdminUser() ? 'table-cell' : 'none';
+      });
+    }
+
+    function clearForm() {
+      form.reset();
+      recordIdInput.value = '';
+      selectedRowId = null;
+      populateDepartments();
+      populateSections();
+      syncDateDisplay();
+      syncAdminFields();
+      recordPhotos.clear();
+      documentScanner.clear();
+      rowsBody.querySelectorAll('tr').forEach((row) => row.classList.remove('selected'));
+    }
+
+    function loadRecord(record) {
+      selectedRowId = Number(record.ID || 0) || null;
+      recordIdInput.value = selectedRowId || '';
+      mailNumberInput.value = record.MailNumber || '';
+      mailDateInput.value = toDateInput(record.MailDate);
+      subjectInput.value = record.Subject || '';
+      populateDepartments(record.Department || '');
+      populateSections(record.Section || '');
+      notesInput.value = record.Notes || '';
+      userNameInput.value = record.UserName || currentUser?.name || currentUser?.username || '';
+      syncDateDisplay();
+      rowsBody.querySelectorAll('tr').forEach((row) => {
+        row.classList.toggle('selected', Number(row.dataset.id || 0) === selectedRowId);
+      });
+      recordPhotos.load();
+      documentScanner.setRecord(record, 'DepartmentMail');
+    }
+
+    function getVisibleRecords() {
+      const query = String(tableSearch.value || '').trim().toLowerCase();
+      if (!query) return allRecords;
+      return allRecords.filter((record) => [
+        record.MailNumber,
+        record.MailDate,
+        record.Subject,
+        record.Department,
+        record.Section,
+        record.Notes,
+        record.UserName
+      ].some((value) => String(value || '').toLowerCase().includes(query)));
+    }
+
+    function renderRows() {
+      const records = getVisibleRecords();
+      countLabel.textContent = `عدد السجلات: ${records.length}`;
+      if (!records.length) {
+        rowsBody.innerHTML = `<tr><td colspan="${isAdminUser() ? 8 : 7}">لاتوجد بيانات حالياً.</td></tr>`;
+        syncAdminFields();
+        return;
+      }
+
+      rowsBody.innerHTML = records.map((record, index) => `
+        <tr data-id="${Number(record.ID)}">
+          <td class="mono">${index + 1}</td>
+          <td class="mono">${escapeHtml(record.MailNumber)}</td>
+          <td class="mono">${escapeHtml(record.MailDate)}</td>
+          <td>${escapeHtml(record.Subject)}</td>
+          <td>${escapeHtml(record.Department)}</td>
+          <td>${escapeHtml(record.Section)}</td>
+          <td>${escapeHtml(record.Notes)}</td>
+          <td class="user-name-column">${escapeHtml(record.UserName)}</td>
+        </tr>
+      `).join('');
+
+      rowsBody.querySelectorAll('tr[data-id]').forEach((row) => {
+        row.addEventListener('click', () => {
+          const record = allRecords.find((item) => Number(item.ID) === Number(row.dataset.id));
+          if (record) loadRecord(record);
+        });
+      });
+      syncAdminFields();
+    }
+
+    async function loadRecords() {
+      const data = await requestJson(apiBase, {
+        headers: { Authorization: `Bearer ${authToken}` }
+      });
+      allRecords = Array.isArray(data) ? data : [];
+      renderRows();
+    }
+
+    function collectPayload() {
+      return {
+        MailNumber: String(mailNumberInput.value || '').trim(),
+        MailDate: formatDate(mailDateInput.value),
+        Subject: String(subjectInput.value || '').trim(),
+        Department: String(departmentInput.value || '').trim(),
+        Section: String(sectionInput.value || '').trim(),
+        Notes: String(notesInput.value || '').trim(),
+        UserName: String(userNameInput.value || currentUser?.name || currentUser?.username || 'system').trim()
+      };
+    }
+
+    function validatePayload(payload) {
+      const missing = [];
+      if (!payload.MailNumber) missing.push('رقم البريد');
+      if (!payload.MailDate) missing.push('تاريخ البريد');
+      if (!payload.Subject) missing.push('الموضوع');
+      if (!payload.Department) missing.push('القسم');
+      if (!payload.Section) missing.push('النوبة');
+      if (!missing.length) return true;
+      showStatus(`الحقول الإلزامية ناقصة: ${missing.join(' - ')}`, true);
+      return false;
+    }
+
+    function printCurrentRecord() {
+      const payload = collectPayload();
+      if (!validatePayload(payload)) return;
+      const popup = window.open('', '_blank', 'width=900,height=700');
+      if (!popup) {
+        showStatus('تعذر فتح نافذة الطباعة. اسمح بالنوافذ المنبثقة ثم حاول مرة أخرى.', true);
+        return;
+      }
+      const fields = [
+        ['رقم البريد', payload.MailNumber],
+        ['تاريخ البريد', payload.MailDate],
+        ['الموضوع', payload.Subject],
+        ['القسم', payload.Department],
+        ['النوبة', payload.Section],
+        ['ملاحظات', payload.Notes || '--']
+      ];
+      popup.document.write(`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>بريد الأقسام</title><style>body{font-family:Tahoma,Arial;padding:30px;color:#0f172a}h1{text-align:center}.card{border:1px solid #94a3b8;border-radius:12px;overflow:hidden}.row{display:grid;grid-template-columns:180px 1fr;border-bottom:1px solid #cbd5e1}.row:last-child{border-bottom:0}.label{padding:12px;font-weight:700;background:#eff6ff}.value{padding:12px}.mono{direction:ltr;unicode-bidi:isolate;text-align:right}</style></head><body><h1>بريد الأقسام والنوبات</h1><div class="card">${fields.map(([label, value]) => `<div class="row"><div class="label">${escapeHtml(label)}</div><div class="value">${escapeHtml(value)}</div></div>`).join('')}</div><script>window.onload=()=>window.print();<\/script></body></html>`);
+      popup.document.close();
+    }
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      clearStatus();
+      const payload = collectPayload();
+      if (!validatePayload(payload)) return;
+      addBtn.disabled = true;
+      try {
+        await requestJson(apiBase, {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify(payload)
+        });
+        showStatus('تمت إضافة بريد القسم بنجاح.');
+        clearForm();
+        await loadRecords();
+      } catch (error) {
+        showStatus(error.message, true);
+      } finally {
+        addBtn.disabled = false;
+      }
+    });
+
+    updateBtn.addEventListener('click', async () => {
+      clearStatus();
+      if (!selectedRowId) {
+        showStatus('اختر سجلًا من الجدول أولًا.', true);
+        return;
+      }
+      const payload = collectPayload();
+      if (!validatePayload(payload)) return;
+      updateBtn.disabled = true;
+      try {
+        await requestJson(`${apiBase}/${selectedRowId}`, {
+          method: 'PUT',
+          headers: getHeaders(),
+          body: JSON.stringify(payload)
+        });
+        showStatus('تم تعديل بريد القسم بنجاح.');
+        await loadRecords();
+      } catch (error) {
+        showStatus(error.message, true);
+      } finally {
+        updateBtn.disabled = false;
+      }
+    });
+
+    deleteBtn.addEventListener('click', async () => {
+      clearStatus();
+      if (!selectedRowId) {
+        showStatus('اختر سجلًا من الجدول أولًا.', true);
+        return;
+      }
+      if (!confirm('هل أنت متأكد من حذف سجل بريد القسم؟')) return;
+      deleteBtn.disabled = true;
+      try {
+        await requestJson(`${apiBase}/${selectedRowId}`, {
+          method: 'DELETE',
+          headers: getHeaders(),
+          body: JSON.stringify({ userName: currentUser?.username || 'system' })
+        });
+        showStatus('تم حذف بريد القسم بنجاح.');
+        clearForm();
+        await loadRecords();
+      } catch (error) {
+        showStatus(error.message, true);
+      } finally {
+        deleteBtn.disabled = false;
+      }
+    });
+
+    departmentInput.addEventListener('change', () => populateSections());
+    mailDateInput.addEventListener('change', syncDateDisplay);
+    tableSearch.addEventListener('input', renderRows);
+    document.getElementById('printBtn').addEventListener('click', printCurrentRecord);
+    document.getElementById('refreshBtn').addEventListener('click', async () => {
+      clearStatus();
+      await loadDepartmentSections();
+      await loadRecords();
+      showStatus('تم تحديث عرض بريد الأقسام.');
+    });
+    document.getElementById('backBtn').addEventListener('click', () => {
+      window.location.href = sessionStorage.getItem('uiMode') === 'mobile'
+        ? '/mobile-dashboard.html'
+        : '/dashboard.html';
+    });
+
+    (async () => {
+      try {
+        syncAdminFields();
+        await loadDepartmentSections();
+        await loadRecords();
+      } catch (error) {
+        showStatus(error.message, true);
+      }
+    })();
+  </script>
+</body>
+</html>

@@ -4,23 +4,43 @@ setlocal
 title MainProject Local
 cd /d "%~dp0.."
 
-set "CENTRAL_SERVER_URL=http://PC-SERVER:5000"
-set "LOCAL_HOST=127.0.0.1"
-set "LOCAL_PORT=5000"
+if not defined CENTRAL_SERVER_URL set "CENTRAL_SERVER_URL=http://PC-SERVER:5000"
+if not defined CENTRAL_SERVER_FALLBACK_URL set "CENTRAL_SERVER_FALLBACK_URL=http://169.254.61.2:5000"
+if not defined LOCAL_HOST set "LOCAL_HOST=127.0.0.1"
+if not defined LOCAL_PORT set "LOCAL_PORT=5000"
 set "LOCAL_URL=http://localhost:%LOCAL_PORT%"
+set "NODE_EXE="
+if exist "%~dp0node\node.exe" set "NODE_EXE=%~dp0node\node.exe"
+if not defined NODE_EXE (
+	where node >nul 2>&1
+	if not errorlevel 1 set "NODE_EXE=node"
+)
 
 call :is_ready "%CENTRAL_SERVER_URL%/api/health"
 if errorlevel 1 (
-	echo.
-	echo تعذر الاتصال بالخادم المركزي: %CENTRAL_SERVER_URL%
-	echo تأكد من اتصال الجهاز بالشبكة الداخلية.
-	pause
-	exit /b 1
+	call :is_ready "%CENTRAL_SERVER_FALLBACK_URL%/api/health"
+	if errorlevel 1 (
+		echo.
+		echo تعذر الاتصال بالخادم المركزي: %CENTRAL_SERVER_URL%
+		echo وتعذر الاتصال بعنوان الشبكة الاحتياطي: %CENTRAL_SERVER_FALLBACK_URL%
+		echo تأكد من اتصال الجهاز بالشبكة الداخلية التي يوجد عليها PC-SERVER.
+		if not defined MAINPROJECT_NO_PAUSE pause
+		exit /b 1
+	)
+	set "CENTRAL_SERVER_URL=%CENTRAL_SERVER_FALLBACK_URL%"
 )
 
 call :is_ready "%LOCAL_URL%/local-health"
 if errorlevel 1 (
-	start "MainProject Local Client" /min cmd.exe /c "set CENTRAL_SERVER_URL=%CENTRAL_SERVER_URL%&& set LOCAL_HOST=%LOCAL_HOST%&& set LOCAL_PORT=%LOCAL_PORT%&& node local-client.js >> local-client-runtime.log 2>&1"
+	if not defined NODE_EXE (
+		echo.
+		echo تعذر العثور على Node.js لتشغيل الواجهة المحلية.
+		echo استخدم النسخة المحمولة الكاملة التي تحتوي على run-link-package\node\node.exe.
+		if not defined MAINPROJECT_NO_PAUSE pause
+		exit /b 1
+	)
+
+	start "MainProject Local Client" /min cmd.exe /c "set CENTRAL_SERVER_URL=%CENTRAL_SERVER_URL%&& set LOCAL_HOST=%LOCAL_HOST%&& set LOCAL_PORT=%LOCAL_PORT%&& ""%NODE_EXE%"" local-client.js >> local-client-runtime.log 2>&1"
 
 	for /L %%I in (1,1,10) do (
 		timeout /t 1 /nobreak >nul
@@ -31,11 +51,12 @@ if errorlevel 1 (
 	echo.
 	echo تعذر تشغيل ملفات البرنامج المحلية.
 	echo راجع local-client-runtime.log لمعرفة السبب.
-	pause
+	if not defined MAINPROJECT_NO_PAUSE pause
 	exit /b 1
 )
 
 :open_local
+if defined MAINPROJECT_NO_BROWSER exit /b 0
 start "" "%LOCAL_URL%/login.html"
 exit /b 0
 

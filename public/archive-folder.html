@@ -25,12 +25,14 @@
     .btn { border: 0; border-radius: 8px; padding: 11px 16px; background: var(--primary); color: #fff; font-weight: 700; cursor: pointer; }
     .btn.secondary { background: #e2e8f0; color: var(--text); }
     .tools { display: flex; align-items: end; gap: 12px; margin-bottom: 18px; }
+    .tools[hidden] { display: none; }
     .field { display: grid; gap: 6px; width: min(420px, 100%); }
     .field label { color: var(--muted); font-size: .85rem; font-weight: 700; }
     .field input { border: 1px solid var(--border); border-radius: 8px; min-height: 42px; padding: 10px 12px; font: inherit; }
     .status-box { display: none; margin-bottom: 18px; padding: 12px 14px; border-radius: 8px; font-weight: 700; }
     .status-box.show { display: block; }
     .status-box.error { background: #fee2e2; color: var(--danger); }
+    .status-box.success { background: #dcfce7; color: #166534; }
     .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
     .subfolders-section { display: none; margin-bottom: 22px; }
     .subfolders-section.show { display: block; }
@@ -41,7 +43,11 @@
     .folder-card h3 { margin: 0 0 4px; font-size: 1rem; }
     .folder-card p { margin: 0; color: var(--muted); font-size: .85rem; }
     .folder-card > span:last-child { color: var(--primary); font-size: 1.4rem; }
-    .archive-card { overflow: hidden; background: var(--card); border: 1px solid rgba(15,23,42,.08); border-radius: 8px; box-shadow: var(--shadow); }
+    .archive-card { position: relative; overflow: hidden; background: var(--card); border: 1px solid rgba(15,23,42,.08); border-radius: 8px; box-shadow: var(--shadow); }
+    .delete-force-list-btn { position: absolute; top: 10px; right: 10px; z-index: 2; width: 38px; height: 38px; display: grid; place-items: center; padding: 0; border: 1px solid #fecaca; border-radius: 50%; color: #dc2626; background: rgba(255,255,255,.96); cursor: pointer; box-shadow: 0 4px 12px rgba(127,29,29,.2); }
+    .delete-force-list-btn:hover { color: #fff; background: #dc2626; border-color: #dc2626; }
+    .delete-force-list-btn:disabled { opacity: .6; cursor: wait; }
+    .delete-force-list-btn svg { width: 20px; height: 20px; pointer-events: none; }
     .thumb { height: 210px; display: grid; place-items: center; overflow: hidden; background: #eef2f7; border-bottom: 1px solid var(--border); }
     .thumb img, .thumb object, .thumb iframe { width: 100%; height: 100%; object-fit: contain; border: 0; pointer-events: none; background: #fff; }
     .file-placeholder { display: grid; place-items: center; gap: 8px; color: #475569; font-weight: 700; }
@@ -69,7 +75,7 @@
     </header>
 
     <div class="status-box" id="statusBox"></div>
-    <section class="tools">
+    <section class="tools" id="searchTools">
       <div class="field">
         <label for="searchInput">بحث في الملفات</label>
         <input id="searchInput" type="search" placeholder="اسم الملف أو الامتداد" />
@@ -86,15 +92,25 @@
     const authToken = sessionStorage.getItem('authToken');
     if (!authToken) window.location.href = '/';
 
-    const categoryKey = new URLSearchParams(window.location.search).get('category') || '';
+    const isForceListPage = window.location.pathname === '/force-list.html';
+    const requestedCategoryKey = new URLSearchParams(window.location.search).get('category') || '';
+    const categoryKey = isForceListPage ? 'statements' : requestedCategoryKey;
     const folderTitle = document.getElementById('folderTitle');
     const folderDescription = document.getElementById('folderDescription');
     const filesGrid = document.getElementById('filesGrid');
     const subfoldersSection = document.getElementById('subfoldersSection');
     const subfoldersGrid = document.getElementById('subfoldersGrid');
+    const searchTools = document.getElementById('searchTools');
     const searchInput = document.getElementById('searchInput');
     const statusBox = document.getElementById('statusBox');
     let records = [];
+
+    if (!isForceListPage && categoryKey === 'statements') {
+      window.location.replace('/archive.html');
+    }
+    if (isForceListPage) {
+      searchTools.hidden = true;
+    }
 
     function parseJwtPayload(token) {
       try {
@@ -107,7 +123,40 @@
       }
     }
 
+    async function deleteForceList(item, button) {
+      const fileName = String(item.FileName || 'كشف القوة').trim();
+      if (!window.confirm(`هل أنت متأكد من حذف ${fileName}؟`)) return;
+
+      button.disabled = true;
+      setError('');
+      try {
+        const response = await fetch(`/api/archive/force-list/${encodeURIComponent(item.ID)}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${authToken}` }
+        });
+        if (response.status === 401) {
+          sessionStorage.removeItem('authToken');
+          window.location.href = '/';
+          return;
+        }
+
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(payload.message || 'تعذر حذف كشف القوة.');
+        }
+
+        records = records.filter((record) => Number(record.ID) !== Number(item.ID));
+        renderFiles();
+        setSuccess(payload.message || 'تم حذف كشف القوة بنجاح.');
+      } catch (error) {
+        button.disabled = false;
+        setError(error.message || 'تعذر حذف كشف القوة.');
+      }
+    }
+
     const currentUser = parseJwtPayload(authToken);
+    const currentRole = String(currentUser?.role || '').toLowerCase();
+    const canDeleteForceList = currentRole === 'admin';
     const canViewConfidentialBooks = String(currentUser?.role || '').toLowerCase() === 'admin'
       || (Array.isArray(currentUser?.allowedPages) && currentUser.allowedPages.includes('confidentialBooks'));
     const isConfidentialAccessDenied = categoryKey === 'confidential-books' && !canViewConfidentialBooks;
@@ -125,6 +174,11 @@
     function setError(message) {
       statusBox.textContent = message || '';
       statusBox.className = message ? 'status-box show error' : 'status-box';
+    }
+
+    function setSuccess(message) {
+      statusBox.textContent = message || '';
+      statusBox.className = message ? 'status-box show success' : 'status-box';
     }
 
     function fileTypeLabel(item) {
@@ -167,6 +221,15 @@
         const printableExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'pdf', 'docx', 'xlsx', 'txt', 'csv'];
         const canPrint = printableExtensions.includes(String(item.Extension || '').toLowerCase());
         card.innerHTML = `
+          ${isForceListPage && canDeleteForceList ? `
+            <button class="delete-force-list-btn" type="button" data-write-action title="حذف كشف القوة" aria-label="حذف كشف القوة">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M3 6h18"></path>
+                <path d="M8 6V4h8v2"></path>
+                <path d="M19 6l-1 14H6L5 6"></path>
+                <path d="M10 11v5M14 11v5"></path>
+              </svg>
+            </button>` : ''}
           <div class="thumb">${previewMarkup(item)}</div>
           <div class="card-body">
             <h2 class="file-name">${escapeHtml(item.FileName || 'ملف بدون اسم')}</h2>
@@ -180,6 +243,9 @@
           </div>`;
         card.querySelector('.download-link').addEventListener('click', () => downloadFile(item));
         card.querySelector('.print-file-btn').addEventListener('click', () => printFile(item));
+        card.querySelector('.delete-force-list-btn')?.addEventListener('click', (event) => {
+          deleteForceList(item, event.currentTarget);
+        });
         filesGrid.appendChild(card);
         loadGeneratedPreview(card).catch(() => {});
       });
@@ -230,6 +296,7 @@
       subfoldersGrid.innerHTML = '';
       subfoldersSection.classList.toggle('show', categories.length > 0);
       categories
+        .filter((item) => item.KeyName !== 'statements')
         .filter((item) => item.KeyName !== 'confidential-books' || canViewConfidentialBooks)
         .forEach((item) => {
         const card = document.createElement('a');
@@ -257,13 +324,22 @@
 
     async function initialize() {
       if (!categoryKey) throw new Error('لم يتم تحديد مجلد الأرشيف.');
-      const categories = await authorizedJson('/api/archive/categories');
+      const categoriesUrl = isForceListPage
+        ? `/api/archive/categories?key=${encodeURIComponent(categoryKey)}`
+        : '/api/archive/categories';
+      const categories = await authorizedJson(categoriesUrl);
       if (!categories) return;
       const category = categories.find((item) => item.KeyName === categoryKey);
       if (!category) throw new Error('مجلد الأرشيف المطلوب غير موجود أو غير نشط.');
-      folderTitle.textContent = category.LabelAr;
-      folderDescription.textContent = `ملفات مجلد ${category.LabelAr}`;
-      document.title = `${category.LabelAr} - الأرشيف`;
+      const pageLabel = isForceListPage ? 'كشف القوة' : category.LabelAr;
+      folderTitle.textContent = pageLabel;
+      folderDescription.textContent = isForceListPage
+        ? 'الملفات الرسمية الخاصة بكشف القوة.'
+        : `ملفات مجلد ${category.LabelAr}`;
+      document.title = isForceListPage ? pageLabel : `${category.LabelAr} - الأرشيف`;
+      if (isForceListPage) {
+        document.getElementById('backBtn').textContent = 'العودة إلى الرئيسية';
+      }
       const [subfolders, folderRecords] = await Promise.all([
         authorizedJson(`/api/archive/categories?parent=${encodeURIComponent(categoryKey)}`),
         authorizedJson(`/api/archive?category=${encodeURIComponent(categoryKey)}`)
@@ -274,7 +350,15 @@
     }
 
     searchInput.addEventListener('input', renderFiles);
-    document.getElementById('backBtn').addEventListener('click', () => { window.location.href = '/archive.html'; });
+    document.getElementById('backBtn').addEventListener('click', () => {
+      if (isForceListPage) {
+        window.location.href = sessionStorage.getItem('uiMode') === 'mobile'
+          ? '/mobile-dashboard.html'
+          : '/dashboard.html';
+        return;
+      }
+      window.location.href = '/archive.html';
+    });
     if (!isConfidentialAccessDenied) {
       initialize().catch((error) => setError(error.message));
     }

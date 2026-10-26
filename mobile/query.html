@@ -88,42 +88,51 @@
 
     .status-filter-bar {
       display: flex;
-      align-items: center;
+      flex-direction: column;
+      align-items: stretch;
       justify-content: flex-start;
       direction: rtl;
-      gap: 58px;
+      gap: 0;
       flex-wrap: nowrap;
-      padding: 8px;
+      padding: 6px 12px;
       border: 1px solid var(--ui-border);
-      border-radius: 10px;
-      background: #f8fafc;
+      border-radius: 14px;
+      background: #fff;
       margin-bottom: 10px;
-      overflow-x: auto;
+      overflow-x: visible;
+      box-sizing: border-box;
     }
 
     .status-filter-item {
       display: inline-flex;
       align-items: center;
       justify-content: flex-start;
-      gap: 0;
+      gap: 10px;
       flex-direction: row;
       white-space: nowrap;
       font-size: 14px;
       color: #0f172a;
       user-select: none;
       cursor: pointer;
-      width: auto;
+      width: 100%;
       flex: 0 0 auto;
       direction: rtl;
       unicode-bidi: isolate;
-      min-height: 34px;
-      padding-inline: 0;
+      min-height: 44px;
+      padding: 8px 4px;
       text-align: right;
+      border: 0;
+      border-bottom: 1px solid #e2e8f0;
+      border-radius: 0;
+      background: transparent;
+      box-sizing: border-box;
     }
 
-    .status-filter-item input {
-      width: 14px;
-      height: 14px;
+    body.app-shell .status-filter-item input {
+      width: 18px;
+      min-width: 18px;
+      max-width: 18px;
+      height: 18px;
       margin: 0;
       cursor: pointer;
       flex: 0 0 auto;
@@ -136,9 +145,13 @@
       padding: 0;
     }
 
+    .status-filter-item:last-of-type {
+      border-bottom: 0;
+    }
+
     .status-return-item {
-      transform: translateX(22px);
-      gap: 0;
+      transform: none;
+      gap: 10px;
     }
 
     .status-return-item input {
@@ -147,13 +160,13 @@
     }
 
     .status-return-item span {
-      margin-inline-start: -14px;
+      margin-inline-start: 0;
     }
 
     .status-filter-refresh {
-      width: 34px;
+      width: 100%;
       height: 34px;
-      margin-inline-start: auto;
+      margin: 6px 0 0;
       border: 1px solid #cbd5e1;
       background: #fff;
       color: #0f172a;
@@ -322,13 +335,13 @@
 
       <div class="status-filter-bar" aria-label="خيارات فلترة الحالات">
         <label class="status-filter-item"><input type="checkbox" id="statusPresent" /><span>حضور</span></label>
-        <label class="status-filter-item"><input type="checkbox" id="statusLate" /><span>تأخير</span></label>
-        <label class="status-filter-item"><input type="checkbox" id="statusPermission" /><span>استئذان</span></label>
         <label class="status-filter-item"><input type="checkbox" id="statusAbsent" /><span>غياب</span></label>
         <label class="status-filter-item status-return-item"><input type="checkbox" id="statusReturn" /><span>حضور بعد غياب</span></label>
-        <label class="status-filter-item"><input type="checkbox" id="statusLicense" /><span>رخصة</span></label>
-        <label class="status-filter-item"><input type="checkbox" id="statusLeave" /><span>إجازة</span></label>
+        <label class="status-filter-item"><input type="checkbox" id="statusPermission" /><span>أذن</span></label>
+        <label class="status-filter-item"><input type="checkbox" id="statusReduction" /><span>تخفيف عمل</span></label>
+        <label class="status-filter-item"><input type="checkbox" id="statusLeave" /><span>اجازة</span></label>
         <label class="status-filter-item"><input type="checkbox" id="statusCourse" /><span>دورة</span></label>
+        <label class="status-filter-item"><input type="checkbox" id="statusAssignment" /><span>تكليف</span></label>
         <button type="button" class="status-filter-refresh" id="resetStatusFilters" title="إعادة التعيين" aria-label="إعادة التعيين">↻</button>
       </div>
 
@@ -362,6 +375,7 @@
   </div>
 
   <script src="/query-name-completion.js"></script>
+  <script src="/status-catalog.js"></script>
   <script>
     const authToken = sessionStorage.getItem('authToken');
     if (!authToken) {
@@ -399,13 +413,13 @@
 
     const statusCheckboxes = {
       حضور: document.getElementById('statusPresent'),
-      تأخير: document.getElementById('statusLate'),
-      استئذان: document.getElementById('statusPermission'),
       غياب: document.getElementById('statusAbsent'),
       'حضور بعد غياب': document.getElementById('statusReturn'),
-      رخصة: document.getElementById('statusLicense'),
-      إجازة: document.getElementById('statusLeave'),
-      دورة: document.getElementById('statusCourse')
+      أذن: document.getElementById('statusPermission'),
+      'تخفيف عمل': document.getElementById('statusReduction'),
+      اجازة: document.getElementById('statusLeave'),
+      دورة: document.getElementById('statusCourse'),
+      تكليف: document.getElementById('statusAssignment')
     };
 
     function setSearchMessage(message) {
@@ -477,18 +491,7 @@
     }
 
     function getSelectedStatusTerms() {
-      const mapping = [
-        { key: 'حضور', terms: ['حضور'] },
-        { key: 'تأخير', terms: ['تأخير'] },
-        { key: 'استئذان', terms: ['استئذان', 'استئذان', 'إذن', 'اذن', 'أذن'] },
-        { key: 'غياب', terms: ['غياب'] },
-        { key: 'حضور بعد غياب', terms: ['حضور بعد غياب'] },
-        { key: 'رخصة', terms: ['رخصة'] },
-        { key: 'إجازة', terms: ['إجازة', 'اجازة'] },
-        { key: 'دورة', terms: ['دورة'] }
-      ];
-
-      return mapping.filter((item) => statusCheckboxes[item.key]?.checked);
+      return MainProjectStatusCatalog.statuses.filter((status) => statusCheckboxes[status]?.checked);
     }
 
     function getFilteredRows() {
@@ -498,8 +501,7 @@
       }
 
       return currentRows.filter((item) => {
-        const haystack = normalizeText([item.Status, item.Type, item.Note].filter(Boolean).join(' '));
-        return selectedStatuses.some((entry) => entry.terms.some((term) => haystack.includes(normalizeText(term))));
+        return selectedStatuses.includes(MainProjectStatusCatalog.normalizeStatus(item.Status));
       });
     }
 
@@ -753,7 +755,7 @@
     syncDateDisplays();
 
     document.getElementById('backBtn').addEventListener('click', () => {
-      window.location.href = sessionStorage.getItem('uiMode') === 'mobile' ? '/mobile/dashboard.html' : '/dashboard.html';
+      window.location.href = '/mobile-dashboard.html';
     });
 
     document.getElementById('printBtn').addEventListener('click', () => {

@@ -36,6 +36,12 @@ function denyIfNotAdmin(req, res) {
 function normalize(value) {
   return String(value || "").trim();
 }
+function normalizeJobTitle(value) {
+  return normalize(value).replace(/\s+/g, " ");
+}
+function jobTitleKey(value) {
+  return normalizeJobTitle(value).toLocaleLowerCase("ar-KW");
+}
 function normalizePermission(value) {
   const role = normalizeRole(value);
   if (role === "admin") return "Admin";
@@ -67,6 +73,17 @@ function parseJsonArray(value) {
     return [];
   }
   return [];
+}
+async function getActiveEmployeeByName(name) {
+  const normalizedName = normalize(name);
+  if (!normalizedName) return null;
+  return db.prepare(`
+    SELECT ID, Name, Department, Section, IFNULL(SubSection, '') AS SubSection
+    FROM Main
+    WHERE TRIM(Status) = 'نشط'
+      AND TRIM(Name) = ?
+    LIMIT 1
+  `).get(normalizedName);
 }
 function deriveTemplateNameFromFileName(fileName) {
   const raw = normalize(fileName);
@@ -167,12 +184,12 @@ router.delete("/archive-categories/:id", async (req, res) => {
 router.post("/job-titles", async (req, res) => {
   var _a, _b;
   if (denyIfNotAdmin(req, res)) return;
-  const title = normalize(req.body.Title).replace(/\s+/g, " ");
+  const title = normalizeJobTitle(req.body.Title);
   if (!title) {
     return res.status(400).json({ message: "المسمى الوظيفي مطلوب." });
   }
   try {
-    const existing = (await listJobTitles(db)).some((row) => normalize(row.Title) === title);
+    const existing = (await listJobTitles(db)).some((row) => jobTitleKey(row.Title) === jobTitleKey(title));
     if (existing) {
       return res.status(409).json({ message: "هذا المسمى الوظيفي موجود مسبقًا." });
     }
@@ -192,7 +209,93 @@ router.post("/job-titles", async (req, res) => {
     res.status(201).json({ ID: result.lastInsertRowid, Title: title });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "تعذر إضافة المسمى الوظيفي." });
+    const isDuplicate = String(error.message || "").toUpperCase().includes("UNIQUE");
+    res.status(isDuplicate ? 409 : 500).json({
+      message: isDuplicate ? "هذا المسمى الوظيفي موجود مسبقًا." : "تعذر إضافة المسمى الوظيفي."
+    });
+  }
+});
+router.get("/job-titles", async (req, res) => {
+  if (denyIfNotAdmin(req, res)) return;
+  try {
+    res.json(await listJobTitles(db));
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "تعذر تحميل المسميات الوظيفية." });
+  }
+});
+router.put("/job-titles/:id", async (req, res) => {
+  var _a, _b;
+  if (denyIfNotAdmin(req, res)) return;
+  const id = Number(req.params.id || 0);
+  const title = normalizeJobTitle(req.body.Title);
+  if (!id) {
+    return res.status(400).json({ message: "معرّف المسمى الوظيفي غير صالح." });
+  }
+  if (!title) {
+    return res.status(400).json({ message: "المسمى الوظيفي مطلوب." });
+  }
+
+  const current = await db.prepare("SELECT ID, Title FROM JobTitleLookup WHERE ID = ? LIMIT 1").get(id);
+  if (!current) {
+    return res.status(404).json({ message: "المسمى الوظيفي غير موجود." });
+  }
+  const duplicate = (await listJobTitles(db)).some(
+    (row) => Number(row.ID) !== id && jobTitleKey(row.Title) === jobTitleKey(title)
+  );
+  if (duplicate) {
+    return res.status(409).json({ message: "هذا المسمى الوظيفي موجود مسبقًا." });
+  }
+
+  try {
+    const timestamp = getCurrentTimestamp();
+    const updateJobTitle = db.transaction(async () => {
+      await db.prepare("UPDATE JobTitleLookup SET Title = ?, UpdatedAt = ? WHERE ID = ?").run(title, timestamp, id);
+      await db.prepare("UPDATE Main SET Rank = ? WHERE Rank = ?").run(title, current.Title);
+    });
+    await updateJobTitle();
+    await logSystem({
+      userName: ((_a = req.user) == null ? void 0 : _a.username) || "system",
+      role: ((_b = req.user) == null ? void 0 : _b.role) || "",
+      action: "Update",
+      page: "Settings",
+      details: `Updated job title ID=${id} from ${current.Title} to ${title}`
+    });
+    res.json({ ID: id, Title: title });
+  } catch (error) {
+    console.error(error);
+    const isDuplicate = String(error.message || "").toUpperCase().includes("UNIQUE");
+    res.status(isDuplicate ? 409 : 500).json({
+      message: isDuplicate ? "هذا المسمى الوظيفي موجود مسبقًا." : "تعذر تعديل المسمى الوظيفي."
+    });
+  }
+});
+router.delete("/job-titles/:id", async (req, res) => {
+  var _a, _b;
+  if (denyIfNotAdmin(req, res)) return;
+  const id = Number(req.params.id || 0);
+  if (!id) {
+    return res.status(400).json({ message: "معرّف المسمى الوظيفي غير صالح." });
+  }
+
+  const current = await db.prepare("SELECT ID, Title FROM JobTitleLookup WHERE ID = ? LIMIT 1").get(id);
+  if (!current) {
+    return res.status(404).json({ message: "المسمى الوظيفي غير موجود." });
+  }
+
+  try {
+    await db.prepare("DELETE FROM JobTitleLookup WHERE ID = ?").run(id);
+    await logSystem({
+      userName: ((_a = req.user) == null ? void 0 : _a.username) || "system",
+      role: ((_b = req.user) == null ? void 0 : _b.role) || "",
+      action: "Delete",
+      page: "Settings",
+      details: `Deleted job title ID=${id} title=${current.Title}`
+    });
+    res.json({ message: "تم حذف المسمى الوظيفي بنجاح." });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "تعذر حذف المسمى الوظيفي." });
   }
 });
 router.get("/department-sections", async (req, res) => {
@@ -423,7 +526,7 @@ router.post("/users", async (req, res) => {
     AllowedPages: normalizeAllowedPagesInput(req.body.AllowedPages, req.body.EditablePages),
     AllowedDepartments: normalizeJsonArrayInput(req.body.AllowedDepartments),
     AllowedSections: normalizeJsonArrayInput(req.body.AllowedSections),
-    AllowedSubSections: normalizeJsonArrayInput(req.body.AllowedSubSections),
+    AllowedSubSections: "[]",
     IsActive: Number(req.body.IsActive) === 0 ? 0 : 1
   };
   if (!payload.Username) {
@@ -435,6 +538,14 @@ router.post("/users", async (req, res) => {
   if (!rawPermission) {
     return res.status(400).json({ message: "\u0627\u0644\u0635\u0644\u0627\u062D\u064A\u0629 \u0645\u0637\u0644\u0648\u0628\u0629." });
   }
+  const linkedEmployee = await getActiveEmployeeByName(payload.Name);
+  if (!linkedEmployee) {
+    return res.status(400).json({ message: "\u064A\u0631\u062C\u0649 \u0627\u062E\u062A\u064A\u0627\u0631 \u0627\u0633\u0645 \u0645\u0648\u0638\u0641 \u0646\u0634\u0637 \u0645\u0646 \u0642\u0627\u0626\u0645\u0629 \u0627\u0644\u0645\u0648\u0638\u0641\u064A\u0646." });
+  }
+  payload.Name = normalize(linkedEmployee.Name);
+  payload.Department = normalize(linkedEmployee.Department);
+  payload.Section = normalize(linkedEmployee.Section);
+  payload.SubSection = normalize(linkedEmployee.SubSection);
   const existingUser = await db.prepare("SELECT ID FROM Login WHERE Username = ? COLLATE NOCASE LIMIT 1").get(payload.Username);
   if (existingUser) {
     return res.status(409).json({ message: "\u0627\u0633\u0645 \u0627\u0644\u0645\u0633\u062A\u062E\u062F\u0645 \u0645\u0633\u062A\u062E\u062F\u0645 \u0645\u0633\u0628\u0642\u064B\u0627." });
@@ -512,7 +623,7 @@ router.put("/users/:id", async (req, res) => {
     AllowedPages: normalizeAllowedPagesInput(req.body.AllowedPages, req.body.EditablePages),
     AllowedDepartments: normalizeJsonArrayInput(req.body.AllowedDepartments),
     AllowedSections: normalizeJsonArrayInput(req.body.AllowedSections),
-    AllowedSubSections: normalizeJsonArrayInput(req.body.AllowedSubSections),
+    AllowedSubSections: "[]",
     IsActive: Number(req.body.IsActive) === 0 ? 0 : 1
   };
   if (!payload.Username) {
@@ -524,6 +635,14 @@ router.put("/users/:id", async (req, res) => {
   if (!rawPermission) {
     return res.status(400).json({ message: "\u0627\u0644\u0635\u0644\u0627\u062D\u064A\u0629 \u0645\u0637\u0644\u0648\u0628\u0629." });
   }
+  const linkedEmployee = await getActiveEmployeeByName(payload.Name);
+  if (!linkedEmployee) {
+    return res.status(400).json({ message: "\u064A\u0631\u062C\u0649 \u0627\u062E\u062A\u064A\u0627\u0631 \u0627\u0633\u0645 \u0645\u0648\u0638\u0641 \u0646\u0634\u0637 \u0645\u0646 \u0642\u0627\u0626\u0645\u0629 \u0627\u0644\u0645\u0648\u0638\u0641\u064A\u0646." });
+  }
+  payload.Name = normalize(linkedEmployee.Name);
+  payload.Department = normalize(linkedEmployee.Department);
+  payload.Section = normalize(linkedEmployee.Section);
+  payload.SubSection = normalize(linkedEmployee.SubSection);
   const existingUser = await db.prepare("SELECT ID FROM Login WHERE Username = ? COLLATE NOCASE AND ID <> ? LIMIT 1").get(payload.Username, id);
   if (existingUser) {
     return res.status(409).json({ message: "\u0627\u0633\u0645 \u0627\u0644\u0645\u0633\u062A\u062E\u062F\u0645 \u0645\u0633\u062A\u062E\u062F\u0645 \u0645\u0633\u0628\u0642\u064B\u0627 \u0645\u0646 \u062D\u0633\u0627\u0628 \u0622\u062E\u0631." });

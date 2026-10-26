@@ -36,6 +36,7 @@ registerDatabaseInitializer(async () => {
   await ensureReductionTable();
   await ensureColumn('Reduction', 'UserName', 'TEXT');
   await ensureColumn('Reduction', 'Hours', 'INTEGER', '2');
+  await db.prepare("UPDATE Reduction SET Status = 'تخفيف عمل', Hours = 2").run();
 });
 
 function normalizeText(value) {
@@ -43,8 +44,7 @@ function normalizeText(value) {
 }
 
 function isValidStatus(value) {
-  const status = normalizeText(value);
-  return status === 'تخفيف عمل' || status === 'تأخير' || status === 'مبكر';
+  return normalizeText(value) === 'تخفيف عمل';
 }
 
 function isValidType(value) {
@@ -113,7 +113,7 @@ router.post('/', async (req, res) => {
 
   payload.Status = status;
   payload.Type = type;
-  payload.Hours = Number(payload.Hours || 2);
+  payload.Hours = 2;
   payload.Startdate = startDate;
   payload.Enddate = normalizeText(payload.Enddate);
 
@@ -156,9 +156,7 @@ router.put('/:id', async (req, res) => {
     payload.Enddate = normalizeText(payload.Enddate);
   }
 
-  if (payload.Hours !== undefined) {
-    payload.Hours = Number(payload.Hours || 2);
-  }
+  payload.Hours = 2;
 
   if (!empId && !employeeName && !payload.EmpID && !payload.Name) {
     const current = (await db.prepare('SELECT EmpID, Name FROM Reduction WHERE ID = ?').get(id));

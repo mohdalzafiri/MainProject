@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" role="img" aria-label="صورة المستخدم الافتراضية">
+  <circle cx="80" cy="80" r="80" fill="#17364f"/>
+  <circle cx="80" cy="58" r="25" fill="none" stroke="#55b9ff" stroke-width="10"/>
+  <path d="M31 142c4-31 23-49 49-49s45 18 49 49" fill="none" stroke="#55b9ff" stroke-width="10" stroke-linecap="round"/>
+</svg>

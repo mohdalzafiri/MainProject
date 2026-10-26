@@ -292,7 +292,7 @@
 
           <div class="field">
             <label for="hours">عدد الساعات</label>
-            <input id="hours" type="number" min="1" max="12" value="2" />
+            <input id="hours" type="number" value="2" readonly />
           </div>
 
           <div class="field">
@@ -399,7 +399,9 @@
     }
 
     const isAdminUser = String(currentUser?.role || currentUser?.username || '').trim().toLowerCase() === 'admin';
-    const homeRoute = sessionStorage.getItem('uiMode') === 'mobile' ? '/mobile-dashboard.html' : '/dashboard.html';
+    const isMobilePage = window.location.pathname.startsWith('/mobile/')
+      || sessionStorage.getItem('uiMode') === 'mobile';
+    const homeRoute = isMobilePage ? '/mobile-dashboard.html' : '/dashboard.html';
     const backBtn = document.getElementById('backBtn');
     const form = document.getElementById('reductionForm');
     const nameInput = document.getElementById('name');
@@ -644,7 +646,7 @@
       const type = String(typeInput.value || '').trim();
       const startDate = startDateInput.value;
       const endDate = endDateInput.value;
-      const hours = Number(hoursInput.value || 2);
+      const hours = 2;
 
       if (!name) {
         showStatus('يجب اختيار اسم الموظف.', true);
@@ -669,7 +671,7 @@
         Type: type,
         Startdate: startDate,
         Enddate: endDate || '',
-        Hours: hours || 2,
+        Hours: hours,
         Note: noteInput.value,
         UserName: isAdminUser ? (userNameInput.value || currentUser?.username || 'system') : (currentUser?.username || 'system')
       };
@@ -704,7 +706,7 @@
         Type: String(typeInput.value || '').trim(),
         Startdate: startDateInput.value || '',
         Enddate: endDateInput.value || '',
-        Hours: Number(hoursInput.value || 2),
+        Hours: 2,
         Note: noteInput.value,
         UserName: isAdminUser ? (userNameInput.value || currentUser?.username || 'system') : (currentUser?.username || 'system')
       };
