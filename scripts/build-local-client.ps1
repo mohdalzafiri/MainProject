@@ -1,6 +1,6 @@
 param(
   [string]$OutputDirectory = (Join-Path $env:USERPROFILE 'Downloads'),
-  [string]$PackageName = 'MainProject-Local-Client'
+  [string]$PackageName = 'MainProject'
 )
 
 $ErrorActionPreference = 'Stop'

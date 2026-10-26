@@ -89,5 +89,5 @@ When creating new frontend pages (especially inside `public/`), apply these defa
 
 ## Release Finalization
 - When the user explicitly orders final version/release completion, include the version number in the release commit message and push the validated commit to the configured Git remote.
-- Name portable client archives using the program name, version, and build date: `MainProject-Local-Client-v<version>-<yyyy-MM-dd>.zip`.
+- Name portable client archives using the program name, version, and build date: `MainProject-v<version>-<yyyy-MM-dd>.zip`.
 - Keep the portable archive version synchronized with `package.json` and the version displayed on the login page.
