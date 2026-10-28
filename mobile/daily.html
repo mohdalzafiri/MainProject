@@ -237,7 +237,9 @@
     }
 
     body.app-shell .table-wrap table {
-      min-width: 1050px;
+      width: 100%;
+      min-width: 0;
+      table-layout: fixed;
       border-collapse: collapse;
     }
 
@@ -252,19 +254,56 @@
       border: 1px solid #d1d5db;
     }
 
-    body.app-shell .table-wrap th:nth-child(4),
-    body.app-shell .table-wrap td:nth-child(4),
-    body.app-shell .table-wrap th:nth-child(5),
-    body.app-shell .table-wrap td:nth-child(5) {
-      min-width: 140px;
-    }
-
     body.app-shell .table-wrap td {
       background: transparent;
     }
 
     body.app-shell .table-wrap th {
       background: #f8fafc;
+    }
+
+    body.app-shell .table-wrap th,
+    body.app-shell .table-wrap td {
+      box-sizing: border-box;
+      min-width: 0;
+      padding: 5px 3px;
+      overflow: hidden;
+      font-size: 11px;
+    }
+
+    body.app-shell .table-wrap th:nth-child(1),
+    body.app-shell .table-wrap td:nth-child(1) { width: 5%; }
+
+    body.app-shell .table-wrap th:nth-child(2),
+    body.app-shell .table-wrap td:nth-child(2) { width: 20%; }
+
+    body.app-shell .table-wrap th:nth-child(3),
+    body.app-shell .table-wrap td:nth-child(3) { width: 14%; }
+
+    body.app-shell .table-wrap th:nth-child(4),
+    body.app-shell .table-wrap td:nth-child(4),
+    body.app-shell .table-wrap th:nth-child(5),
+    body.app-shell .table-wrap td:nth-child(5) { width: 11%; }
+
+    body.app-shell .table-wrap th:nth-child(6),
+    body.app-shell .table-wrap td:nth-child(6),
+    body.app-shell .table-wrap th:nth-child(7),
+    body.app-shell .table-wrap td:nth-child(7) { width: 9%; }
+
+    body.app-shell .table-wrap th:nth-child(8),
+    body.app-shell .table-wrap td:nth-child(8) { width: 11%; }
+
+    body.app-shell .table-wrap th:nth-child(9),
+    body.app-shell .table-wrap td:nth-child(9) { width: 10%; }
+
+    body.app-shell .table-wrap .time-input,
+    body.app-shell .table-wrap .status-select {
+      box-sizing: border-box;
+      width: 100%;
+      min-width: 0;
+      max-width: 100%;
+      padding: 3px 1px;
+      font-size: 11px;
     }
 
     body.app-shell .table-wrap tbody tr.selected td {
@@ -543,7 +582,8 @@
       }
 
       body.app-shell .table-wrap table {
-        min-width: 1050px;
+        width: 100%;
+        min-width: 0;
       }
     }
   </style>
