@@ -65,6 +65,12 @@ test('query and statistics permissions remain independent', () => {
   assert.equal(serializeAllowedPages(['query']), '["query"]');
 });
 
+test('evaluation permission can be assigned independently to non-admin users', () => {
+  assert.deepEqual(getEffectiveAllowedPages(false, ['evaluations']), ['evaluations']);
+  assert.equal(serializeAllowedPages(['evaluations']), '["evaluations"]');
+  assert.equal(ADMIN_ONLY_PAGE_KEYS.includes('evaluations'), false);
+});
+
 test('department mail permission remains independent', () => {
   assert.deepEqual(getEffectiveAllowedPages(false, ['departmentMail']), ['departmentMail']);
   assert.equal(serializeAllowedPages(['departmentMail']), '["departmentMail"]');

@@ -1,6 +1,6 @@
 {
   "name": "mainproject-local-client",
-  "version": "3.3.1",
+  "version": "3.3.2",
   "private": true,
   "description": "Portable local interface for MainProject",
   "main": "local-client.js",

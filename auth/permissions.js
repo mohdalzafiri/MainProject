@@ -4,12 +4,13 @@ const ROLE_VIEW_ONLY = 'view';
 const EDIT_PERMISSION_PREFIX = 'edit:';
 const PAGE_EDITS_CONFIGURED = 'pageEditsConfigured';
 
-const ADMIN_ONLY_PAGE_KEYS = ['settings', 'administrative', 'systemLog', 'evaluations'];
+const ADMIN_ONLY_PAGE_KEYS = ['settings', 'administrative', 'systemLog'];
 const CUSTOMIZABLE_NON_ADMIN_PAGE_KEYS = [
   'employees',
   'daily',
   'query',
   'statistics',
+  'evaluations',
   'holidays',
   'reduction',
   'courses',

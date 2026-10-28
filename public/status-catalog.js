@@ -52,11 +52,13 @@
     return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
   }
 
-  function getAdjustedTimes(defaults, description) {
+  function getAdjustedTimes(defaults, description, status) {
     const source = defaults || {};
     const inTime = String(source.inTime || '').trim();
     const outTime = String(source.outTime || '').trim();
     const normalizedDescription = String(description || '').trim();
+
+    if (normalizeStatus(status) !== 'تخفيف عمل') return { inTime, outTime };
 
     if (normalizedDescription === 'بداية الدوام') {
       return { inTime: shiftTime(inTime, 120), outTime };

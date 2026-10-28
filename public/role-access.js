@@ -205,14 +205,14 @@
     const adminOnlyPaths = new Set([
       '/settings.html',
       '/administrative.html',
-      '/system-log.html',
-      '/evaluations.html'
+      '/system-log.html'
     ]);
     const pageKeyByPath = {
       '/employees.html': 'employees',
       '/daily.html': 'daily',
       '/query.html': 'query',
       '/statistics.html': 'statistics',
+      '/evaluations.html': 'evaluations',
       '/holidays.html': 'holidays',
       '/reduction.html': 'reduction',
       '/courses.html': 'courses',

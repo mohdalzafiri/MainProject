@@ -3,6 +3,7 @@ const { db, dailyTables, isValidDailyTable, logSystem } = require('../database')
 const { filterByDataScope, isWithinDataScope } = require('../auth/dataScope');
 const { ensureDailyScanSectionDirectory } = require('../services/dailyScanStorage');
 const statusCatalog = require('../public/status-catalog');
+const { periodTimes, getDelayMinutes, getPermissionDurationMinutes } = require('../utils/dailyMetrics');
 
 const router = express.Router();
 
@@ -21,13 +22,6 @@ const departmentOrder = [
   'المعلومات',
   'الاحصاء'
 ];
-
-const periodTimes = {
-  'نوبة صبح': { inTime: '08:00', outTime: '16:00' },
-  'نوبة عصر': { inTime: '16:00', outTime: '00:00' },
-  'نوبة ليل': { inTime: '00:00', outTime: '08:00' },
-  'صباحاً': { inTime: '07:30', outTime: '14:30' }
-};
 
 const tableSections = {
   Daily1: [
@@ -66,18 +60,14 @@ function toSlashDate(value) {
   return `${parts[0]}/${parts[1]}/${parts[2]}`;
 }
 
-function getPermissionMinutes() {
-  return 120;
-}
-
 function applyStatusRules(payload) {
   const normalized = { ...payload };
   normalized.Status = statusCatalog.normalizeStatus(normalized.Status);
 
-  if (statusCatalog.isAdjustedStatus(normalized.Status)) {
+  if (normalized.Status === 'تخفيف عمل') {
     const description = String(normalized.Type || '').trim();
     const defaults = periodTimes[String(normalized.Period || '').trim()] || { inTime: '', outTime: '' };
-    const times = statusCatalog.getAdjustedTimes(defaults, description);
+    const times = statusCatalog.getAdjustedTimes(defaults, description, normalized.Status);
     normalized.InTime = times.inTime;
     normalized.OutTime = times.outTime;
   }
@@ -102,7 +92,7 @@ function getMonthBounds(value) {
 
 function getPermissionSourceQuery() {
   return dailyTables.map((table) => `
-    SELECT '${table}' AS SourceTable, ID, EmpID, Name, Today, Status, InTime, OutTime
+    SELECT '${table}' AS SourceTable, ID, EmpID, Name, Today, Status, Period, Type, InTime, OutTime
     FROM ${table}
   `).join(' UNION ALL ');
 }
@@ -115,7 +105,7 @@ async function getMonthlyPermissionUsage(record, excludedTable = '', excludedId 
   if (!today || !bounds || (!empId && !name)) return { count: 0, minutes: 0 };
 
   const records = (await db.prepare(`
-    SELECT SourceTable, ID, InTime, OutTime
+    SELECT SourceTable, Period, Type, InTime, OutTime
     FROM (${getPermissionSourceQuery()}) AS DailyPermissions
     WHERE TRIM(Status) IN ('أذن', 'استئذان', 'إذن', 'اذن')
       AND date(REPLACE(Today, '/', '-')) BETWEEN date(?) AND date(?)
@@ -129,7 +119,7 @@ async function getMonthlyPermissionUsage(record, excludedTable = '', excludedId 
 
   return {
     count: records.length,
-    minutes: records.reduce((sum) => sum + getPermissionMinutes(), 0)
+    minutes: records.reduce((sum, item) => sum + getPermissionDurationMinutes(item), 0)
   };
 }
 
@@ -138,7 +128,7 @@ async function validateMonthlyPermissionLimit(record, excludedTable = '', exclud
 
   const usage = (await getMonthlyPermissionUsage(record, excludedTable, excludedId));
   const totalCount = usage.count + 1;
-  const totalMinutes = usage.minutes + getPermissionMinutes();
+  const totalMinutes = usage.minutes + getPermissionDurationMinutes(record);
 
   if (totalCount > 4) {
     return `لا يمكن تسجيل الأذن: الحد الشهري هو 4 أذونات، والمستخدم حاليًا ${totalCount} أذونات.`;
@@ -352,6 +342,58 @@ router.get('/permission-summary', async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'تعذر حساب رصيد الأذن الشهري للموظف.' });
+  }
+});
+
+router.get('/monthly-alerts', async (req, res) => {
+  try {
+    const bounds = getMonthBounds(req.query.today);
+    if (!bounds) {
+      return res.status(400).json({ message: 'يجب تحديد تاريخ صحيح لحساب تنبيهات الشهر.' });
+    }
+
+    const records = filterByDataScope(await db.prepare(`
+      SELECT EmpID, Name, Department, Section, Status, Period, Type, InTime, OutTime, Today
+      FROM DailyAll
+      WHERE date(REPLACE(Today, '/', '-')) BETWEEN date(?) AND date(?)
+        AND TRIM(Status) IN ('حضور بعد غياب', 'أذن', 'استئذان', 'إذن', 'اذن')
+    `).all(bounds.from, bounds.to), req.access);
+
+    const usageByEmployee = new Map();
+    records.forEach((record) => {
+      const empId = String(record.EmpID || '').trim();
+      const name = String(record.Name || '').trim();
+      const normalizedName = name.toLowerCase().replace(/\s+/g, ' ').trim();
+      const key = normalizedName ? `name:${normalizedName}` : `emp:${empId}`;
+      if (!name && !empId) return;
+
+      const usage = usageByEmployee.get(key) || {
+        EmpID: empId,
+        Name: name,
+        lateMinutes: 0,
+        permissionCount: 0,
+        permissionMinutes: 0
+      };
+
+      if (String(record.Status || '').trim() === 'حضور بعد غياب') {
+        usage.lateMinutes += getDelayMinutes(record);
+      } else {
+        usage.permissionCount += 1;
+        usage.permissionMinutes += getPermissionDurationMinutes(record);
+      }
+
+      usageByEmployee.set(key, usage);
+    });
+
+    res.json([...usageByEmployee.values()].map((usage) => ({
+      ...usage,
+      lateExceeded: usage.lateMinutes > 105,
+      permissionTimeExceeded: usage.permissionMinutes > (12 * 60),
+      permissionCountExceeded: usage.permissionCount > 4
+    })));
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'تعذر حساب تنبيهات اليوميات الشهرية.' });
   }
 });
 

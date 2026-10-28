@@ -5,10 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>الرئيسية - إدارة البلاغات</title>
   <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" type="image/png" href="/images/logo.png?v=20261028" />
   <link rel="stylesheet" href="/layout-defaults.css" />
   <meta name="theme-color" content="#f6faff" />
   <meta name="apple-mobile-web-app-title" content="إدارة البلاغات" />
-  <link rel="apple-touch-icon" href="/images/logo.png" />
+  <link rel="apple-touch-icon" href="/images/logo.png?v=20261028" />
   <style>
     :root {
       --mobile-bg: #f6faff;
@@ -52,6 +53,16 @@
         linear-gradient(180deg, #07111f 0%, var(--mobile-bg) 100%);
     }
 
+    body.app-shell::before {
+      content: "";
+      position: fixed;
+      z-index: 0;
+      inset: 0;
+      background: url("/images/mobile-home-watermark.png") center 56% / min(78vw, 480px) auto no-repeat;
+      opacity: .32;
+      pointer-events: none;
+    }
+
     body.app-shell > .mobile-page {
       width: min(var(--app-page-max-width), calc(100vw - var(--app-page-side-gap)));
       min-height: 100vh;
@@ -59,6 +70,7 @@
       padding: 14px 14px calc(104px + env(safe-area-inset-bottom));
       gap: 16px;
       position: relative;
+      z-index: 1;
       overflow: hidden;
     }
 
@@ -326,7 +338,7 @@
     </button>
 
     <section class="hero" aria-label="إدارة البلاغات">
-      <img src="/images/logo.png" alt="هاتف الطوارئ 112" />
+      <img src="/images/logo.png" alt="شعار شؤون المرور والعمليات المركزية للعمليات" />
     </section>
 
     <section class="services" aria-label="خدمات النظام">
@@ -357,6 +369,18 @@
       <a class="service-card" href="/mobile/transfers.html" data-page-key="transfers">
         <span class="service-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3l4 4-4 4M3 7h18M7 21l-4-4 4-4M21 17H3"></path></svg></span>
         <strong>التنقلات</strong>
+      </a>
+      <a class="service-card" href="/evaluations.html" data-page-key="evaluations">
+        <span class="service-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3l-5.6 2.9 1.1-6.2L3 9.6l6.2-.9L12 3Z"></path></svg></span>
+        <strong>تقييم الأداء</strong>
+      </a>
+      <a class="service-card admin-only" href="/administrative.html" hidden>
+        <span class="service-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"></path><path d="M14 2v6h6M8 13h8M8 17h8"></path></svg></span>
+        <strong>النماذج الإدارية</strong>
+      </a>
+      <a class="service-card admin-only" href="/system-log.html" hidden>
+        <span class="service-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16v16H4zM8 8h8M8 12h8M8 16h5"></path></svg></span>
+        <strong>سجل النظام</strong>
       </a>
       <a class="service-card" href="/mobile/outgoing.html" data-page-key="outgoing">
         <span class="service-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4Z"></path><path d="M22 2 11 13"></path></svg></span>
@@ -398,7 +422,7 @@
       <svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M16 3v4M8 3v4M3 10h18"></path></svg>
       <span>اليوميات</span>
     </a>
-    <a class="nav-item" href="/mobile-profile.html">
+    <a class="nav-item" id="settingsNavBtn" href="/mobile-profile.html">
       <svg viewBox="0 0 24 24" fill="none" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V21h-4v-.08A1.7 1.7 0 0 0 8.96 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.56-1.03H3v-4h.08A1.7 1.7 0 0 0 4.6 8.96a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 8.96 4.6 1.7 1.7 0 0 0 10 3.08V3h4v.08a1.7 1.7 0 0 0 1.03 1.52 1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06a1.7 1.7 0 0 0-.34 1.88A1.7 1.7 0 0 0 20.92 10H21v4h-.08A1.7 1.7 0 0 0 19.4 15Z"></path></svg>
       <span>الإعدادات</span>
     </a>
@@ -484,6 +508,7 @@
     const desktopModeBtn = document.getElementById('desktopModeBtn');
     const desktopModeState = document.getElementById('desktopModeState');
     const profileAvatarImage = document.getElementById('profileAvatarImage');
+    const settingsNavBtn = document.getElementById('settingsNavBtn');
 
     if (!currentUser) {
       sessionStorage.removeItem('authToken');
@@ -513,7 +538,10 @@
         element.hidden = true;
       });
     } else {
-      desktopModeBtn.hidden = false;
+      document.querySelectorAll('.admin-only').forEach((element) => {
+        element.hidden = false;
+      });
+      settingsNavBtn.href = '/settings.html';
     }
 
     function setDrawerOpen(isOpen) {

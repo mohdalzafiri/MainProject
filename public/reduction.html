@@ -261,9 +261,7 @@
         <div class="grid">
           <div class="field">
             <label for="name">اسم الموظف</label>
-            <select id="name">
-              <option value="">-- اختر --</option>
-            </select>
+            <input id="name" type="text" autocomplete="off" placeholder="اكتب اسم الموظف" />
           </div>
 
           <div class="field">
@@ -386,6 +384,7 @@
 
   <script src="/record-photos.js"></script>
   <script src="/text-encoding.js"></script>
+  <script src="/query-name-completion.js"></script>
   <script>
     const authToken = sessionStorage.getItem('authToken');
     if (!authToken) {
@@ -429,6 +428,7 @@
     let allEmployees = [];
     let allReduction = [];
     let selectedId = null;
+    attachQueryNameCompletion(nameInput, () => allEmployees.map((item) => String(item.Name || '').trim()));
 
     const recordPhotos = initRecordPhotos({
       moduleKey: 'reduction',
@@ -521,24 +521,9 @@
         const data = await requestJson('/api/employees', { headers: getHeaders() });
         const rows = Array.isArray(data) ? data : [];
         allEmployees = rows.filter((item) => String(item.Status || '').trim() === 'نشط');
-        populateNameOptions();
+        setEmployeeFields(nameInput.value);
       } catch (error) {
         showStatus(error.message || 'تعذر تحميل الموظفين.', true);
-      }
-    }
-
-    function populateNameOptions() {
-      const currentValue = nameInput.value;
-      const uniqueNames = Array.from(new Set(allEmployees.map((item) => String(item.Name || '').trim()).filter(Boolean)));
-      nameInput.innerHTML = '<option value="">-- اختر --</option>';
-      uniqueNames.forEach((name) => {
-        const option = document.createElement('option');
-        option.value = name;
-        option.textContent = name;
-        nameInput.appendChild(option);
-      });
-      if (currentValue && [...nameInput.options].some((option) => option.value === currentValue)) {
-        nameInput.value = currentValue;
       }
     }
 
@@ -662,11 +647,15 @@
       }
 
       const employee = allEmployees.find((item) => String(item.Name || '').trim() === name) || null;
+      if (!employee) {
+        showStatus('اختر اسم الموظف من القائمة أثناء الكتابة.', true);
+        return;
+      }
       const payload = {
-        EmpID: employee ? employee.ID : null,
+        EmpID: employee.ID,
         Name: name,
-        Department: employee ? (employee.Department || '') : departmentInput.value,
-        Section: employee ? (employee.Section || '') : sectionInput.value,
+        Department: employee.Department || '',
+        Section: employee.Section || '',
         Status: status,
         Type: type,
         Startdate: startDate,
@@ -697,11 +686,15 @@
       }
 
       const employee = allEmployees.find((item) => String(item.Name || '').trim() === String(nameInput.value || '').trim()) || null;
+      if (!employee) {
+        showStatus('اختر اسم الموظف من القائمة أثناء الكتابة.', true);
+        return;
+      }
       const payload = {
-        EmpID: employee ? employee.ID : null,
+        EmpID: employee.ID,
         Name: String(nameInput.value || '').trim(),
-        Department: employee ? (employee.Department || '') : departmentInput.value,
-        Section: employee ? (employee.Section || '') : sectionInput.value,
+        Department: employee.Department || '',
+        Section: employee.Section || '',
         Status: String(statusInput.value || '').trim(),
         Type: String(typeInput.value || '').trim(),
         Startdate: startDateInput.value || '',

@@ -366,9 +366,7 @@
         <div class="grid">
           <div class="field">
             <label for="name">اسم الموظف</label>
-            <select id="name">
-              <option value="">-- اختر --</option>
-            </select>
+            <input id="name" type="text" autocomplete="off" placeholder="اكتب اسم الموظف" />
           </div>
 
           <div class="field">
@@ -493,6 +491,7 @@
 
   <script src="/record-photos.js"></script>
   <script src="/text-encoding.js"></script>
+  <script src="/query-name-completion.js"></script>
   <script>
     const authToken = sessionStorage.getItem('authToken');
     if (!authToken) {
@@ -556,6 +555,7 @@
     let allCourses = [];
     let allEmployees = [];
     let selectedEmployee = null;
+    attachQueryNameCompletion(nameInput, () => allEmployees.map((item) => String(item.Name || '').trim()));
     const recordPhotos = initRecordPhotos({
       moduleKey: 'courses',
       authToken,
@@ -695,27 +695,6 @@
       }
     }
 
-    function populateNameOptions() {
-      const uniqueNames = Array.from(new Set(
-        allEmployees
-          .map((item) => String(item.Name || '').trim())
-          .filter(Boolean)
-      ));
-
-      const current = String(nameInput.value || '').trim();
-      nameInput.innerHTML = '<option value="">-- اختر --</option>';
-      uniqueNames.forEach((name) => {
-        const option = document.createElement('option');
-        option.value = name;
-        option.textContent = name;
-        nameInput.appendChild(option);
-      });
-
-      if (current && uniqueNames.includes(current)) {
-        nameInput.value = current;
-      }
-    }
-
     function collectPayload() {
       const userNameValue = isAdminUser
         ? String(userNameInput.value || currentUser.username || 'system').trim()
@@ -748,6 +727,11 @@
 
       if (requiredErrors.length) {
         showStatus(`الحقول الإلزامية ناقصة: ${requiredErrors.join(' - ')}`, true);
+        return false;
+      }
+
+      if (!selectedEmployee || String(selectedEmployee.Name || '').trim() !== String(nameInput.value || '').trim()) {
+        showStatus('اختر اسم الموظف من القائمة أثناء الكتابة.', true);
         return false;
       }
 
@@ -895,7 +879,6 @@
 
       if (!data) return;
       allEmployees = (Array.isArray(data) ? data : []).filter((item) => String(item?.Status || '').trim() === 'نشط');
-      populateNameOptions();
       setSelectedEmployeeByName(nameInput.value);
     }
 

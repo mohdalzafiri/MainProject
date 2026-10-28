@@ -167,6 +167,7 @@
     }
   </style>
   <script src="/role-access.js" defer></script>
+  <script src="/query-name-completion.js"></script>
 </head>
 <body class="app-shell">
   <div class="page app-page">
@@ -221,9 +222,7 @@
           <div class="form-row">
             <div class="field">
               <label for="employeeName">اسم الموظف</label>
-              <select id="employeeName">
-                <option value="">-- اختر --</option>
-              </select>
+              <input id="employeeName" type="search" autocomplete="off" placeholder="اكتب اسم الموظف" />
             </div>
             <div class="field">
               <label for="period">الفترة</label>
@@ -323,6 +322,7 @@
     let departmentSectionRows = [];
     let currentReportRows = [];
     let activeEmployees = [];
+    attachQueryNameCompletion(employeeNameInput, () => activeEmployees.map((item) => String(item.Name || '').trim()));
 
     function setSearchMessage(message) {
       searchMessage.textContent = String(message || '').trim();
@@ -492,11 +492,6 @@
       }
     }
 
-    function populateEmployeeOptions() {
-      const selected = String(employeeNameInput.value || '').trim();
-      populateSelect(employeeNameInput, activeEmployees.map((item) => String(item.Name || '').trim()).filter(Boolean), selected);
-    }
-
     function clearEmployeeSelection() {
       if (employeeNameInput.value) {
         employeeNameInput.value = '';
@@ -605,7 +600,6 @@
 
       activeEmployees = (Array.isArray(employees) ? employees : [])
         .filter((item) => String(item?.Status || '').trim() === 'نشط');
-      populateEmployeeOptions();
     }
 
     async function loadEvaluationFilters() {

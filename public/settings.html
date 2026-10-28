@@ -92,11 +92,37 @@
       gap: 8px;
     }
 
+    .scope-column-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
     .scope-column h3 {
       margin: 0;
       font-size: 13px;
       color: #334155;
       text-align: right;
+    }
+
+    .scope-select-all {
+      padding: 0;
+      border: 0;
+      color: var(--ui-primary);
+      background: transparent;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      text-decoration: underline;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .scope-select-all:disabled {
+      color: var(--ui-muted);
+      cursor: not-allowed;
+      text-decoration: none;
     }
 
     .scope-list {
@@ -462,15 +488,24 @@
             <label>صلاحيات الوصول المخصصة</label>
             <div class="scope-grid">
               <div class="scope-column">
-                <h3>الواجهات</h3>
+                <div class="scope-column-header">
+                  <h3>الواجهات</h3>
+                  <button class="scope-select-all" type="button" data-select-all-groups="pages,pageEdits">اختر الكل</button>
+                </div>
                 <div id="pagePermissions" class="scope-list"></div>
               </div>
               <div class="scope-column">
-                <h3>الأقسام</h3>
+                <div class="scope-column-header">
+                  <h3>الأقسام</h3>
+                  <button class="scope-select-all" type="button" data-select-all-groups="departments">اختر الكل</button>
+                </div>
                 <div id="departmentPermissions" class="scope-list"></div>
               </div>
               <div class="scope-column">
-                <h3>النوبات</h3>
+                <div class="scope-column-header">
+                  <h3>النوبات</h3>
+                  <button class="scope-select-all" type="button" data-select-all-groups="sections">اختر الكل</button>
+                </div>
                 <div id="sectionPermissions" class="scope-list"></div>
               </div>
             </div>
@@ -852,6 +887,7 @@
       { key: 'daily', label: 'اليوميات' },
       { key: 'query', label: 'الاستعلام' },
       { key: 'statistics', label: 'الاحصائيات' },
+      { key: 'evaluations', label: 'تقييم الأداء' },
       { key: 'holidays', label: 'الاجازات' },
       { key: 'reduction', label: 'تخفيف العمل' },
       { key: 'courses', label: 'الدورات' },
@@ -1167,6 +1203,33 @@
       });
     }
 
+    function syncSelectAllButtons() {
+      document.querySelectorAll('.scope-select-all').forEach((button) => {
+        const groupKeys = String(button.dataset.selectAllGroups || '').split(',').filter(Boolean);
+        const checkboxes = groupKeys.flatMap((groupKey) => getGroupCheckboxes(groupKey));
+        button.disabled = !checkboxes.some((checkbox) => !checkbox.disabled);
+      });
+    }
+
+    document.querySelectorAll('.scope-select-all').forEach((button) => {
+      button.addEventListener('click', () => {
+        const groupKeys = String(button.dataset.selectAllGroups || '').split(',').filter(Boolean);
+        const checkboxes = groupKeys.flatMap((groupKey) => getGroupCheckboxes(groupKey));
+        const enabledCheckboxes = checkboxes.filter((checkbox) => !checkbox.disabled);
+        const selectAll = enabledCheckboxes.length > 0
+          && !enabledCheckboxes.every((checkbox) => checkbox.checked);
+
+        groupKeys.forEach((groupKey) => {
+          getGroupCheckboxes(groupKey).forEach((checkbox) => {
+            if (checkbox.disabled) return;
+            checkbox.checked = selectAll;
+            checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+          });
+        });
+        syncSelectAllButtons();
+      });
+    });
+
     function clearScopeSelections() {
       setSelectedGroupValues('pages', []);
       setSelectedGroupValues('pageEdits', []);
@@ -1187,6 +1250,7 @@
           checkbox.checked = false;
         }
       });
+      syncSelectAllButtons();
     }
 
     function applyPermissionMode() {
@@ -1424,6 +1488,7 @@
       document.querySelectorAll('input[data-group]').forEach((checkbox) => {
         checkbox.disabled = protectedAdmin || String(permissionSelect.value || '').trim().toLowerCase() === 'admin';
       });
+      syncSelectAllButtons();
       pagePermissionsSection.style.display = protectedAdmin || String(permissionSelect.value || '').trim().toLowerCase() === 'admin' ? 'none' : 'block';
       deleteBtn.disabled = protectedAdmin;
 

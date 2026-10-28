@@ -330,16 +330,17 @@
   </style>
   <link rel="stylesheet" href="/layout-defaults.css" />
   <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" type="image/png" href="/images/logo.png?v=20261028" />
   <meta name="theme-color" content="#1d4ed8" />
   <meta name="apple-mobile-web-app-title" content="إدارة البلاغات" />
-  <link rel="apple-touch-icon" href="/images/logo.png" />
+  <link rel="apple-touch-icon" href="/images/logo.png?v=20261028" />
 </head>
 <body class="app-shell">
   <div class="page app-page">
     <div class="header">
       <div class="title-group">
         <h1>الرئيسية</h1>
-        <p>لوحة التحكم الرئيسية مع أزرار الوصول وإحصائيات الموظفين.</p>
+        <p>لوحة التحكم الرئيسية مع أزرار الوصول وإحصائيات الإدارة.</p>
       </div>
       <div class="actions">
         <button class="btn" id="logoutBtn" type="button"><span class="btn-icon" aria-hidden="true">🚪</span><span>تسجيل الخروج</span></button>
@@ -561,7 +562,7 @@
 
     const currentRole = String(currentUser?.role || '').trim().toLowerCase();
     const isAdminUser = currentRole === 'admin';
-    const defaultAllowedPages = ['employees', 'daily', 'query', 'statistics', 'holidays', 'reduction', 'courses', 'transfers', 'outsideEmployees', 'outgoing', 'incoming', 'departmentMail', 'archive', 'forceList'];
+    const defaultAllowedPages = ['employees', 'daily', 'query', 'statistics', 'evaluations', 'holidays', 'reduction', 'courses', 'transfers', 'outsideEmployees', 'outgoing', 'incoming', 'departmentMail', 'archive', 'forceList'];
     const allowedPages = Array.isArray(currentUser?.allowedPages) && currentUser.allowedPages.length
       ? currentUser.allowedPages
       : [];
@@ -594,7 +595,7 @@
     }
 
     if (!isAdminUser) {
-      ['evaluations', 'administrative', 'systemLog', 'settings'].forEach((key) => {
+      ['administrative', 'systemLog', 'settings'].forEach((key) => {
         const button = interfaceButtons[key];
         if (button) {
           button.style.display = 'none';

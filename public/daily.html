@@ -321,6 +321,36 @@
       color: #7c3aed;
     }
 
+    .daily-name-alerts {
+      display: inline-flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+
+    .monthly-warning {
+      color: #b91c1c;
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1.5;
+    }
+
+    .mobile-daily-card-head .daily-name-alerts {
+      color: inherit;
+      white-space: normal;
+    }
+
+    .mobile-daily-card-head .daily-name-alerts > span:first-child {
+      color: var(--ui-text);
+      font-size: 15px;
+      font-weight: 700;
+      white-space: normal;
+    }
+
+    .mobile-daily-card-head .monthly-warning {
+      color: #b91c1c;
+    }
+
     .table-wrap table {
       min-width: 1050px;
     }
@@ -332,7 +362,17 @@
     .table-wrap td .status-select,
     .table-wrap td .time-input,
     .table-wrap td .note-input {
+      box-sizing: border-box;
+      min-width: 0;
+      max-width: 100%;
       font-size: 14px;
+    }
+
+    .table-wrap th:nth-child(4),
+    .table-wrap td:nth-child(4),
+    .table-wrap th:nth-child(5),
+    .table-wrap td:nth-child(5) {
+      min-width: 140px;
     }
 
     .mobile-daily-cards {
@@ -504,7 +544,10 @@
     .status-select,
     .time-input,
     .note-input {
+      box-sizing: border-box;
       width: 100%;
+      min-width: 0;
+      max-width: 100%;
       border: 1px solid #cbd5e1;
       border-radius: 8px;
       padding: 6px 8px;
@@ -955,6 +998,7 @@
     let departmentSectionRows = [];
     let selectedRecord = null;
     let currentRows = [];
+    let monthlyAlertMap = new Map();
     const editablePages = Array.isArray(currentUser?.editablePages) ? currentUser.editablePages : currentUser?.allowedPages;
     const dailyScanner = window.initDailyScanner({
       authToken,
@@ -1035,6 +1079,45 @@
 
     function normalizeText(value) {
       return String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    }
+
+    function getMonthlyAlerts(item) {
+      const empId = String(item.EmpID || '').trim();
+      const name = normalizeText(item.Name);
+      const usage = (empId && monthlyAlertMap.get(`emp:${empId}`))
+        || monthlyAlertMap.get(`name:${name}`);
+      if (!usage) return [];
+
+      const status = MainProjectStatusCatalog.normalizeStatus(item.Status);
+      const alerts = [];
+      if (status === 'حضور بعد غياب' && usage.lateExceeded) {
+        alerts.push('تجاوز 105 دقيقة مدة التأخير المسموحة');
+      }
+      if (status === 'أذن' && usage.permissionTimeExceeded) {
+        alerts.push('تجاوز 12 ساعة مدة الأذن المسموحة');
+      }
+      if (status === 'أذن' && usage.permissionCountExceeded) {
+        alerts.push('تجاوز عدد الطلبات أكثر من 4 مرات');
+      }
+      return alerts;
+    }
+
+    function createEmployeeName(item) {
+      const container = document.createElement('span');
+      container.className = 'daily-name-alerts';
+
+      const name = document.createElement('span');
+      name.textContent = String(item.Name || '');
+      container.appendChild(name);
+
+      getMonthlyAlerts(item).forEach((message) => {
+        const warning = document.createElement('span');
+        warning.className = 'monthly-warning';
+        warning.textContent = message;
+        container.appendChild(warning);
+      });
+
+      return container;
     }
 
     function normalizeDepartment(value) {
@@ -1341,6 +1424,19 @@
       await updateRecordedSectionsLabel();
       await loadDailyRows();
       scheduleEmployeeSuggestionsLoad();
+    }
+
+    async function loadMonthlyAlerts(today) {
+      const params = new URLSearchParams({ today });
+      const data = await requestJson(`/api/daily-logs/monthly-alerts?${params.toString()}`, { headers: getHeaders() });
+      const alerts = new Map();
+      (Array.isArray(data) ? data : []).forEach((usage) => {
+        const empId = String(usage.EmpID || '').trim();
+        const name = normalizeText(usage.Name);
+        if (empId) alerts.set(`emp:${empId}`, usage);
+        if (name) alerts.set(`name:${name}`, usage);
+      });
+      monthlyAlertMap = alerts;
     }
 
     function getNameFilteredRows() {
@@ -1680,6 +1776,12 @@
       });
 
       Object.assign(item, payload);
+      let alertsRefreshError = null;
+      try {
+        await loadMonthlyAlerts(item.Today || todayInput.value);
+      } catch (error) {
+        alertsRefreshError = error;
+      }
       if (
         String(item.Status || '').trim() === 'تخفيف عمل'
         && ['بداية الدوام', 'نهاية الدوام'].includes(String(item.Type || '').trim())
@@ -1701,7 +1803,11 @@
         if (existingIndex >= 0) reductionSchedule[existingIndex] = { ...reductionSchedule[existingIndex], ...linkedReduction };
         else reductionSchedule.push(linkedReduction);
       }
-      if (successMessage) showStatus(successMessage);
+      if (alertsRefreshError) {
+        showStatus(`تم حفظ التعديل، لكن تعذر تحديث تنبيهات الشهر: ${alertsRefreshError.message}`, true);
+      } else if (successMessage) {
+        showStatus(successMessage);
+      }
       updateSummaryPanel(visibleRows);
     }
 
@@ -1724,8 +1830,8 @@
       const summary = await requestJson(`/api/daily-logs/permission-summary?${params.toString()}`, {
         headers: getHeaders()
       });
-      const remainingCount = Math.max(0, Number(summary.remainingCount) - 1);
-      const remainingMinutes = Math.max(0, Number(summary.remainingMinutes) - 120);
+      const remainingCount = Math.max(0, Number(summary.remainingCount));
+      const remainingMinutes = Math.max(0, Number(summary.remainingMinutes));
       const exceedsLimit = Boolean(summary.exceeded) || Number(summary.remainingCount) <= 0;
 
       if (exceedsLimit) {
@@ -1733,7 +1839,7 @@
         return false;
       }
 
-      showStatus(`رصيد الأذن المتاح للموظف بعد هذه الأذن: ${remainingCount} مرات و${formatPermissionDuration(remainingMinutes)} ساعة.`);
+      showStatus(`الرصيد الشهري المتبقي قبل احتساب مدة هذا الإذن: ${remainingCount} مرات و${formatPermissionDuration(remainingMinutes)} ساعة.`);
       return true;
     }
 
@@ -1762,16 +1868,19 @@
       select.addEventListener('change', async (event) => {
         const description = event.target.value;
         const defaults = PERIOD_DEFAULTS[String(item.Period || '').trim()] || { inTime: '', outTime: '' };
-        const times = MainProjectStatusCatalog.getAdjustedTimes(defaults, description);
-        const message = MainProjectStatusCatalog.isPermissionStatus(status)
-          ? 'تم تحديث وصف الأذن وخصم ساعتين من الدوام بنجاح.'
-          : 'تم تحديث وصف تخفيف العمل وخصم ساعتين من الدوام بنجاح.';
-        await saveRowChanges(item, {
+        const times = MainProjectStatusCatalog.getAdjustedTimes(defaults, description, status);
+        const payload = {
           Status: MainProjectStatusCatalog.normalizeStatus(status),
-          Type: description,
-          InTime: times.inTime,
-          OutTime: times.outTime
-        }, message);
+          Type: description
+        };
+        if (!MainProjectStatusCatalog.isPermissionStatus(status)) {
+          payload.InTime = times.inTime;
+          payload.OutTime = times.outTime;
+        }
+        const message = MainProjectStatusCatalog.isPermissionStatus(status)
+          ? 'تم تحديث وصف الأذن بنجاح.'
+          : 'تم تحديث وصف تخفيف العمل وخصم ساعتين من الدوام بنجاح.';
+        await saveRowChanges(item, payload, message);
         applyNameFilterAndRender();
       });
       return select;
@@ -1931,7 +2040,7 @@
 
         tr.innerHTML = `
           <td class="mono">${index + 1}</td>
-          <td>${item.Name ?? ''}</td>
+          <td></td>
           <td></td>
           <td></td>
           <td></td>
@@ -1941,6 +2050,7 @@
           <td>${item.Note ?? ''}</td>
         `;
 
+        tr.children[1].appendChild(createEmployeeName(item));
         const statusCell = tr.children[2];
         const inCell = tr.children[3];
         const outCell = tr.children[4];
@@ -1961,7 +2071,7 @@
 
         card.innerHTML = `
           <div class="mobile-daily-card-head">
-            <strong>${index + 1}. ${item.Name ?? ''}</strong>
+            <strong>${index + 1}.</strong>
             <span class="mobile-daily-status-badge ${getMobileStatusClass(item)}">${getMobileStatusLabel(item)}</span>
           </div>
           <div class="mobile-daily-card-grid">
@@ -1975,6 +2085,7 @@
           <div class="mobile-daily-card-note">${String(item.Type || '').trim() || 'بدون وصف'}</div>
         `;
 
+        card.querySelector('.mobile-daily-card-head strong').appendChild(createEmployeeName(item));
         card.addEventListener('click', () => markSelectedRecord(item, card));
         mobileRows.appendChild(card);
       });
@@ -2014,6 +2125,7 @@
       if (!today || !department || !section) {
         currentRows = [];
         visibleRows = [];
+        monthlyAlertMap = new Map();
         dailyScanner.clear();
         syncPeriodOptionsFromRows([]);
         clearEmployeeSuggestions();
@@ -2024,6 +2136,7 @@
       const query = buildQueryString();
       const data = await requestJson(query ? `/api/daily-logs/search?${query}` : '/api/daily-logs', { headers: getHeaders() });
       currentRows = Array.isArray(data) ? data : [];
+      await loadMonthlyAlerts(today);
       syncPeriodOptionsFromRows(currentRows);
       const selectedPeriod = String(periodInput.value || '').trim();
       const dailyRecord = selectedPeriod
