@@ -586,6 +586,26 @@
         min-width: 0;
       }
     }
+
+    @media (max-width: 480px) {
+      body.app-shell .table-wrap th:nth-child(1),
+      body.app-shell .table-wrap td:nth-child(1),
+      body.app-shell .table-wrap th:nth-child(n + 6),
+      body.app-shell .table-wrap td:nth-child(n + 6) {
+        display: none;
+      }
+
+      body.app-shell .table-wrap th:nth-child(2),
+      body.app-shell .table-wrap td:nth-child(2) { width: 35%; }
+
+      body.app-shell .table-wrap th:nth-child(3),
+      body.app-shell .table-wrap td:nth-child(3) { width: 21%; }
+
+      body.app-shell .table-wrap th:nth-child(4),
+      body.app-shell .table-wrap td:nth-child(4),
+      body.app-shell .table-wrap th:nth-child(5),
+      body.app-shell .table-wrap td:nth-child(5) { width: 22%; }
+    }
   </style>
   <script src="/role-access.js" defer></script>
 </head>
