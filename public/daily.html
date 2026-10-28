@@ -1934,7 +1934,7 @@
 
     function findReductionForRow(item) {
       if (!item) return null;
-      if (MainProjectStatusCatalog.isPermissionStatus(item.Status)) return null;
+      if (!MainProjectStatusCatalog.isWorkReductionStatus(item.Status)) return null;
 
       const targetDate = String(item.Today || item.Startdate || '').trim();
       if (!targetDate) return null;

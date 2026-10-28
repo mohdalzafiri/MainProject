@@ -37,6 +37,10 @@
     return status === 'أذن' || status === 'تخفيف عمل';
   }
 
+  function isWorkReductionStatus(value) {
+    return normalizeStatus(value) === 'تخفيف عمل';
+  }
+
   function isAdjustmentDescription(value) {
     return adjustmentDescriptions.includes(String(value || '').trim());
   }
@@ -76,6 +80,7 @@
     normalizeStatus,
     isPermissionStatus,
     isAdjustedStatus,
+    isWorkReductionStatus,
     isAdjustmentDescription,
     shiftTime,
     getAdjustedTimes

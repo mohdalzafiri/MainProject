@@ -23,6 +23,13 @@ test('historical permission values normalize to أذن', () => {
   });
 });
 
+test('work reduction indicators only apply to the work-reduction status', () => {
+  assert.equal(statusCatalog.isWorkReductionStatus('تخفيف عمل'), true);
+  ['اجازة', 'إجازة', 'دورة', 'حضور', 'غياب', 'أذن', 'تكليف'].forEach((status) => {
+    assert.equal(statusCatalog.isWorkReductionStatus(status), false);
+  });
+});
+
 test('beginning adjustment moves the original start forward two hours', () => {
   assert.deepEqual(
     statusCatalog.getAdjustedTimes({ inTime: '08:00', outTime: '16:00' }, 'بداية الدوام', 'تخفيف عمل'),
