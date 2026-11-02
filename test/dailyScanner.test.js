@@ -15,8 +15,14 @@ const {
 } = require('../services/dailyScanStorage');
 const {
   departmentMailScanRoot,
-  getDepartmentMailScanDirectory
+  getDepartmentMailScanDirectory,
+  getLegacyDepartmentMailScanDirectory
 } = require('../services/departmentMailScanStorage');
+const {
+  emailScanRoot,
+  interfaceFolders,
+  getEmailScanDirectory
+} = require('../services/emailScanStorage');
 
 const samplePage = {
   dataUrl: 'data:image/jpeg;base64,/9j/2Q==',
@@ -125,11 +131,15 @@ test('stores department mail PDFs under department and section folders', () => {
   assert.equal(departmentMailScanRoot, '\\\\PC-SERVER\\Database\\Mail');
   assert.equal(
     getDepartmentMailScanDirectory({ Department: 'البلاغات', Section: 'أ - البلاغات' }),
+    '\\\\PC-SERVER\\Database\\Mail\\DepartmentMail\\البلاغات\\أ_-_البلاغات'
+  );
+  assert.equal(
+    getLegacyDepartmentMailScanDirectory({ Department: 'البلاغات', Section: 'أ - البلاغات' }),
     '\\\\PC-SERVER\\Database\\Mail\\البلاغات\\أ_-_البلاغات'
   );
 });
 
-test('creates department mail department and section folders when saved', () => {
+test('creates department mail interface, department, and section folders when saved', () => {
   const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'department-mail-scan-storage-'));
   try {
     const output = execFileSync(process.execPath, ['-e', `
@@ -143,7 +153,41 @@ test('creates department mail department and section folders when saved', () => 
       encoding: 'utf8'
     });
 
-    assert.equal(output, path.join(temporaryRoot, 'البلاغات', 'نوبة_ليل'));
+    assert.equal(output, path.join(temporaryRoot, 'DepartmentMail', 'البلاغات', 'نوبة_ليل'));
+    assert.equal(fs.existsSync(output), true);
+  } finally {
+    fs.rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+});
+
+test('routes each email scan interface to its own English-named directory', () => {
+  assert.deepEqual(interfaceFolders, {
+    holidays: 'Holidays',
+    reduction: 'Reduction',
+    courses: 'Courses',
+    transfers: 'Transfers',
+    outgoing: 'Outgoing',
+    incoming: 'Incoming'
+  });
+  assert.equal(
+    getEmailScanDirectory('incoming', 42),
+    path.join(emailScanRoot, 'Incoming', '42')
+  );
+  assert.throws(() => getEmailScanDirectory('unknown', 42), /Unsupported email scan interface/);
+});
+
+test('creates the selected email scan interface and record folders when saved', () => {
+  const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'email-scan-storage-'));
+  try {
+    const output = execFileSync(process.execPath, ['-e', `
+      const storage = require(${JSON.stringify(path.join(__dirname, '..', 'services', 'emailScanStorage'))});
+      process.stdout.write(storage.ensureEmailScanDirectory('courses', 17));
+    `], {
+      env: { ...process.env, EMAIL_SCAN_ROOT: temporaryRoot },
+      encoding: 'utf8'
+    });
+
+    assert.equal(output, path.join(temporaryRoot, 'Courses', '17'));
     assert.equal(fs.existsSync(output), true);
   } finally {
     fs.rmSync(temporaryRoot, { recursive: true, force: true });

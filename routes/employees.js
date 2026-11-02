@@ -2,6 +2,7 @@
 const { db, logSystem } = require('../database');
 const { filterByDataScope, isWithinDataScope } = require('../auth/dataScope');
 const { listJobTitles } = require('../services/jobTitleService');
+const { buildInsertStatement, buildUpdateStatement } = require('../utils/sqlStatementBuilders');
 
 const router = express.Router();
 const columns = ['Title', 'Name', 'CivilID', 'Department', 'Section', 'SubSection', 'Status', 'Rank', 'Empdate', 'Startdate', 'Enddate', 'Work', 'Note', 'MilitaryNumber', 'FileNumber'];
@@ -42,24 +43,6 @@ function normalizeOptionalNumbers(payload) {
 
 function isActiveStatus(status) {
   return String(status || '').trim() === 'نشط';
-}
-
-function buildInsertStatement(payload) {
-  const keys = columns.filter((column) => Object.prototype.hasOwnProperty.call(payload, column));
-  if (!keys.length) return null;
-  return {
-    sql: `INSERT INTO Main (${keys.join(',')}) VALUES (${keys.map(() => '?').join(',')})`,
-    values: keys.map((key) => payload[key])
-  };
-}
-
-function buildUpdateStatement(payload, id) {
-  const keys = columns.filter((column) => Object.prototype.hasOwnProperty.call(payload, column));
-  if (!keys.length) return null;
-  return {
-    sql: `UPDATE Main SET ${keys.map((key) => `${key} = ?`).join(', ')} WHERE ID = ?`,
-    values: [...keys.map((key) => payload[key]), id]
-  };
 }
 
 router.get('/', async (req, res) => {
@@ -120,7 +103,7 @@ router.post('/', async (req, res) => {
     return res.status(403).json({ message: 'لا تملك صلاحية إضافة موظف خارج نطاق القسم أو النوبة المسموحة.' });
   }
 
-  const statement = buildInsertStatement(normalizeOptionalNumbers(req.body));
+  const statement = buildInsertStatement('Main', columns, normalizeOptionalNumbers(req.body));
   if (!statement) {
     return res.status(400).json({ message: 'البيانات المرسلة غير كافية' });
   }
@@ -156,7 +139,7 @@ router.put('/:id', async (req, res) => {
     return res.status(400).json({ message: 'معرّف الموظف غير صالح' });
   }
 
-  const statement = buildUpdateStatement(normalizeOptionalNumbers(req.body), id);
+  const statement = buildUpdateStatement('Main', columns, normalizeOptionalNumbers(req.body), id);
   if (!statement) {
     return res.status(400).json({ message: 'البيانات المرسلة غير كافية' });
   }

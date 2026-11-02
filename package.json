@@ -1,6 +1,6 @@
 {
   "name": "MAINPROJECT-API",
-  "version": "3.3.2",
+  "version": "3.3.3",
   "description": "MAINPROJECT WebApp - Backend API",
   "main": "server.js",
   "scripts": {
@@ -8,6 +8,12 @@
     "start:local": "node local-client.js",
     "dev": "nodemon server.js",
     "test": "node --test",
+    "lint": "eslint .",
+    "format:check": "prettier --config prettier.config.json --check eslint.config.mjs prettier.config.json utils/performanceMetrics.js utils/sqlStatementBuilders.js test/performanceMetrics.test.js test/sqlStatementBuilders.test.js",
+    "audit:duplicates": "jscpd --threshold 100 --reporters console routes services utils public mobile",
+    "audit:unused": "knip --no-exit-code",
+    "quality": "npm run lint && npm run format:check && npm test",
+    "quality:audit": "npm run audit:duplicates && npm run audit:unused",
     "db:migrate:postgres": "node scripts/migrate-sqlite-to-postgres.js",
     "db:migrate:postgres:force": "node scripts/migrate-sqlite-to-postgres.js --force",
     "db:backup:postgres": "node scripts/backup-postgres.js"
@@ -20,7 +26,6 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "bcryptjs": "^2.4.3",
     "better-sqlite3": "^12.6.2",
     "body-parser": "^1.20.2",
     "cors": "^2.8.5",
@@ -36,6 +41,12 @@
     "pizzip": "^3.2.0"
   },
   "devDependencies": {
-    "nodemon": "^3.0.2"
+    "@eslint/js": "^9.39.5",
+    "eslint": "^9.39.5",
+    "globals": "^16.5.0",
+    "jscpd": "^4.3.0",
+    "knip": "^5.88.1",
+    "nodemon": "^3.0.2",
+    "prettier": "^3.9.10"
   }
 }

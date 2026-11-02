@@ -57,18 +57,6 @@ async function getTodaySqlDate() {
   return (await db.prepare("SELECT date('now', 'localtime') AS value").get()).value;
 }
 
-async function countActiveEmployees() {
-  if (!(await tableOrViewExists('Main'))) return 0;
-
-  return (await db.prepare("SELECT COUNT(*) AS count FROM Main WHERE TRIM(Status) = 'نشط'").get()).count;
-}
-
-async function countOutsideEmployees() {
-  if (!(await tableOrViewExists('Main'))) return 0;
-
-  return (await db.prepare("SELECT COUNT(*) AS count FROM Main WHERE TRIM(Status) = 'غير نشط'").get()).count;
-}
-
 async function countOngoingRecords(tableName) {
   if (!(await tableOrViewExists(tableName))) return 0;
 

@@ -10,6 +10,15 @@ const departmentMailScanRoot = process.env.DEPARTMENT_MAIL_SCAN_ROOT || defaultD
 function getDepartmentMailScanDirectory(record) {
   return path.join(
     departmentMailScanRoot,
+    'DepartmentMail',
+    getSafeFilePart(record && record.Department, 'قسم'),
+    getSafeFilePart(record && record.Section, 'نوبة')
+  );
+}
+
+function getLegacyDepartmentMailScanDirectory(record) {
+  return path.join(
+    departmentMailScanRoot,
     getSafeFilePart(record && record.Department, 'قسم'),
     getSafeFilePart(record && record.Section, 'نوبة')
   );
@@ -28,6 +37,7 @@ function getDepartmentMailScanKey(record) {
 module.exports = {
   departmentMailScanRoot,
   getDepartmentMailScanDirectory,
+  getLegacyDepartmentMailScanDirectory,
   ensureDepartmentMailScanDirectory,
   getDepartmentMailScanKey
 };

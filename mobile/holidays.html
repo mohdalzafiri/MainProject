@@ -82,11 +82,15 @@
     }
 
     .admin-only-field {
-      display: none;
+      display: none !important;
+    }
+
+    .admin-only-field.admin-visible {
+      display: grid !important;
     }
 
     .user-name-column {
-      display: none;
+      display: none !important;
     }
 
     label {
@@ -149,12 +153,6 @@
       justify-content: center;
       line-height: 1;
       padding: 0;
-    }
-
-    .date-picker-trigger::before {
-      content: '📅';
-      font-size: 14px;
-      line-height: 1;
     }
 
     .date-picker-trigger:hover {
@@ -346,6 +344,8 @@
     }
   </style>
   <link rel="stylesheet" href="/layout-defaults.css" />
+  <link rel="stylesheet" href="/email-attachments.css" />
+  <script src="/app-theme.js"></script>
   <script src="/role-access.js" defer></script>
 </head>
 <body class="app-shell">
@@ -356,7 +356,7 @@
         <p>إدارة بيانات إجازات الموظفين وعرض كل الموظفين الحاصلين على إجازات.</p>
       </div>
       <div class="actions">
-        <button type="button" class="btn dark" id="backBtn">رجوع للرئيسية</button>
+        <button type="button" class="btn dark home-nav-button" id="backBtn">العودة للرئيسية</button>
       </div>
     </header>
 
@@ -445,38 +445,21 @@
 
       <div id="statusLine" class="status-line"></div>
 
-      <div class="doc-images-box">
-        <div class="doc-images-head">
-          <span>صور المستندات الرسمية</span>
-          <span id="docImageCount">0 / 0</span>
-        </div>
-        <div class="doc-images-view">
-          <button type="button" class="doc-images-nav" id="docImagePrevBtn">◀</button>
-          <div class="doc-images-frame">
-            <img id="docImagePreview" alt="صورة مستند" />
-            <div id="docImageEmpty">اختر سجلًا أولًا لعرض صور المستندات.</div>
-          </div>
-          <button type="button" class="doc-images-nav" id="docImageNextBtn">▶</button>
-        </div>
-        <div class="doc-images-actions">
-          <button type="button" class="btn primary" id="docImageUploadBtn">تصوير/رفع مستند</button>
-          <input id="docImageInput" type="file" accept="image/*" capture="environment" hidden />
-        </div>
-      </div>
+      <div class="doc-images-box"></div>
     </section>
 
     <section class="panel">
       <h2>صندوق عرض البيانات</h2>
       <div class="table-tools">
         <p id="countLabel">عدد السجلات: 0</p>
-        <input id="nameFilterInput" class="table-search" placeholder="فلترة بالاسم أثناء الكتابة" />
+        <input id="nameFilterInput" class="table-search" type="search" placeholder="فلترة باسم الموظف / نوع الإجازة" />
           <button type="button" class="btn primary" id="refreshBtn">تحديث العرض</button>
       </div>
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th class="sortable-date-header" data-sort-key="id" style="cursor: pointer;">م</th>
+              <th class="sortable-date-header" data-sort-key="id" aria-sort="none" style="cursor: pointer;">م</th>
               <th>اسم الموظف</th>
               <th>الحالة</th>
               <th>نوع الاجازة</th>
@@ -495,7 +478,8 @@
     </section>
   </div>
 
-  <script src="/record-photos.js"></script>
+  <script src="/daily-scanner.js"></script>
+  <script src="/email-scanner.js"></script>
   <script src="/query-name-completion.js"></script>
   <script>
     const authToken = sessionStorage.getItem('authToken');
@@ -523,7 +507,7 @@
       window.location.href = '/';
     }
 
-    const isAdminUser = String(currentUser?.role || currentUser?.username || '').trim().toLowerCase() === 'admin';
+    const isAdminUser = String(currentUser?.role || '').trim().toLowerCase() === 'admin';
 
     const form = document.getElementById('holidayForm');
     const holidayIdInput = document.getElementById('holidayId');
@@ -562,7 +546,7 @@
     let selectedEmployee = null;
     attachQueryNameCompletion(nameInput, () => allEmployees.map((item) => String(item.Name || '').trim()));
     let holidaySort = { key: null, direction: 'asc' };
-    const recordPhotos = initRecordPhotos({
+    const recordPhotos = initEmailScanner({
       moduleKey: 'holidays',
       authToken,
       getRecordId: () => selectedId,
@@ -570,7 +554,7 @@
     });
 
     if (userNameField) {
-      userNameField.style.display = isAdminUser ? 'grid' : 'none';
+      userNameField.classList.toggle('admin-visible', isAdminUser);
     }
 
     function syncUserNameColumnVisibility() {
@@ -807,8 +791,8 @@
       const otherType = String(otherTypeInput.value || '').trim();
       const finalType = holidayType === 'اخرى' ? otherType : holidayType;
       const userNameValue = isAdminUser
-        ? String(userNameInput.value || currentUser.name || currentUser.username || 'system').trim()
-        : String(currentUser.name || currentUser.username || 'system').trim();
+        ? String(userNameInput.value || currentUser.username || 'system').trim()
+        : String(currentUser.username || 'system').trim();
 
       return {
         EmpID: selectedEmployee?.ID || null,
@@ -874,7 +858,7 @@
       departmentInput.value = '';
       sectionInput.value = '';
       if (userNameInput) {
-        userNameInput.value = String(currentUser?.name || currentUser?.username || 'system');
+        userNameInput.value = String(currentUser?.username || 'system');
       }
       syncUserNameColumnVisibility();
       Array.from(rowsBody.querySelectorAll('tr')).forEach((row) => row.classList.remove('selected'));
@@ -907,7 +891,7 @@
 
       noteInput.value = item.Note || '';
       if (userNameInput) {
-        userNameInput.value = item.UserName || currentUser?.name || currentUser?.username || 'system';
+        userNameInput.value = item.UserName || currentUser?.username || 'system';
       }
       recordPhotos.load();
     }
@@ -946,6 +930,10 @@
         const label = key === 'id' ? 'م' : key === 'start' ? 'البداية' : 'النهاية';
         header.dataset.baseLabel = label;
         header.textContent = isActive ? `${label}${marker}` : label;
+        header.setAttribute(
+          'aria-sort',
+          isActive ? (holidaySort.direction === 'asc' ? 'ascending' : 'descending') : 'none'
+        );
       });
     }
 
@@ -960,11 +948,11 @@
         return;
       }
 
-      sortedItems.forEach((item) => {
+      sortedItems.forEach((item, index) => {
         const tr = document.createElement('tr');
         tr.dataset.id = item.ID;
         tr.innerHTML = `
-          <td class="mono">${item.ID ?? ''}</td>
+          <td class="mono">${index + 1}</td>
           <td>${item.Name ?? ''}</td>
           <td>${item.Status ?? ''}</td>
           <td>${item.Type ?? ''}</td>
@@ -1008,11 +996,12 @@
       const filtered = !keyword
         ? sourceItems
         : sourceItems.filter((item) =>
-            String(item.Name || '')
-              .toLowerCase()
-              .replace(/\s+/g, ' ')
-              .trim()
-              .includes(keyword)
+            [item.Name, item.Type]
+              .some((value) => String(value || '')
+                .toLowerCase()
+                .replace(/\s+/g, ' ')
+                .trim()
+                .includes(keyword))
           );
 
       renderRows(filtered);
@@ -1438,6 +1427,7 @@
     nameFilterInput.addEventListener('input', () => {
       applyNameFilter();
     });
+    nameFilterInput.addEventListener('search', applyNameFilter);
 
     form.addEventListener('submit', async (event) => {
       event.preventDefault();

@@ -61,6 +61,7 @@ $files = @(
   'test\dailyScanner.test.js',
   'test\localClient.test.js',
   'utils\dailyScanNaming.js',
+  'utils\dailyMetrics.js',
   'utils\departmentMailScanNaming.js'
 )
 

@@ -1,0 +1,10 @@
+{
+  "entry": [
+    "database.js",
+    "routes/index.js",
+    "scripts/**/*.js",
+    "test/**/*.test.js",
+    "public/**/*.js"
+  ],
+  "project": ["**/*.{js,cjs,mjs}"]
+}

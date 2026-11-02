@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>تقييم الاداء</title>
   <link rel="stylesheet" href="/layout-defaults.css" />
+  <script src="/app-theme.js"></script>
   <style>
     body.app-shell {
       background: linear-gradient(180deg, #dfeaff 0%, #f8fbff 100%);
@@ -72,49 +73,68 @@
       align-items: center;
     }
 
-    .evaluation-table {
-      table-layout: fixed;
+    body.app-shell .table-wrap table.evaluation-table {
+      table-layout: auto;
+      width: max-content;
+      min-width: 100%;
     }
 
     .evaluation-table th,
     .evaluation-table td {
-      overflow-wrap: anywhere;
-      word-break: break-word;
+      overflow-wrap: normal;
+      word-break: normal;
       vertical-align: top;
-      white-space: normal;
+      white-space: nowrap;
     }
 
     .evaluation-table th:nth-child(1),
-    .evaluation-table td:nth-child(1) { width: 14%; }
+    .evaluation-table td:nth-child(1) { width: 4%; }
     .evaluation-table th:nth-child(2),
-    .evaluation-table td:nth-child(2) { width: 8%; }
+    .evaluation-table td:nth-child(2) { width: 12%; }
     .evaluation-table th:nth-child(3),
-    .evaluation-table td:nth-child(3) { width: 8%; }
+    .evaluation-table td:nth-child(3),
     .evaluation-table th:nth-child(4),
-    .evaluation-table td:nth-child(4) { width: 8%; }
+    .evaluation-table td:nth-child(4) { width: 5%; }
     .evaluation-table th:nth-child(5),
-    .evaluation-table td:nth-child(5) { width: 8%; }
+    .evaluation-table td:nth-child(5),
     .evaluation-table th:nth-child(6),
-    .evaluation-table td:nth-child(6) { width: 8%; }
+    .evaluation-table td:nth-child(6),
     .evaluation-table th:nth-child(7),
     .evaluation-table td:nth-child(7) { width: 8%; }
     .evaluation-table th:nth-child(8),
-    .evaluation-table td:nth-child(8) { width: 8%; }
+    .evaluation-table td:nth-child(8),
     .evaluation-table th:nth-child(9),
-    .evaluation-table td:nth-child(9) { width: 8%; }
+    .evaluation-table td:nth-child(9),
     .evaluation-table th:nth-child(10),
-    .evaluation-table td:nth-child(10) { width: 10%; }
-    .evaluation-table th:nth-child(11),
-    .evaluation-table td:nth-child(11) { width: 12%; }
-    .evaluation-table th:nth-child(12),
-    .evaluation-table td:nth-child(12) { width: 8%; }
-    .evaluation-table th:nth-child(13),
-    .evaluation-table td:nth-child(13) { width: 8%; }
+    .evaluation-table td:nth-child(10),
     .evaluation-table th:nth-child(14),
-    .evaluation-table td:nth-child(14) { width: 10%; }
+    .evaluation-table td:nth-child(14) { width: 5%; }
+    .evaluation-table th:nth-child(11),
+    .evaluation-table td:nth-child(11),
+    .evaluation-table th:nth-child(12),
+    .evaluation-table td:nth-child(12) { width: 6%; }
+    .evaluation-table th:nth-child(13),
+    .evaluation-table td:nth-child(13) { width: 10%; }
+    .evaluation-table th:nth-child(15),
+    .evaluation-table td:nth-child(15) { width: 8%; }
 
-    .table-wrap table {
-      min-width: 1100px;
+    .evaluation-table th:nth-child(11),
+    .evaluation-table th:nth-child(12),
+    .evaluation-table th:nth-child(14),
+    .evaluation-table th:nth-child(15) {
+      text-align: center;
+    }
+
+    .evaluation-unit-label {
+      white-space: nowrap;
+    }
+
+    .evaluation-attendance-label {
+      white-space: nowrap;
+    }
+
+    .evaluation-table th:nth-child(5) {
+      min-width: 100px;
     }
 
     .mono {
@@ -145,6 +165,18 @@
     .rank-third .performance-value { color: #c2410c; font-weight: 700; }
     .rank-last .performance-value { color: #b91c1c; font-weight: 700; }
 
+    .evaluation-rating { font-weight: 700; }
+    .evaluation-rating-excellent { color: #15803d; }
+    .evaluation-rating-very-good { color: #a16207; }
+    .evaluation-rating-good { color: #0f766e; }
+    .evaluation-rating-acceptable { color: #1d4ed8; }
+    .evaluation-rating-weak { color: #b91c1c; }
+    .evaluation-rating-excellent .performance-value { color: #15803d; font-weight: 700; }
+    .evaluation-rating-very-good .performance-value { color: #a16207; font-weight: 700; }
+    .evaluation-rating-good .performance-value { color: #0f766e; font-weight: 700; }
+    .evaluation-rating-acceptable .performance-value { color: #1d4ed8; font-weight: 700; }
+    .evaluation-rating-weak .performance-value { color: #b91c1c; font-weight: 700; }
+
     @media (max-width: 1100px) {
       .top-panel .form-row {
         grid-template-columns: 1fr;
@@ -154,10 +186,6 @@
     @media (max-width: 720px) {
       .header h1 {
         font-size: 24px;
-      }
-
-      .table-wrap table {
-        min-width: 980px;
       }
 
       .form-actions .btn {
@@ -177,7 +205,7 @@
         <p>تقييم أداء الإدارة والموظفين حسب النسبة التشغيلية لحضور وغياب الموظفين.</p>
       </div>
       <div class="actions">
-        <button type="button" class="btn dark" id="backBtn">العودة للرئيسية</button>
+        <button type="button" class="btn dark home-nav-button" id="backBtn">العودة للرئيسية</button>
       </div>
     </section>
 
@@ -266,12 +294,13 @@
         <table class="evaluation-table">
           <thead>
             <tr>
-              <th>الاسم</th>
+              <th>م</th>
+              <th>اسم الموظف</th>
               <th>عدد الحضور</th>
-              <th>عدد<br>الغياب</th>
-              <th>حضور بعد غياب</th>
-              <th>عدد الأذونات<br>(مرات / ساعات)</th>
-              <th>تخفيف العمل<br>(مرات / ساعات)</th>
+              <th>عدد الغياب</th>
+              <th>حضور<br><span class="evaluation-attendance-label">بعد غياب</span></th>
+              <th>عدد الأذونات<br><span class="evaluation-unit-label">(مرات / ساعات)</span></th>
+              <th>تخفيف العمل<br><span class="evaluation-unit-label">(مرات / ساعات)</span></th>
               <th>عدد الاجازات</th>
               <th>عدد الدورات</th>
               <th>عدد التكليفات</th>
@@ -284,7 +313,7 @@
           </thead>
           <tbody id="rows">
             <tr>
-              <td colspan="14">لاتوجد بيانات حالياً.</td>
+              <td colspan="15">لاتوجد بيانات حالياً.</td>
             </tr>
           </tbody>
         </table>
@@ -322,6 +351,7 @@
     let departmentSectionRows = [];
     let currentReportRows = [];
     let activeEmployees = [];
+    let evaluationRequestId = 0;
     attachQueryNameCompletion(employeeNameInput, () => activeEmployees.map((item) => String(item.Name || '').trim()));
 
     function setSearchMessage(message) {
@@ -508,7 +538,7 @@
       rowsBody.innerHTML = '';
 
       if (!Array.isArray(items) || items.length === 0) {
-        rowsBody.innerHTML = '<tr><td colspan="14">لاتوجد بيانات حالياً.</td></tr>';
+        rowsBody.innerHTML = '<tr><td colspan="15">لاتوجد بيانات حالياً.</td></tr>';
         countLabel.textContent = 'عدد السجلات: 0';
         return;
       }
@@ -519,8 +549,9 @@
         .filter((rank) => Number.isFinite(rank) && rank > 0);
       const lastRank = numericRanks.length ? Math.max(...numericRanks) : 0;
 
-      items.forEach((item) => {
+      items.forEach((item, index) => {
         const rankValue = Number(item.Rank || 0);
+        const evaluationClass = getEvaluationClass(item.Evaluation);
         const previousYearValue = compareYear && item.PreviousYearPercent !== null && item.PreviousYearPercent !== undefined
           ? `${escapeHtml(item.PreviousYearPercent)}%`
           : '—';
@@ -532,8 +563,10 @@
         else if (rankValue > 0 && rankValue === lastRank) rankClass = 'rank-last';
 
         const row = document.createElement('tr');
-        row.className = rankClass;
+        const ratingRowClass = evaluationClass.replace('evaluation-rating ', '');
+        row.className = [rankClass, ratingRowClass].filter(Boolean).join(' ');
         row.innerHTML = `
+          <td class="mono">${index + 1}</td>
           <td>${escapeHtml(item.Name || '')}</td>
           <td class="mono performance-value">${escapeHtml(item.PresentCount ?? 0)}</td>
           <td class="mono performance-value">${escapeHtml(item.AbsentCount ?? 0)}</td>
@@ -544,7 +577,7 @@
           <td class="mono performance-value">${escapeHtml(item.CourseCount ?? 0)}</td>
           <td class="mono performance-value">${escapeHtml(item.AssignmentCount ?? 0)}</td>
           <td class="mono performance-value">${escapeHtml(item.Percent ?? 0)}%</td>
-          <td>${escapeHtml(item.Evaluation || '')}</td>
+          <td class="${evaluationClass}">${escapeHtml(item.Evaluation || '')}</td>
           <td>${escapeHtml(item.Notes || '')}</td>
           <td class="mono performance-value">${escapeHtml(item.Rank ?? '')}</td>
           <td class="performance-value">${escapeHtml(previousYearValue)}</td>
@@ -553,6 +586,20 @@
       });
 
       countLabel.textContent = `عدد السجلات: ${items.length}`;
+    }
+
+    function getEvaluationClass(value) {
+      const evaluation = String(value || '').trim().replace(/\s+/g, ' ');
+      if (evaluation === 'ممتاز' || evaluation === 'ممتاز جدا' || evaluation === 'ممتاز جداً') {
+        return 'evaluation-rating evaluation-rating-excellent';
+      }
+      if (evaluation === 'جيد جدا' || evaluation === 'جيد جداً') {
+        return 'evaluation-rating evaluation-rating-very-good';
+      }
+      if (evaluation === 'جيد') return 'evaluation-rating evaluation-rating-good';
+      if (evaluation === 'مقبول') return 'evaluation-rating evaluation-rating-acceptable';
+      if (evaluation === 'ضعيف') return 'evaluation-rating evaluation-rating-weak';
+      return '';
     }
 
     async function requestJson(url, options = {}) {
@@ -622,7 +669,7 @@
       });
     }
 
-    async function loadEvaluationReport() {
+    async function loadEvaluationReport(requestId) {
       const selectedDepartment = String(departmentInput.value || '').trim();
       const selectedSection = String(sectionInput.value || '').trim();
       const isAllDepartments = selectedDepartment === ALL_DEPARTMENTS_VALUE;
@@ -667,6 +714,7 @@
       const data = await requestJson(url, {
         headers: { Authorization: `Bearer ${authToken}` }
       });
+      if (requestId !== evaluationRequestId) return;
 
       currentReportRows = Array.isArray(data?.rows) ? data.rows : [];
       renderRows(currentReportRows);
@@ -683,8 +731,9 @@
       const fromLabel = fromDateInput.value ? toSlashDate(fromDateInput.value) : '---';
       const toLabel = toDateInput.value ? toSlashDate(toDateInput.value) : '---';
 
-      const tableRows = rows.map((item) => `
-        <tr class="${Number(item.Percent ?? 0) < 50 ? 'performance-low' : 'performance-high'}">
+      const tableRows = rows.map((item, index) => `
+        <tr class="${Number(item.Percent ?? 0) < 50 ? 'performance-low' : 'performance-high'} ${getEvaluationClass(item.Evaluation).replace('evaluation-rating ', '')}">
+          <td>${index + 1}</td>
           <td>${escapeHtml(item.Name || '')}</td>
           <td class="performance-value">${escapeHtml(item.PresentCount ?? 0)}</td>
           <td class="performance-value">${escapeHtml(item.AbsentCount ?? 0)}</td>
@@ -695,7 +744,7 @@
           <td class="performance-value">${escapeHtml(item.CourseCount ?? 0)}</td>
           <td class="performance-value">${escapeHtml(item.AssignmentCount ?? 0)}</td>
           <td class="performance-value">${escapeHtml(item.Percent ?? 0)}%</td>
-          <td>${escapeHtml(item.Evaluation || '')}</td>
+          <td class="${getEvaluationClass(item.Evaluation)}">${escapeHtml(item.Evaluation || '')}</td>
           <td>${escapeHtml(item.Notes || '')}</td>
           <td class="performance-value">${escapeHtml(item.Rank ?? '')}</td>
           <td class="performance-value">${compareYearInput.value && item.PreviousYearPercent !== null && item.PreviousYearPercent !== undefined ? `${escapeHtml(item.PreviousYearPercent)}%` : '—'}</td>
@@ -721,8 +770,22 @@
             table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 13px; }
             th, td { border: 1px solid #cbd5e1; padding: 8px; text-align: center; vertical-align: top; word-break: break-word; }
             th { background: #f8fafc; }
+            .evaluation-unit-label { white-space: nowrap; }
+            .evaluation-attendance-label { white-space: nowrap; }
+            th:nth-child(5) { min-width: 100px; }
             .performance-low .performance-value { color: #b91c1c; font-weight: 700; }
             .performance-high .performance-value { color: #15803d; font-weight: 700; }
+            .evaluation-rating { font-weight: 700; }
+            .evaluation-rating-excellent { color: #15803d; }
+            .evaluation-rating-very-good { color: #a16207; }
+            .evaluation-rating-good { color: #0f766e; }
+            .evaluation-rating-acceptable { color: #1d4ed8; }
+            .evaluation-rating-weak { color: #b91c1c; }
+            .evaluation-rating-excellent .performance-value { color: #15803d; font-weight: 700; }
+            .evaluation-rating-very-good .performance-value { color: #a16207; font-weight: 700; }
+            .evaluation-rating-good .performance-value { color: #0f766e; font-weight: 700; }
+            .evaluation-rating-acceptable .performance-value { color: #1d4ed8; font-weight: 700; }
+            .evaluation-rating-weak .performance-value { color: #b91c1c; font-weight: 700; }
             @page { size: A4 landscape; margin: 10mm; }
           </style>
         </head>
@@ -733,12 +796,13 @@
           <table>
             <thead>
               <tr>
-                <th>الاسم</th>
+                <th>م</th>
+                <th>اسم الموظف</th>
                 <th>عدد الحضور</th>
-                <th>عدد<br>الغياب</th>
-                <th>حضور بعد غياب</th>
-                <th>عدد الأذونات<br>(مرات / ساعات)</th>
-                <th>تخفيف العمل<br>(مرات / ساعات)</th>
+                <th>عدد الغياب</th>
+                <th>حضور<br><span class="evaluation-attendance-label">بعد غياب</span></th>
+                <th>عدد الأذونات<br><span class="evaluation-unit-label">(مرات / ساعات)</span></th>
+                <th>تخفيف العمل<br><span class="evaluation-unit-label">(مرات / ساعات)</span></th>
                 <th>عدد الاجازات</th>
                 <th>عدد الدورات</th>
                 <th>عدد التكليفات</th>
@@ -794,6 +858,15 @@
       }
     });
 
+    employeeNameInput.addEventListener('search', () => {
+      if (employeeNameInput.value.trim()) return;
+
+      evaluationRequestId += 1;
+      currentReportRows = [];
+      renderRows([]);
+      setSearchMessage('');
+    });
+
     periodInput.addEventListener('change', () => {
       if (periodInput.value) {
         applyPeriodRange(periodInput.value);
@@ -801,8 +874,11 @@
     });
 
     searchBtn.addEventListener('click', () => {
-      loadEvaluationReport().catch((error) => {
-        setSearchMessage(error.message || 'تعذر تحميل تقرير تقييم الأداء.');
+      const requestId = ++evaluationRequestId;
+      loadEvaluationReport(requestId).catch((error) => {
+        if (requestId === evaluationRequestId) {
+          setSearchMessage(error.message || 'تعذر تحميل تقرير تقييم الأداء.');
+        }
       });
     });
 

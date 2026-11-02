@@ -69,7 +69,6 @@ function filterByDataScope(records, access = {}) {
 }
 
 module.exports = {
-  normalizeValue,
   getDataScope,
   isWithinDataScope,
   filterByDataScope

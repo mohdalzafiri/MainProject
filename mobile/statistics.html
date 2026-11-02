@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>الاحصائيات</title>
   <link rel="stylesheet" href="/layout-defaults.css" />
+  <script src="/app-theme.js"></script>
   <link rel="stylesheet" href="/statistics-page.css" />
   <script src="/role-access.js" defer></script>
 </head>
@@ -13,35 +14,28 @@
     <section class="header">
       <div>
         <h1>واجهة الاحصائيات</h1>
-        <p>عرض بيانات الموظفين حسب الفئة الإحصائية والرتبة.</p>
+        <p>اعرض أعداد الموظفين حسب الرتبة أو مقر العمل أو القسم أو النوبة.</p>
       </div>
       <div class="actions">
-        <button type="button" class="btn dark" id="backBtn">العودة للرئيسية</button>
+        <button type="button" class="btn dark home-nav-button" id="backBtn">العودة للرئيسية</button>
       </div>
     </section>
 
     <section class="panel">
-      <h2>تعبئة / إظهار البيانات</h2>
       <div class="statistics-selector">
         <div class="field">
-          <label for="statisticType">الرتبة</label>
+          <label for="statisticType">نوع الإحصائية</label>
           <select id="statisticType">
             <option value="">-- اختر --</option>
-            <option value="officers">الضباط</option>
-            <option value="nonCommissioned">ضباط الصف</option>
-            <option value="maleCivilians">المدنيين</option>
-            <option value="femaleCivilians">المدنيات</option>
-            <option value="professionals">المهنيين</option>
-          </select>
-        </div>
-        <div class="field">
-          <label for="statisticDepartment">القسم</label>
-          <select id="statisticDepartment">
-            <option value="">-- اختر --</option>
+            <option value="rank">الرتبة</option>
+            <option value="work">مقر العمل</option>
+            <option value="department">القسم</option>
+            <option value="section">النوبة</option>
           </select>
         </div>
       </div>
-      <div id="sectionCards" class="section-cards" hidden></div>
+      <p id="cardsHint" class="statistics-cards-hint" hidden></p>
+      <div id="sectionCards" class="statistics-cards" hidden></div>
       <div class="toolbar">
         <button type="button" class="btn primary" id="printBtn">طباعة بيانات</button>
       </div>
@@ -60,7 +54,7 @@
         <table class="employees-table">
           <thead>
             <tr>
-              <th>م</th>
+              <th class="sortable-serial-header" data-sort-key="serial" aria-sort="none" style="cursor: pointer;">م</th>
               <th class="sortable-rank-header" data-sort-key="rank" style="cursor: pointer;">الرتبة</th>
               <th>اسم الموظف</th>
               <th>الرقم المدني</th>

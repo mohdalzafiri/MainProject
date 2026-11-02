@@ -35,10 +35,6 @@ function buildParagraphFrom(paragraphXml, text) {
 }
 
 
-function replaceParagraphText(xml, paragraphIndex, text) {
-  return replaceMatchAtIndex(xml, /<w:p\b[\s\S]*?<\/w:p>/g, paragraphIndex, (paragraphXml) => buildParagraphFrom(paragraphXml, text));
-}
-
 function replaceCellText(xml, tableIndex, rowIndex, cellIndex, text) {
   return replaceMatchAtIndex(xml, /<w:tbl\b[\s\S]*?<\/w:tbl>/g, tableIndex, (tableXml) => {
     return replaceMatchAtIndex(tableXml, /<w:tr\b[\s\S]*?<\/w:tr>/g, rowIndex, (rowXml) => {
@@ -50,18 +46,6 @@ function replaceCellText(xml, tableIndex, rowIndex, cellIndex, text) {
 
         const newParagraph = buildParagraphFrom(paragraphMatch[0], text);
         return cellXml.replace(paragraphMatch[0], newParagraph);
-      });
-    });
-  });
-}
-
-function replaceCellWithSingleParagraph(xml, tableIndex, rowIndex, cellIndex, text) {
-  return replaceMatchAtIndex(xml, /<w:tbl\b[\s\S]*?<\/w:tbl>/g, tableIndex, (tableXml) => {
-    return replaceMatchAtIndex(tableXml, /<w:tr\b[\s\S]*?<\/w:tr>/g, rowIndex, (rowXml) => {
-      return replaceMatchAtIndex(rowXml, /<w:tc\b[\s\S]*?<\/w:tc>/g, cellIndex, (cellXml) => {
-        const firstParagraph = cellXml.match(/<w:p\b[\s\S]*?<\/w:p>/)?.[0] || '<w:p><w:r><w:t/></w:r></w:p>';
-        const rebuiltParagraph = buildParagraphFrom(firstParagraph, text);
-        return cellXml.replace(/<w:p\b[\s\S]*?<\/w:p>/g, '').replace(/<\/w:tc>$/, `${rebuiltParagraph}</w:tc>`);
       });
     });
   });
@@ -102,23 +86,6 @@ function alignCellParagraph(xml, tableIndex, rowIndex, cellIndex, align = 'cente
   });
 }
 
-function styleParagraphContainingIfExists(xml, searchText, occurrenceIndex = 0, options = {}) {
-  const paragraphs = [...xml.matchAll(/<w:p\b[\s\S]*?<\/w:p>/g)]
-    .filter((match) => match[0].includes(searchText));
-  const target = paragraphs[occurrenceIndex];
-  if (!target) return xml;
-
-  let nextParagraph = target[0];
-  if (options.align) {
-    nextParagraph = setParagraphAlignment(nextParagraph, options.align);
-  }
-  if (options.fontSizeHalfPt) {
-    nextParagraph = setParagraphFontSize(nextParagraph, options.fontSizeHalfPt);
-  }
-
-  return xml.slice(0, target.index) + nextParagraph + xml.slice(target.index + target[0].length);
-}
-
 function styleAllParagraphsContaining(xml, searchText, options = {}) {
   return xml.replace(/<w:p\b[\s\S]*?<\/w:p>/g, (paragraphXml) => {
     if (!paragraphXml.includes(searchText)) return paragraphXml;
@@ -148,25 +115,6 @@ function insertParagraphBeforeTable(xml, tableIndex, paragraphXml) {
 
 function buildCenteredRequestParagraph(text) {
   return `<w:p><w:pPr><w:bidi/><w:jc w:val="center"/><w:rPr><w:rFonts w:cs="Fanan"/><w:sz w:val="24"/><w:szCs w:val="24"/><w:rtl/></w:rPr></w:pPr><w:r><w:rPr><w:rFonts w:cs="Fanan"/><w:sz w:val="24"/><w:szCs w:val="24"/><w:rtl/></w:rPr><w:t xml:space="preserve">${escapeXml(text)}</w:t></w:r></w:p>`;
-}
-
-function updateTableRow(xml, tableIndex, rowIndex, updater) {
-  return replaceMatchAtIndex(xml, /<w:tbl\b[\s\S]*?<\/w:tbl>/g, tableIndex, (tableXml) => {
-    return replaceMatchAtIndex(tableXml, /<w:tr\b[\s\S]*?<\/w:tr>/g, rowIndex, updater);
-  });
-}
-
-function insertTableRowAfter(xml, tableIndex, rowIndex, rowXml) {
-  return replaceMatchAtIndex(xml, /<w:tbl\b[\s\S]*?<\/w:tbl>/g, tableIndex, (tableXml) => {
-    const rows = [...tableXml.matchAll(/<w:tr\b[\s\S]*?<\/w:tr>/g)];
-    const target = rows[rowIndex];
-    if (!target) {
-      throw new Error(`Row ${rowIndex} not found in table ${tableIndex}.`);
-    }
-
-    const insertAt = target.index + target[0].length;
-    return tableXml.slice(0, insertAt) + rowXml + tableXml.slice(insertAt);
-  });
 }
 
 function replaceParagraphContaining(xml, searchText, replacementText, occurrenceIndex = 0) {

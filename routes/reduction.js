@@ -1,5 +1,6 @@
 const express = require('express');
 const { db, logSystem, registerDatabaseInitializer } = require('../database');
+const { buildInsertStatement, buildUpdateStatement } = require('../utils/sqlStatementBuilders');
 
 const router = express.Router();
 const columns = ['EmpID', 'Name', 'Department', 'Section', 'Status', 'Type', 'Startdate', 'Enddate', 'Hours', 'Note', 'UserName'];
@@ -52,26 +53,6 @@ function isValidType(value) {
   return type === 'بداية الدوام' || type === 'نهاية الدوام';
 }
 
-function buildInsertStatement(payload) {
-  const keys = columns.filter((column) => Object.prototype.hasOwnProperty.call(payload, column));
-  if (!keys.length) return null;
-
-  return {
-    sql: `INSERT INTO Reduction (${keys.join(',')}) VALUES (${keys.map(() => '?').join(',')})`,
-    values: keys.map((key) => payload[key])
-  };
-}
-
-function buildUpdateStatement(payload, id) {
-  const keys = columns.filter((column) => Object.prototype.hasOwnProperty.call(payload, column));
-  if (!keys.length) return null;
-
-  return {
-    sql: `UPDATE Reduction SET ${keys.map((key) => `${key} = ?`).join(', ')} WHERE ID = ?`,
-    values: [...keys.map((key) => payload[key]), id]
-  };
-}
-
 router.get('/', async (req, res) => {
   const records = (await db.prepare('SELECT * FROM Reduction ORDER BY Startdate DESC, ID DESC').all());
   res.json(records);
@@ -117,7 +98,7 @@ router.post('/', async (req, res) => {
   payload.Startdate = startDate;
   payload.Enddate = normalizeText(payload.Enddate);
 
-  const statement = buildInsertStatement(payload);
+  const statement = buildInsertStatement('Reduction', columns, payload);
   if (!statement) {
     return res.status(400).json({ message: 'البيانات المرسلة غير كافية' });
   }
@@ -170,7 +151,7 @@ router.put('/:id', async (req, res) => {
     return res.status(400).json({ message: 'تاريخ البداية إلزامي.' });
   }
 
-  const statement = buildUpdateStatement(payload, id);
+  const statement = buildUpdateStatement('Reduction', columns, payload, id);
   if (!statement) {
     return res.status(400).json({ message: 'البيانات المرسلة غير كافية' });
   }

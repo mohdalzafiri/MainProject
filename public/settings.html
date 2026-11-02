@@ -180,12 +180,13 @@
       cursor: pointer;
     }
 
-    .page-permission-action span {
+    .page-permission-action svg {
+      width: 16px;
+      height: 16px;
       flex: 0 0 auto;
-      line-height: 1;
     }
 
-    .page-permission-action input:disabled + span {
+    .page-permission-action input:disabled + svg {
       opacity: 0.45;
     }
 
@@ -404,6 +405,7 @@
     }
   </style>
   <link rel="stylesheet" href="/layout-defaults.css" />
+  <script src="/app-theme.js"></script>
   <script src="/role-access.js" defer></script>
 </head>
 <body class="app-shell">
@@ -414,7 +416,7 @@
         <p>إدارة بيانات المستخدمين وكلمات السر والصلاحيات.</p>
       </div>
       <div class="actions">
-        <button class="btn dark" type="button" id="backBtn">العودة للرئيسية</button>
+        <button class="btn dark home-nav-button" type="button" id="backBtn">العودة للرئيسية</button>
       </div>
     </section>
 
@@ -537,7 +539,7 @@
               <th>اسم المستخدم</th>
               <th>كلمة السر</th>
               <th>الصلاحية</th>
-              <th>الاسم</th>
+              <th>اسم الموظف</th>
               <th>القسم</th>
               <th>النوبة</th>
               <th>الحالة</th>
@@ -1130,11 +1132,11 @@
           <span class="permission-label">${item.label}</span>
           <label class="page-permission-action" title="صلاحية العرض">
             <input type="checkbox" value="${item.key}" data-group="pages" aria-label="عرض ${item.label}" />
-            <span aria-hidden="true">👁️</span>
+            <svg aria-hidden="true"><use href="/ui-icons.svg#eye"></use></svg>
           </label>
           <label class="page-permission-action" title="صلاحية الإضافة والتعديل والحذف">
             <input type="checkbox" value="${item.key}" data-group="pageEdits" aria-label="تحرير ${item.label}" />
-            <span aria-hidden="true">✏️</span>
+            <svg aria-hidden="true"><use href="/ui-icons.svg#edit"></use></svg>
           </label>
         `;
 

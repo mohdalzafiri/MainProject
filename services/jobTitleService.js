@@ -15,4 +15,4 @@ async function listJobTitles(db) {
   return db.prepare('SELECT ID, Title, SortOrder FROM JobTitleLookup ORDER BY SortOrder ASC, ID ASC').all();
 }
 
-module.exports = { ensureJobTitlesTable, listJobTitles };
+module.exports = { listJobTitles };

@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>الاستعلام</title>
   <link rel="stylesheet" href="/layout-defaults.css" />
+  <script src="/app-theme.js"></script>
   <style>
     body.app-shell {
       background: linear-gradient(180deg, #dfeaff 0%, #f8fbff 100%);
@@ -64,13 +65,19 @@
       min-width: 160px;
     }
 
-    .table-tools {
+    body.app-shell .table-tools {
       display: flex;
       justify-content: space-between;
       align-items: center;
       gap: 10px;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
       margin-bottom: 10px;
+    }
+
+    body.app-shell .table-tools p {
+      width: auto;
+      white-space: nowrap;
+      flex: 0 0 auto;
     }
 
     .table-tools p {
@@ -84,6 +91,8 @@
       gap: 8px;
       flex-wrap: wrap;
       align-items: center;
+      margin-inline-start: auto;
+      flex: 0 0 auto;
     }
 
     .status-filter-bar {
@@ -181,44 +190,6 @@
       background: #eef2ff;
     }
 
-    .statistics-table {
-      table-layout: fixed;
-    }
-
-    .statistics-table th,
-    .statistics-table td {
-      overflow-wrap: anywhere;
-      word-break: break-word;
-      vertical-align: top;
-    }
-
-    .statistics-table th:nth-child(1),
-    .statistics-table td:nth-child(1) { width: 4%; }
-    .statistics-table th:nth-child(2),
-    .statistics-table td:nth-child(2) { width: 9%; }
-    .statistics-table th:nth-child(3),
-    .statistics-table td:nth-child(3) { width: 12%; }
-    .statistics-table th:nth-child(4),
-    .statistics-table td:nth-child(4) { width: 8%; }
-    .statistics-table th:nth-child(5),
-    .statistics-table td:nth-child(5) { width: 8%; }
-    .statistics-table th:nth-child(6),
-    .statistics-table td:nth-child(6) { width: 7%; }
-    .statistics-table th:nth-child(7),
-    .statistics-table td:nth-child(7) { width: 7%; }
-    .statistics-table th:nth-child(8),
-    .statistics-table td:nth-child(8) { width: 7%; }
-    .statistics-table th:nth-child(9),
-    .statistics-table td:nth-child(9) { width: 7%; }
-    .statistics-table th:nth-child(10),
-    .statistics-table td:nth-child(10) { width: 7%; }
-    .statistics-table th:nth-child(11),
-    .statistics-table td:nth-child(11) { width: 7%; }
-    .statistics-table th:nth-child(12),
-    .statistics-table td:nth-child(12) { width: 8%; }
-    .statistics-table th:nth-child(13),
-    .statistics-table td:nth-child(13) { width: 10%; }
-
     .table-wrap table {
       min-width: 1200px;
     }
@@ -229,6 +200,11 @@
       text-align: center;
       font-variant-numeric: tabular-nums;
       white-space: nowrap;
+    }
+
+    .allowance-exceeded {
+      color: #b91c1c;
+      font-weight: 700;
     }
 
     @media (max-width: 1100px) {
@@ -262,7 +238,7 @@
         <p>الاستعلام عن الموظفين حسب الحضور والانصراف والغياب ضمن المدة المحددة.</p>
       </div>
       <div class="actions">
-        <button type="button" class="btn dark" id="backBtn">العودة للرئيسية</button>
+        <button type="button" class="btn dark home-nav-button" id="backBtn">العودة للرئيسية</button>
       </div>
     </section>
 
@@ -351,7 +327,7 @@
             <tr>
               <th>م</th>
               <th>التاريخ</th>
-              <th>الاسم</th>
+              <th>اسم الموظف</th>
               <th>القسم</th>
               <th>النوبة</th>
               <th>الحالة</th>
@@ -361,12 +337,15 @@
               <th>بداية</th>
               <th>نهاية</th>
               <th>الوصف</th>
+              <th>الأذونات (مستخدم / متبقي)</th>
+              <th>ساعات الإذن (مستخدم / متبقي)</th>
+              <th>دقائق التأخير (مستخدم / متبقي)</th>
               <th>ملاحظات</th>
             </tr>
           </thead>
           <tbody id="rows">
             <tr>
-              <td colspan="13">لاتوجد بيانات حالياً.</td>
+              <td colspan="16">لاتوجد بيانات حالياً.</td>
             </tr>
           </tbody>
         </table>
@@ -376,6 +355,7 @@
 
   <script src="/query-name-completion.js"></script>
   <script src="/status-catalog.js"></script>
+  <script src="/query-allowance-summary.js"></script>
   <script>
     const authToken = sessionStorage.getItem('authToken');
     if (!authToken) {
@@ -408,8 +388,10 @@
     const dateButtons = document.querySelectorAll('.date-picker-trigger');
     let departmentSectionRows = [];
     let currentRows = [];
+    let monthlyUsageByEmployee = new Map();
     let employeeNames = [];
-    attachQueryNameCompletion(employeeNameInput, () => employeeNames);
+    let queryRequestId = 0;
+    const employeeNameCompletion = attachQueryNameCompletion(employeeNameInput, () => employeeNames);
 
     const statusCheckboxes = {
       حضور: document.getElementById('statusPresent'),
@@ -507,15 +489,15 @@
 
     function renderRows(items) {
       rowsBody.innerHTML = '';
-
       if (!Array.isArray(items) || items.length === 0) {
-        rowsBody.innerHTML = '<tr><td colspan="13">لاتوجد بيانات حالياً.</td></tr>';
+        rowsBody.innerHTML = '<tr><td colspan="16">لاتوجد بيانات حالياً.</td></tr>';
         countLabel.textContent = 'عدد السجلات: 0';
         return;
       }
 
       items.forEach((item, index) => {
         const row = document.createElement('tr');
+        const allowanceCells = QueryAllowanceSummary.getAllowanceCellValues(item, monthlyUsageByEmployee);
         row.innerHTML = `
           <td class="mono">${index + 1}</td>
           <td class="mono">${escapeHtml(item.Today || '')}</td>
@@ -529,6 +511,9 @@
           <td class="mono">${escapeHtml(item.Startdate || '')}</td>
           <td class="mono">${escapeHtml(item.Enddate || '')}</td>
           <td>${escapeHtml(item.Type || item.SubSection || '')}</td>
+          <td class="mono${allowanceCells.exceeded.permissions ? ' allowance-exceeded' : ''}">${escapeHtml(allowanceCells.permissions)}</td>
+          <td class="mono${allowanceCells.exceeded.permissionHours ? ' allowance-exceeded' : ''}">${escapeHtml(allowanceCells.permissionHours)}</td>
+          <td class="mono${allowanceCells.exceeded.lateMinutes ? ' allowance-exceeded' : ''}">${escapeHtml(allowanceCells.lateMinutes)}</td>
           <td>${escapeHtml(item.Note || '')}</td>
         `;
         rowsBody.appendChild(row);
@@ -537,7 +522,7 @@
       countLabel.textContent = `عدد السجلات: ${items.length}`;
     }
 
-    async function loadStatisticsRows() {
+    async function loadStatisticsRows(requestId) {
       const hasDepartment = Boolean(departmentInput.value);
       const hasEmployee = Boolean(employeeNameInput.value.trim());
       if (!hasDepartment && !hasEmployee) {
@@ -567,7 +552,21 @@
       const data = await requestJson(url, {
         headers: { Authorization: `Bearer ${authToken}` }
       });
+      if (requestId !== queryRequestId) return;
       if (!data) return;
+
+      const allowanceParams = new URLSearchParams({
+        range: 'selected',
+        today: QueryAllowanceSummary.getCurrentDateValue()
+      });
+      if (fromDate.value) allowanceParams.set('fromDate', fromDate.value);
+      if (toDate.value) allowanceParams.set('toDate', toDate.value);
+      const monthlyData = await requestJson(`/api/daily-logs/monthly-alerts?${allowanceParams.toString()}`, {
+        headers: { Authorization: `Bearer ${authToken}` }
+      });
+      if (requestId !== queryRequestId) return;
+      if (!monthlyData) return;
+      monthlyUsageByEmployee = QueryAllowanceSummary.createUsageMap(monthlyData);
 
       const rows = Array.isArray(data) ? data : [];
       currentRows = rows.filter((item) => {
@@ -594,7 +593,7 @@
           <tr>
             <th>م</th>
             <th>التاريخ</th>
-            <th>الاسم</th>
+            <th>اسم الموظف</th>
             <th>القسم</th>
             <th>النوبة</th>
             <th>الحالة</th>
@@ -604,12 +603,17 @@
             <th>بداية</th>
             <th>نهاية</th>
             <th>الوصف</th>
+            <th>الأذونات (مستخدم / متبقي)</th>
+            <th>ساعات الإذن (مستخدم / متبقي)</th>
+            <th>دقائق التأخير (مستخدم / متبقي)</th>
             <th>ملاحظات</th>
           </tr>
         </thead>
       `;
 
-      const tableBody = filteredRows.map((item, index) => `
+      const tableBody = filteredRows.map((item, index) => {
+        const allowanceCells = QueryAllowanceSummary.getAllowanceCellValues(item, monthlyUsageByEmployee);
+        return `
         <tr>
           <td>${index + 1}</td>
           <td>${escapeHtml(item.Today || '')}</td>
@@ -623,9 +627,13 @@
           <td>${escapeHtml(item.Startdate || '')}</td>
           <td>${escapeHtml(item.Enddate || '')}</td>
           <td>${escapeHtml(item.Type || item.SubSection || '')}</td>
+          <td class="mono${allowanceCells.exceeded.permissions ? ' allowance-exceeded' : ''}">${escapeHtml(allowanceCells.permissions)}</td>
+          <td class="mono${allowanceCells.exceeded.permissionHours ? ' allowance-exceeded' : ''}">${escapeHtml(allowanceCells.permissionHours)}</td>
+          <td class="mono${allowanceCells.exceeded.lateMinutes ? ' allowance-exceeded' : ''}">${escapeHtml(allowanceCells.lateMinutes)}</td>
           <td>${escapeHtml(item.Note || '')}</td>
         </tr>
-      `).join('');
+      `;
+      }).join('');
 
       const printWindow = window.open('', '_blank');
       if (!printWindow) {
@@ -668,6 +676,10 @@
             }
             th {
               background: #e2e8f0;
+            }
+            .allowance-exceeded {
+              color: #b91c1c;
+              font-weight: 700;
             }
             @page {
               size: A4 landscape;
@@ -772,8 +784,11 @@
     });
 
     searchBtn.addEventListener('click', () => {
-      loadStatisticsRows().catch((error) => {
-        setSearchMessage(error.message || 'تعذر تحميل البيانات.');
+      const requestId = ++queryRequestId;
+      loadStatisticsRows(requestId).catch((error) => {
+        if (requestId === queryRequestId) {
+          setSearchMessage(error.message || 'تعذر تحميل البيانات.');
+        }
       });
     });
 
@@ -805,11 +820,21 @@
       checkbox?.addEventListener('change', refreshRenderedRows);
     });
 
-    employeeNameInput.addEventListener('input', () => {
+    function handleEmployeeNameInput() {
       if (employeeNameInput.value.trim()) {
         clearDepartmentSectionFilters();
+        return;
       }
-    });
+
+      queryRequestId += 1;
+      employeeNameCompletion.close();
+      currentRows = [];
+      monthlyUsageByEmployee = new Map();
+      renderRows([]);
+      setSearchMessage('');
+    }
+
+    employeeNameInput.addEventListener('input', handleEmployeeNameInput);
 
     Promise.all([loadDepartmentSections(), loadEmployeeNames()])
       .then(() => {

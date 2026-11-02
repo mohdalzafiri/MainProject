@@ -1,50 +1,97 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { getDelayMinutes, getPermissionDurationMinutes } = require('../utils/dailyMetrics');
+const {
+  MONTHLY_PERMISSION_COUNT_LIMIT,
+  MONTHLY_PERMISSION_MINUTES_LIMIT,
+  MONTHLY_LATE_MINUTES_LIMIT,
+  getDelayMinutes,
+  getPermissionDurationMinutes,
+  getMonthlyAllowanceBalance
+} = require('../utils/dailyMetrics');
+
+test('monthly allowance limits match the daily entry rules', () => {
+  assert.equal(MONTHLY_PERMISSION_COUNT_LIMIT, 4);
+  assert.equal(MONTHLY_PERMISSION_MINUTES_LIMIT, 12 * 60);
+  assert.equal(MONTHLY_LATE_MINUTES_LIMIT, 105);
+});
+
+test('monthly allowance balances clamp remaining values at zero', () => {
+  assert.deepEqual(getMonthlyAllowanceBalance({
+    permissionCount: 2,
+    permissionMinutes: 150,
+    lateMinutes: 45
+  }), {
+    remainingPermissionCount: 2,
+    remainingPermissionMinutes: 570,
+    remainingLateMinutes: 60,
+    lateExceeded: false,
+    permissionTimeExceeded: false,
+    permissionCountExceeded: false
+  });
+  assert.deepEqual(getMonthlyAllowanceBalance({
+    permissionCount: 5,
+    permissionMinutes: 750,
+    lateMinutes: 110
+  }), {
+    remainingPermissionCount: 0,
+    remainingPermissionMinutes: 0,
+    remainingLateMinutes: 0,
+    lateExceeded: true,
+    permissionTimeExceeded: true,
+    permissionCountExceeded: true
+  });
+});
 
 test('permission beginning duration uses actual late arrival time', () => {
   assert.equal(getPermissionDurationMinutes({
     Period: 'نوبة صبح',
-    Type: 'بداية الدوام',
-    InTime: '09:00'
+    InTime: '09:00',
+    OutTime: '16:00'
   }), 60);
   assert.equal(getPermissionDurationMinutes({
     Period: 'نوبة صبح',
-    Type: 'بداية الدوام',
-    InTime: '09:30'
+    InTime: '09:30',
+    OutTime: '16:00'
   }), 90);
 });
 
 test('permission ending duration uses actual early departure including midnight shifts', () => {
   assert.equal(getPermissionDurationMinutes({
     Period: 'نوبة صبح',
-    Type: 'نهاية الدوام',
+    InTime: '08:00',
     OutTime: '15:00'
   }), 60);
   assert.equal(getPermissionDurationMinutes({
     Period: 'نوبة عصر',
-    Type: 'نهاية الدوام',
+    InTime: '16:00',
     OutTime: '23:00'
   }), 60);
+});
+
+test('permission duration is calculated from status times without a description', () => {
+  assert.equal(getPermissionDurationMinutes({
+    Period: 'نوبة صبح',
+    InTime: '09:00',
+    OutTime: '15:30'
+  }), 90);
 });
 
 test('invalid or out-of-shift permission times do not inflate monthly duration', () => {
   assert.equal(getPermissionDurationMinutes({
     Period: 'نوبة صبح',
-    Type: 'بداية الدوام',
-    InTime: '07:00'
+    InTime: '07:00',
+    OutTime: '16:00'
   }), 0);
   assert.equal(getPermissionDurationMinutes({
     Period: 'نوبة صبح',
-    Type: 'نهاية الدوام',
+    InTime: '08:00',
     OutTime: '17:00'
   }), 0);
   assert.equal(getPermissionDurationMinutes({
     Period: 'نوبة صبح',
-    Type: '',
     InTime: '10:00'
-  }), 0);
+  }), 120);
 });
 
 test('lateness uses the original official period start', () => {

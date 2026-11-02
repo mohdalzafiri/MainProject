@@ -1,5 +1,6 @@
 const express = require('express');
 const { db, logSystem, getCurrentTimestamp, registerDatabaseInitializer } = require('../database');
+const { buildInsertStatement, buildUpdateStatement } = require('../utils/sqlStatementBuilders');
 const {
   formatDate,
   formatTimestamp,
@@ -8,8 +9,7 @@ const {
   renderDocxFromTemplate,
   applyPreparationTemplateFormatting,
   convertDocxToPdf,
-  readTemplateTags,
-  renderDocxTemplateToHtml
+  readTemplateTags
 } = require('../services/wordTemplateService');
 
 const router = express.Router();
@@ -147,24 +147,6 @@ function toLtrDate(value) {
   const raw = normalize(value);
   if (!raw) return '';
   return `\u202D${raw}\u202C`;
-}
-
-function buildInsertStatement(payload) {
-  const keys = columns.filter((column) => Object.prototype.hasOwnProperty.call(payload, column));
-  if (!keys.length) return null;
-  return {
-    sql: `INSERT INTO Transfer (${keys.join(',')}) VALUES (${keys.map(() => '?').join(',')})`,
-    values: keys.map((key) => payload[key])
-  };
-}
-
-function buildUpdateStatement(payload, id) {
-  const keys = columns.filter((column) => Object.prototype.hasOwnProperty.call(payload, column));
-  if (!keys.length) return null;
-  return {
-    sql: `UPDATE Transfer SET ${keys.map((key) => `${key} = ?`).join(', ')} WHERE ID = ?`,
-    values: [...keys.map((key) => payload[key]), id]
-  };
 }
 
 // Only the employee's latest transfer is applied, so editing an older transfer cannot overwrite newer data.
@@ -510,7 +492,7 @@ router.get('/transfers/:id', async (req, res) => {
 });
 
 router.post('/transfers', async (req, res) => {
-  const statement = buildInsertStatement(req.body);
+  const statement = buildInsertStatement('Transfer', columns, req.body);
   if (!statement) {
     return res.status(400).json({ message: 'البيانات المرسلة غير كافية' });
   }
@@ -525,7 +507,7 @@ router.put('/transfers/:id', async (req, res) => {
   const id = Number(req.params.id);
   if (!id) return res.status(400).json({ message: 'معرّف غير صالح' });
 
-  const statement = buildUpdateStatement(req.body, id);
+  const statement = buildUpdateStatement('Transfer', columns, req.body, id);
   if (!statement) {
     return res.status(400).json({ message: 'البيانات المرسلة غير كافية' });
   }
@@ -554,4 +536,3 @@ router.delete('/transfers/:id', async (req, res) => {
 });
 
 module.exports = router;
-

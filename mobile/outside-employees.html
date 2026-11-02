@@ -70,88 +70,49 @@
     }
 
     .employees-table {
-      table-layout: fixed;
+      table-layout: auto;
+      width: max-content;
+      min-width: 100%;
     }
 
     .employees-table th,
     .employees-table td {
-      overflow-wrap: anywhere;
-      word-break: break-word;
-      vertical-align: top;
-    }
-
-    .employees-table th:nth-child(4),
-    .employees-table td:nth-child(4) {
       white-space: nowrap;
       overflow-wrap: normal;
       word-break: normal;
-      font-variant-numeric: tabular-nums;
+      vertical-align: top;
     }
 
     .employees-table th:nth-child(1),
-    .employees-table td:nth-child(1) { width: 4%; }
+    .employees-table td:nth-child(1) { width: 5%; }
     .employees-table th:nth-child(2),
-    .employees-table td:nth-child(2) { width: 5%; }
+    .employees-table td:nth-child(2) { width: 6%; }
     .employees-table th:nth-child(3),
-    .employees-table td:nth-child(3) { width: 15%; }
+    .employees-table td:nth-child(3) { width: 16%; }
     .employees-table th:nth-child(4),
-    .employees-table td:nth-child(4) { width: 10%; }
+    .employees-table td:nth-child(4) { width: 8%; }
     .employees-table th:nth-child(5),
-    .employees-table td:nth-child(5) { width: 12%; }
+    .employees-table td:nth-child(5) { width: 13%; }
     .employees-table th:nth-child(6),
     .employees-table td:nth-child(6) { width: 6%; }
     .employees-table th:nth-child(7),
     .employees-table td:nth-child(7) { width: 6%; }
     .employees-table th:nth-child(8),
-    .employees-table td:nth-child(8) { width: 7%; }
+    .employees-table td:nth-child(8) { width: 8%; }
     .employees-table th:nth-child(9),
-    .employees-table td:nth-child(9) { width: 6%; }
+    .employees-table td:nth-child(9) { width: 7%; }
     .employees-table th:nth-child(10),
-    .employees-table td:nth-child(10) { width: 6%; }
+    .employees-table td:nth-child(10) { width: 7%; }
     .employees-table th:nth-child(11),
-    .employees-table td:nth-child(11) { width: 6%; }
+    .employees-table td:nth-child(11) { width: 7%; }
     .employees-table th:nth-child(12),
     .employees-table td:nth-child(12) { width: 6%; }
     .employees-table th:nth-child(13),
-    .employees-table td:nth-child(13) { width: 11%; }
-
-    @media (max-width: 1200px) {
-      .employees-table th,
-      .employees-table td {
-        font-size: 13px;
-        padding-inline: 8px;
-      }
-
-      .employees-table th:nth-child(1),
-      .employees-table td:nth-child(1) { width: 3%; }
-      .employees-table th:nth-child(2),
-      .employees-table td:nth-child(2) { width: 5%; }
-      .employees-table th:nth-child(3),
-      .employees-table td:nth-child(3) { width: 17%; }
-      .employees-table th:nth-child(4),
-      .employees-table td:nth-child(4) { width: 12%; }
-      .employees-table th:nth-child(5),
-      .employees-table td:nth-child(5) { width: 10%; }
-      .employees-table th:nth-child(6),
-      .employees-table td:nth-child(6) { width: 6%; }
-      .employees-table th:nth-child(7),
-      .employees-table td:nth-child(7) { width: 6%; }
-      .employees-table th:nth-child(8),
-      .employees-table td:nth-child(8) { width: 8%; }
-      .employees-table th:nth-child(9),
-      .employees-table td:nth-child(9) { width: 5%; }
-      .employees-table th:nth-child(10),
-      .employees-table td:nth-child(10) { width: 5%; }
-      .employees-table th:nth-child(11),
-      .employees-table td:nth-child(11) { width: 5%; }
-      .employees-table th:nth-child(12),
-      .employees-table td:nth-child(12) { width: 6%; }
-      .employees-table th:nth-child(13),
-      .employees-table td:nth-child(13) { width: 12%; }
-    }
+    .employees-table td:nth-child(13) { width: 12%; }
 
   </style>
   <link rel="stylesheet" href="/layout-defaults.css" />
+  <script src="/app-theme.js"></script>
   <script src="/role-access.js" defer></script>
 </head>
 <body class="app-shell">
@@ -162,7 +123,7 @@
         <p>إدارة بيانات الموظفين غير النشطين: إضافة، تعديل، حذف، طباعة، وعرض السجلات خارج الادارة.</p>
       </div>
       <div class="actions">
-        <button type="button" class="btn dark" id="backBtn">العودة للرئيسية</button>
+        <button type="button" class="btn dark home-nav-button" id="backBtn">العودة للرئيسية</button>
       </div>
     </section>
 
@@ -373,7 +334,7 @@
         <table class="employees-table">
           <thead>
             <tr>
-              <th>م</th>
+              <th class="sortable-date-header" data-sort-key="id" aria-sort="none" style="cursor: pointer;">م</th>
               <th>الرتبة</th>
               <th>اسم الموظف</th>
               <th>الرقم المدني</th>
@@ -383,7 +344,7 @@
               <th>مقر العمل</th>
               <th>تاريخ التعيين</th>
               <th>تاريخ المباشرة</th>
-              <th>تاريخ النقل</th>
+              <th class="sortable-date-header" data-sort-key="date" aria-sort="none" style="cursor: pointer;">تاريخ النقل</th>
               <th>حالة الملف</th>
               <th>ملاحظات</th>
             </tr>
@@ -455,6 +416,7 @@
     let selectedId = null;
     let allEmployees = [];
     let departmentSectionRows = [];
+    let outsideEmployeeSort = { key: null, direction: 'asc' };
 
     function showStatus(message, isError = false) {
       statusLine.className = `status-line show ${isError ? 'error' : 'ok'}`;
@@ -920,7 +882,7 @@
         <div class="section-title">البيانات الأساسية</div>
         <table>
           <tr>
-            <td class="label">الاسم</td>
+            <td class="label">اسم الموظف</td>
             <td class="value">${valueOrDash(item.Name)}</td>
             <td class="label">الرقم المدني</td>
             <td class="value ltr">${valueOrDash(item.CivilID)}</td>
@@ -1067,9 +1029,10 @@
 
     function renderRows(items) {
       rowsBody.innerHTML = '';
+      const sortedItems = applyOutsideEmployeeSort(items);
       const outsideTotal = allEmployees.filter((item) => String(item.Status || '').trim() !== 'نشط').length;
 
-      if (!Array.isArray(items) || items.length === 0) {
+      if (sortedItems.length === 0) {
         rowsBody.innerHTML = '<tr><td colspan="13">لاتوجد بيانات حالياً.</td></tr>';
         const hasFilter = Boolean(tableFilterInput.value.trim());
         countLabel.textContent = hasFilter
@@ -1078,11 +1041,11 @@
         return;
       }
 
-      items.forEach((item) => {
+      sortedItems.forEach((item, index) => {
         const tr = document.createElement('tr');
         tr.dataset.id = item.ID;
         tr.innerHTML = `
-          <td class="mono">${item.ID ?? ''}</td>
+          <td class="mono">${index + 1}</td>
           <td>${item.Title ?? ''}</td>
           <td>${item.Name ?? ''}</td>
           <td>${item.CivilID ?? ''}</td>
@@ -1109,8 +1072,8 @@
 
       const hasFilter = Boolean(tableFilterInput.value.trim());
       countLabel.textContent = hasFilter
-        ? `عدد السجلات: ${items.length} من ${outsideTotal}`
-        : `عدد السجلات: ${items.length}`;
+        ? `عدد السجلات: ${sortedItems.length} من ${outsideTotal}`
+        : `عدد السجلات: ${sortedItems.length}`;
 
       if (selectedId) {
         const selectedRow = rowsBody.querySelector(`tr[data-id="${selectedId}"]`);
@@ -1119,6 +1082,57 @@
         }
       }
     }
+
+    function applyOutsideEmployeeSort(items) {
+      const sortedItems = Array.isArray(items) ? [...items] : [];
+      if (!outsideEmployeeSort.key) return sortedItems;
+
+      return sortedItems.sort((left, right) => {
+        let difference;
+        if (outsideEmployeeSort.key === 'id') {
+          difference = (Number(left.ID) || 0) - (Number(right.ID) || 0);
+        } else {
+          const leftDate = parseFlexibleDate(left.Enddate);
+          const rightDate = parseFlexibleDate(right.Enddate);
+          const leftValue = leftDate && !Number.isNaN(leftDate.getTime()) ? leftDate.getTime() : Number.NEGATIVE_INFINITY;
+          const rightValue = rightDate && !Number.isNaN(rightDate.getTime()) ? rightDate.getTime() : Number.NEGATIVE_INFINITY;
+          difference = leftValue - rightValue;
+        }
+
+        return outsideEmployeeSort.direction === 'asc' ? difference : -difference;
+      });
+    }
+
+    function updateOutsideEmployeeSortHeaders() {
+      document.querySelectorAll('.sortable-date-header').forEach((header) => {
+        const key = header.dataset.sortKey;
+        const isActive = outsideEmployeeSort.key === key;
+        const label = key === 'id' ? 'م' : 'تاريخ النقل';
+        const marker = isActive ? (outsideEmployeeSort.direction === 'asc' ? ' ↑' : ' ↓') : '';
+        header.textContent = `${label}${marker}`;
+        header.setAttribute(
+          'aria-sort',
+          isActive ? (outsideEmployeeSort.direction === 'asc' ? 'ascending' : 'descending') : 'none'
+        );
+      });
+    }
+
+    document.querySelectorAll('.sortable-date-header').forEach((header) => {
+      header.addEventListener('click', () => {
+        const key = header.dataset.sortKey;
+        if (!key) return;
+
+        if (outsideEmployeeSort.key === key) {
+          outsideEmployeeSort.direction = outsideEmployeeSort.direction === 'asc' ? 'desc' : 'asc';
+        } else {
+          outsideEmployeeSort.key = key;
+          outsideEmployeeSort.direction = 'asc';
+        }
+
+        updateOutsideEmployeeSortHeaders();
+        applyNameFilter();
+      });
+    });
 
     function applyNameFilter() {
       const outsideEmployees = allEmployees.filter((item) =>
@@ -1309,6 +1323,7 @@
     tableFilterInput.addEventListener('input', () => {
       applyNameFilter();
     });
+    tableFilterInput.addEventListener('search', applyNameFilter);
 
     backBtn.addEventListener('click', () => {
       window.location.href = '/mobile-dashboard.html';

@@ -3,7 +3,6 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 const PizZip = require('pizzip');
 const Docxtemplater = require('docxtemplater');
-const mammoth = require('mammoth');
 
 function resolveTemplatesRoot() {
   const configuredPath = String(process.env.TEMPLATES_ROOT || '').trim();
@@ -291,37 +290,8 @@ function applyPreparationTemplateFormatting(docxPath) {
   fs.writeFileSync(docxPath, zip.generate({ type: 'nodebuffer' }));
 }
 
-async function renderDocxTemplateToHtml(templatePath, payload) {
-  const content = fs.readFileSync(templatePath, 'binary');
-  const zip = new PizZip(content);
-  const doc = new Docxtemplater(zip, {
-    delimiters: { start: '{{', end: '}}' },
-    paragraphLoop: true,
-    linebreaks: true
-  });
-
-  doc.render(payload || {});
-  const buffer = doc.getZip().generate({ type: 'nodebuffer' });
-  const result = await mammoth.convertToHtml({ buffer }, {
-    includeDefaultStyleMap: true,
-    convertImage: mammoth.images.imgElement(function(image) {
-      return image.read('base64').then(function(imageBuffer) {
-        return {
-          src: `data:${image.contentType};base64,${imageBuffer}`
-        };
-      });
-    })
-  });
-
-  return {
-    html: result.value || '',
-    messages: result.messages || []
-  };
-}
-
 module.exports = {
   templatesRoot,
-  outputRoot,
   formatDate,
   formatTime,
   formatTimestamp,
@@ -331,7 +301,6 @@ module.exports = {
   createOutputPaths,
   renderDocxFromTemplate,
   applyPreparationTemplateFormatting,
-  renderDocxTemplateToHtml,
   convertDocxToPdf,
   ensureDirectories
 };

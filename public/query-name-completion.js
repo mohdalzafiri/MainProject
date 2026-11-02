@@ -95,6 +95,13 @@ function attachQueryNameCompletion(input, getNames, options = {}) {
   }
 
   input.addEventListener('input', update);
+  input.addEventListener('search', () => {
+    if (!input.value.trim() && typeof input.dispatchEvent === 'function' && typeof Event !== 'undefined') {
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      return;
+    }
+    update();
+  });
   input.addEventListener('focus', () => { if (input.value.trim()) update(); });
   input.addEventListener('blur', close);
   input.addEventListener('keydown', (event) => {

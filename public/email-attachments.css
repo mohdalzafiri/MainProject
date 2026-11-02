@@ -1,0 +1,220 @@
+body.app-shell .doc-images-box {
+  margin-top: 12px;
+  padding: 14px;
+  border: 1px solid var(--ui-border);
+  border-radius: 14px;
+  color: var(--ui-text);
+  background: var(--ui-surface);
+  box-shadow: var(--ui-panel-shadow);
+}
+
+body.app-shell .email-scanner-panel {
+  margin-top: 12px;
+  padding: 14px;
+  border: 1px solid var(--ui-border);
+  border-radius: 14px;
+  color: var(--ui-text);
+  background: #f8fafc;
+  box-shadow: var(--ui-panel-shadow);
+}
+
+body.app-shell .email-scanner-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+body.app-shell .email-scanner-header h3 {
+  margin: 0 0 8px;
+}
+
+body.app-shell .email-scanner-header #dailyScanPageCount {
+  margin: 0 0 8px;
+  color: var(--ui-muted);
+  white-space: nowrap;
+}
+
+body.app-shell .email-scanner-panel > p {
+  margin: 8px 0;
+  color: var(--ui-muted);
+}
+
+body.app-shell .email-scanner-preview {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) 42px;
+  gap: 10px;
+  align-items: center;
+  margin: 12px 0;
+}
+
+body.app-shell .email-scanner-stage {
+  min-height: 205px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  padding: 8px;
+  border: 1px solid var(--ui-border);
+  border-radius: 12px;
+  color: var(--ui-muted);
+  background: var(--ui-surface);
+  text-align: center;
+}
+
+body.app-shell .email-scanner-empty {
+  padding: 24px;
+  color: var(--ui-muted);
+  line-height: 1.7;
+}
+
+body.app-shell .email-scanner-stage canvas {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  max-height: 65vh;
+  margin: 0;
+  border: 0;
+  border-radius: 8px;
+  background: #fff;
+  touch-action: none;
+}
+
+body.app-shell .email-scanner-nav {
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  color: #fff;
+  background: var(--ui-primary);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+body.app-shell .email-scanner-nav:disabled {
+  opacity: .45;
+  cursor: default;
+}
+
+body.app-shell .email-scanner-panel [hidden] {
+  display: none !important;
+}
+
+body.app-shell .email-scanner-panel .daily-scanner-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+body.app-shell .email-scanner-panel #dailyScanSavedFile {
+  display: block;
+  margin-top: 8px;
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+body.app-shell .doc-images-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  color: var(--ui-text);
+  font-weight: 700;
+}
+
+body.app-shell .doc-images-view {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) 42px;
+  gap: 10px;
+  align-items: center;
+  margin: 12px 0;
+}
+
+body.app-shell .doc-images-frame {
+  min-width: 0;
+  min-height: 205px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  padding: 8px;
+  border: 1px solid var(--ui-border);
+  border-radius: 12px;
+  color: var(--ui-muted);
+  background: var(--ui-surface);
+  text-align: center;
+}
+
+body.app-shell .doc-images-frame img {
+  display: none;
+  width: 100%;
+  height: 100%;
+  max-height: 300px;
+  object-fit: contain;
+}
+
+body.app-shell .doc-images-nav {
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  color: #fff;
+  background: var(--ui-primary);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+body.app-shell .doc-images-nav:disabled {
+  opacity: .45;
+  cursor: default;
+}
+
+body.app-shell .doc-images-actions {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+@media (max-width: 680px) {
+  body.app-shell .doc-images-box {
+    padding: 10px;
+  }
+
+  body.app-shell .doc-images-view {
+    grid-template-columns: 36px minmax(0, 1fr) 36px;
+    gap: 6px;
+  }
+
+  body.app-shell .doc-images-frame {
+    min-height: 170px;
+  }
+
+  body.app-shell .email-scanner-panel {
+    padding: 10px;
+  }
+
+  body.app-shell .email-scanner-stage {
+    min-height: 170px;
+  }
+
+  body.app-shell .email-scanner-preview {
+    grid-template-columns: 36px minmax(0, 1fr) 36px;
+    gap: 6px;
+  }
+
+  body.app-shell .email-scanner-nav {
+    width: 36px;
+    height: 36px;
+  }
+
+  body.app-shell .doc-images-nav {
+    width: 36px;
+    height: 36px;
+  }
+}

@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>اليوميات</title>
   <link rel="stylesheet" href="/layout-defaults.css" />
+  <script src="/app-theme.js"></script>
   <style>
     body.app-shell {
       background: linear-gradient(180deg, #dfeaff 0%, #f8fbff 100%);
@@ -237,8 +238,8 @@
     }
 
     body.app-shell .table-wrap table {
-      width: 100%;
-      min-width: 0;
+      width: var(--ui-table-min-width);
+      min-width: var(--ui-table-min-width);
       table-layout: fixed;
       border-collapse: collapse;
     }
@@ -582,8 +583,8 @@
       }
 
       body.app-shell .table-wrap table {
-        width: 100%;
-        min-width: 0;
+        width: var(--ui-table-min-width);
+        min-width: var(--ui-table-min-width);
       }
     }
 
@@ -598,8 +599,8 @@
       }
 
       body.app-shell .table-wrap table {
-        width: 760px;
-        min-width: 760px;
+        width: var(--ui-table-min-width);
+        min-width: var(--ui-table-min-width);
       }
 
       body.app-shell .table-wrap th:nth-child(1),
@@ -636,10 +637,9 @@
       <div class="title-block">
         <h1>واجهة اليوميات</h1>
         <p>إدارة بيانات اليوميات: إضافة، تعديل، حذف، طباعة وعرض السجلات.</p>
+        <button type="button" class="btn dark home-nav-button" id="backBtn">العودة للرئيسية</button>
       </div>
-      <div class="actions">
-        <button type="button" class="btn dark" id="backBtn">العودة للرئيسية</button>
-      </div>
+
       <div class="mobile-view-toggle" aria-label="طريقة عرض بيانات اليوميات">
         <button type="button" id="tableViewBtn" class="active" aria-pressed="true">الجدول</button>
         <button type="button" id="cardViewBtn" aria-pressed="false">البطاقات</button>
@@ -703,8 +703,8 @@
         </div>
       </form>
       <div id="statusLine" class="status-line"></div>
-      <section class="daily-scanner-panel" aria-labelledby="dailyScannerTitle">
-        <h3 id="dailyScannerTitle">ماسح مستندات اليومية</h3>
+      <section class="daily-scanner-panel" aria-labelledby="dailyScannerTitle" hidden>
+        <h3 id="dailyScannerTitle">البريد الإلكتروني</h3>
         <p>اختر سجلًا محفوظًا، ثم التقط صفحات المستند وحدّد زوايا الورقة. ستُجمع الصفحات في ملف PDF واحد باسم تلقائي.</p>
         <div class="daily-scanner-actions">
           <button type="button" class="btn primary" id="dailyScanCaptureBtn" disabled>التقاط / اختيار صفحة</button>
@@ -726,7 +726,7 @@
       <div class="table-tools">
         <p id="countLabel">عدد السجلات: 0</p>
         <div class="search-box">
-          <input id="searchName" class="table-search" type="text" placeholder="فلترة بالاسم أثناء الكتابة" autocomplete="off" list="employeeSuggestions" />
+          <input id="searchName" class="table-search" type="search" placeholder="فلترة بالاسم أثناء الكتابة" autocomplete="off" list="employeeSuggestions" />
           <datalist id="employeeSuggestions"></datalist>
           <div id="searchSuggestions" class="search-suggestions" hidden></div>
         </div>
@@ -742,7 +742,7 @@
           <thead>
             <tr>
               <th>م</th>
-              <th>الاسم</th>
+              <th>اسم الموظف</th>
               <th>الحالة</th>
               <th>الحضور</th>
               <th>الانصراف</th>
@@ -780,6 +780,7 @@
 
   <script src="/daily-scanner.js"></script>
   <script src="/status-catalog.js"></script>
+  <script src="/daily-allowance-tooltip.js"></script>
   <script>
     const authToken = sessionStorage.getItem('authToken');
     if (!authToken) window.location.href = '/';
@@ -860,8 +861,7 @@
     const dailyScanner = window.initDailyScanner({
       authToken,
       canEdit: scannerRole === 'admin'
-        || (scannerRole !== 'view' && Array.isArray(scannerEditablePages) && scannerEditablePages.includes('daily')),
-      onStatus: showStatus
+        || (scannerRole !== 'view' && Array.isArray(scannerEditablePages) && scannerEditablePages.includes('daily'))
     });
     let visibleRows = [];
     let basePeriods = [];
@@ -929,6 +929,9 @@
 
       const name = document.createElement('span');
       name.textContent = String(item.Name || '');
+      name.tabIndex = 0;
+      name.title = DailyAllowanceTooltip.buildTooltip(item, monthlyAlertMap);
+      name.setAttribute('aria-label', name.title);
       container.appendChild(name);
 
       getMonthlyAlerts(item).forEach((message) => {
@@ -1181,14 +1184,7 @@
     async function loadMonthlyAlerts(today) {
       const params = new URLSearchParams({ today });
       const data = await requestJson(`/api/daily-logs/monthly-alerts?${params.toString()}`, { headers: getHeaders() });
-      const alerts = new Map();
-      (Array.isArray(data) ? data : []).forEach((usage) => {
-        const empId = String(usage.EmpID || '').trim();
-        const name = normalizeText(usage.Name);
-        if (empId) alerts.set(`emp:${empId}`, usage);
-        if (name) alerts.set(`name:${name}`, usage);
-      });
-      monthlyAlertMap = alerts;
+      monthlyAlertMap = DailyAllowanceTooltip.createUsageMap(data);
     }
 
     function getNameFilteredRows() {
@@ -2055,7 +2051,7 @@
             <thead>
               <tr>
                 <th>م</th>
-                <th>الاسم</th>
+                <th>اسم الموظف</th>
                 <th>الحالة</th>
                 <th>الفترة</th>
                 <th>الحضور</th>
@@ -2121,10 +2117,21 @@
       await refreshDailyView();
     });
 
-    searchNameInput.addEventListener('input', applyNameFilterAndRender);
-    searchNameInput.addEventListener('input', () => {
-      scheduleEmployeeSuggestionsLoad();
-    });
+    function handleSearchNameInput() {
+      applyNameFilterAndRender();
+      if (String(searchNameInput.value || '').trim()) {
+        scheduleEmployeeSuggestionsLoad();
+        return;
+      }
+
+      if (suggestionDebounceHandle) {
+        clearTimeout(suggestionDebounceHandle);
+      }
+      clearEmployeeSuggestions();
+    }
+
+    searchNameInput.addEventListener('input', handleSearchNameInput);
+    searchNameInput.addEventListener('search', handleSearchNameInput);
     searchNameInput.addEventListener('focus', () => {
       if (searchSuggestionsBox.children.length > 0) {
         searchSuggestionsBox.hidden = false;

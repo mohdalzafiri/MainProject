@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>تخفيف العمل</title>
   <link rel="stylesheet" href="/layout-defaults.css" />
+  <link rel="stylesheet" href="/email-attachments.css" />
+  <script src="/app-theme.js"></script>
   <style>
     body.app-shell {
       background: linear-gradient(180deg, #eef6ff 0%, #f9fbff 100%);
@@ -118,12 +120,6 @@
       padding: 0;
     }
 
-    .date-picker-trigger::before {
-      content: '📅';
-      font-size: 14px;
-      line-height: 1;
-    }
-
     .native-date-input {
       position: absolute;
       width: 1px;
@@ -143,9 +139,16 @@
       grid-column: 1 / -1;
     }
 
-    .admin-only-field,
+    .admin-only-field {
+      display: none !important;
+    }
+
+    .admin-only-field.admin-visible {
+      display: grid !important;
+    }
+
     .user-name-column {
-      display: none;
+      display: none !important;
     }
 
     .doc-images-box {
@@ -249,7 +252,7 @@
         <p>إدارة بيانات الموظفين الحاصلين على تخفيف عمل وعرض كل الموظفين الحاصلين على تخفيف عمل.</p>
       </div>
       <div class="actions">
-        <button type="button" class="btn dark" id="backBtn">رجوع للرئيسية</button>
+        <button type="button" class="btn dark home-nav-button" id="backBtn">العودة للرئيسية</button>
       </div>
     </header>
 
@@ -332,46 +335,29 @@
 
       <div id="statusLine" class="status-line"></div>
 
-      <div class="doc-images-box">
-        <div class="doc-images-head">
-          <span>صور المستندات الرسمية</span>
-          <span id="docImageCount">0 / 0</span>
-        </div>
-        <div class="doc-images-view">
-          <button type="button" class="doc-images-nav" id="docImagePrevBtn">◀</button>
-          <div class="doc-images-frame">
-            <img id="docImagePreview" alt="صورة مستند" />
-            <div id="docImageEmpty">اختر سجلًا أولًا لعرض صور المستندات.</div>
-          </div>
-          <button type="button" class="doc-images-nav" id="docImageNextBtn">▶</button>
-        </div>
-        <div class="doc-images-actions">
-          <button type="button" class="btn primary" id="docImageUploadBtn">تصوير/رفع مستند</button>
-          <input id="docImageInput" type="file" accept="image/*" capture="environment" hidden />
-        </div>
-      </div>
+      <div class="doc-images-box"></div>
     </section>
 
     <section class="panel">
       <h2>صندوق عرض البيانات</h2>
       <div class="table-tools">
         <p id="countLabel">عدد السجلات: 0</p>
-        <input id="nameFilterInput" class="table-search" placeholder="فلترة بالاسم أثناء الكتابة" />
+        <input id="nameFilterInput" class="table-search" type="search" placeholder="فلترة بالاسم أثناء الكتابة" />
         <button type="button" class="btn primary" id="refreshBtn">تحديث العرض</button>
       </div>
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>م</th>
+              <th class="sortable-date-header" data-sort-key="id" aria-sort="none" style="cursor: pointer;">م</th>
               <th>اسم الموظف</th>
               <th>الحالة</th>
               <th>نوع التخفيف</th>
               <th>القسم</th>
               <th>النوبة</th>
               <th>عدد الساعات</th>
-              <th>البداية</th>
-              <th>النهاية</th>
+              <th class="sortable-date-header" data-sort-key="start" aria-sort="none" style="cursor: pointer;">البداية</th>
+              <th class="sortable-date-header" data-sort-key="end" aria-sort="none" style="cursor: pointer;">النهاية</th>
               <th>ملاحظات</th>
               <th class="user-name-column">اسم المستخدم</th>
             </tr>
@@ -382,7 +368,8 @@
     </section>
   </div>
 
-  <script src="/record-photos.js"></script>
+  <script src="/daily-scanner.js"></script>
+  <script src="/email-scanner.js"></script>
   <script src="/text-encoding.js"></script>
   <script src="/query-name-completion.js"></script>
   <script>
@@ -397,7 +384,7 @@
       window.location.href = '/';
     }
 
-    const isAdminUser = String(currentUser?.role || currentUser?.username || '').trim().toLowerCase() === 'admin';
+    const isAdminUser = String(currentUser?.role || '').trim().toLowerCase() === 'admin';
     const isMobilePage = window.location.pathname.startsWith('/mobile/')
       || sessionStorage.getItem('uiMode') === 'mobile';
     const homeRoute = isMobilePage ? '/mobile-dashboard.html' : '/dashboard.html';
@@ -428,9 +415,10 @@
     let allEmployees = [];
     let allReduction = [];
     let selectedId = null;
+    let reductionSort = { key: null, direction: 'asc' };
     attachQueryNameCompletion(nameInput, () => allEmployees.map((item) => String(item.Name || '').trim()));
 
-    const recordPhotos = initRecordPhotos({
+    const recordPhotos = initEmailScanner({
       moduleKey: 'reduction',
       authToken,
       getRecordId: () => selectedId,
@@ -438,7 +426,7 @@
     });
 
     if (userNameField) {
-      userNameField.style.display = isAdminUser ? 'grid' : 'none';
+      userNameField.classList.toggle('admin-visible', isAdminUser);
     }
 
     function syncUserNameColumnVisibility() {
@@ -538,16 +526,55 @@
       sectionInput.value = employee.Section || '';
     }
 
+    function applyReductionSort(items) {
+      const currentItems = Array.isArray(items) ? [...items] : [];
+      if (!reductionSort.key) return currentItems;
+
+      return currentItems.sort((left, right) => {
+        let leftValue;
+        let rightValue;
+
+        if (reductionSort.key === 'id') {
+          leftValue = Number(left.ID) || 0;
+          rightValue = Number(right.ID) || 0;
+        } else {
+          const dateKey = reductionSort.key === 'start' ? 'Startdate' : 'Enddate';
+          const leftDate = parseFlexibleDate(left[dateKey]);
+          const rightDate = parseFlexibleDate(right[dateKey]);
+          leftValue = leftDate && !Number.isNaN(leftDate.getTime()) ? leftDate.getTime() : Number.NEGATIVE_INFINITY;
+          rightValue = rightDate && !Number.isNaN(rightDate.getTime()) ? rightDate.getTime() : Number.NEGATIVE_INFINITY;
+        }
+
+        const diff = leftValue - rightValue;
+        return reductionSort.direction === 'asc' ? diff : -diff;
+      });
+    }
+
+    function updateReductionSortHeaders() {
+      document.querySelectorAll('.sortable-date-header').forEach((header) => {
+        const key = header.dataset.sortKey;
+        const isActive = reductionSort.key === key;
+        const label = key === 'id' ? 'م' : key === 'start' ? 'البداية' : 'النهاية';
+        const marker = isActive ? (reductionSort.direction === 'asc' ? ' ↑' : ' ↓') : '';
+        header.textContent = `${label}${marker}`;
+        header.setAttribute(
+          'aria-sort',
+          isActive ? (reductionSort.direction === 'asc' ? 'ascending' : 'descending') : 'none'
+        );
+      });
+    }
+
     function renderRows(items) {
       rowsBody.innerHTML = '';
-      if (!Array.isArray(items) || !items.length) {
+      const sortedItems = applyReductionSort(items);
+      if (!sortedItems.length) {
         rowsBody.innerHTML = `<tr><td colspan="${isAdminUser ? 11 : 10}">لاتوجد بيانات حالياً.</td></tr>`;
         countLabel.textContent = 'عدد السجلات: 0';
         syncUserNameColumnVisibility();
         return;
       }
 
-      items.forEach((item, index) => {
+      sortedItems.forEach((item, index) => {
         const tr = document.createElement('tr');
         if (selectedId && Number(item.ID) === Number(selectedId)) {
           tr.classList.add('selected');
@@ -569,15 +596,36 @@
         tr.addEventListener('click', () => {
           selectedId = Number(item.ID);
           fillForm(item);
-          renderRows(items);
+          renderRows(sortedItems);
         });
 
         rowsBody.appendChild(tr);
       });
 
-      countLabel.textContent = `عدد السجلات: ${items.length}`;
+      countLabel.textContent = `عدد السجلات: ${sortedItems.length}`;
       syncUserNameColumnVisibility();
     }
+
+    document.querySelectorAll('.sortable-date-header').forEach((header) => {
+      header.addEventListener('click', () => {
+        const key = header.dataset.sortKey;
+        if (!key) return;
+
+        if (reductionSort.key === key) {
+          reductionSort.direction = reductionSort.direction === 'asc' ? 'desc' : 'asc';
+        } else {
+          reductionSort.key = key;
+          reductionSort.direction = 'asc';
+        }
+
+        updateReductionSortHeaders();
+        const filterText = (nameFilterInput.value || '').trim().toLowerCase();
+        const visible = !filterText
+          ? allReduction
+          : allReduction.filter((item) => String(item.Name || '').toLowerCase().includes(filterText));
+        renderRows(visible);
+      });
+    });
 
     function fillForm(item) {
       reductionIdInput.value = item.ID || '';
@@ -588,7 +636,7 @@
       sectionInput.value = String(item.Section || '').trim();
       hoursInput.value = Number(item.Hours || 2);
       noteInput.value = String(item.Note || '').trim();
-      if (userNameInput) userNameInput.value = item.UserName || currentUser?.name || currentUser?.username || 'system';
+      if (userNameInput) userNameInput.value = item.UserName || currentUser?.username || 'system';
       startDateInput.value = toDateInputValue(item.Startdate || '');
       endDateInput.value = toDateInputValue(item.Enddate || '');
       syncDateInputs();
@@ -608,7 +656,7 @@
       startDateInput.value = '';
       endDateInput.value = '';
       syncDateInputs();
-      if (userNameInput) userNameInput.value = currentUser?.name || currentUser?.username || 'system';
+      if (userNameInput) userNameInput.value = currentUser?.username || 'system';
       recordPhotos.clear();
     }
 
@@ -794,11 +842,14 @@
       setEmployeeFields(nameInput.value);
     });
 
-    nameFilterInput.addEventListener('input', () => {
+    function handleNameFilterInput() {
       const filterText = (nameFilterInput.value || '').trim().toLowerCase();
       const visible = !filterText ? allReduction : allReduction.filter((item) => String(item.Name || '').toLowerCase().includes(filterText));
       renderRows(visible);
-    });
+    }
+
+    nameFilterInput.addEventListener('input', handleNameFilterInput);
+    nameFilterInput.addEventListener('search', handleNameFilterInput);
 
     dateOpenButtons = document.querySelectorAll('.date-picker-trigger');
     dateOpenButtons.forEach((button) => {

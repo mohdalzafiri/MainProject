@@ -2,6 +2,9 @@
 
 const { AsyncLocalStorage } = require('async_hooks');
 const { restoreRowKeys, translatePostgresSql } = require('./sqlCompatibility');
+const { getThreshold, getQueryLabel, measureOperation } = require('../utils/performanceMetrics');
+
+const slowQueryThresholdMs = getThreshold(process.env.SLOW_DB_QUERY_MS, 200);
 
 function normalizeParameters(parameters) {
   return parameters.length === 1 && Array.isArray(parameters[0]) ? parameters[0] : parameters;
@@ -16,9 +19,21 @@ function createSqliteProvider(database) {
     prepare(sql) {
       const statement = database.prepare(sql);
       return {
-        all: async (...parameters) => statement.all(...normalizeParameters(parameters)),
-        get: async (...parameters) => statement.get(...normalizeParameters(parameters)),
-        run: async (...parameters) => statement.run(...normalizeParameters(parameters))
+        all: async (...parameters) => measureOperation('database', slowQueryThresholdMs, {
+          client: 'sqlite',
+          operation: 'all',
+          label: `sqlite ${getQueryLabel(sql)}`
+        }, () => statement.all(...normalizeParameters(parameters))),
+        get: async (...parameters) => measureOperation('database', slowQueryThresholdMs, {
+          client: 'sqlite',
+          operation: 'get',
+          label: `sqlite ${getQueryLabel(sql)}`
+        }, () => statement.get(...normalizeParameters(parameters))),
+        run: async (...parameters) => measureOperation('database', slowQueryThresholdMs, {
+          client: 'sqlite',
+          operation: 'run',
+          label: `sqlite ${getQueryLabel(sql)}`
+        }, () => statement.run(...normalizeParameters(parameters)))
       };
     },
     transaction(callback) {
@@ -169,9 +184,21 @@ function createPostgresProvider(options = {}) {
     },
     prepare(sql) {
       return {
-        all: (...parameters) => execute(sql, parameters, 'all'),
-        get: (...parameters) => execute(sql, parameters, 'get'),
-        run: (...parameters) => execute(sql, parameters, 'run')
+        all: (...parameters) => measureOperation('database', slowQueryThresholdMs, {
+          client: 'postgres',
+          operation: 'all',
+          label: `postgres ${getQueryLabel(sql)}`
+        }, () => execute(sql, parameters, 'all')),
+        get: (...parameters) => measureOperation('database', slowQueryThresholdMs, {
+          client: 'postgres',
+          operation: 'get',
+          label: `postgres ${getQueryLabel(sql)}`
+        }, () => execute(sql, parameters, 'get')),
+        run: (...parameters) => measureOperation('database', slowQueryThresholdMs, {
+          client: 'postgres',
+          operation: 'run',
+          label: `postgres ${getQueryLabel(sql)}`
+        }, () => execute(sql, parameters, 'run'))
       };
     },
     transaction(callback) {
@@ -200,6 +227,5 @@ module.exports = {
   createPostgresConfig,
   createPostgresProvider,
   createSqliteProvider,
-  normalizeParameters,
   validatePostgresConfig
 };

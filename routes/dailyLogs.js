@@ -3,7 +3,15 @@ const { db, dailyTables, isValidDailyTable, logSystem } = require('../database')
 const { filterByDataScope, isWithinDataScope } = require('../auth/dataScope');
 const { ensureDailyScanSectionDirectory } = require('../services/dailyScanStorage');
 const statusCatalog = require('../public/status-catalog');
-const { periodTimes, getDelayMinutes, getPermissionDurationMinutes } = require('../utils/dailyMetrics');
+const { buildInsertStatement, buildUpdateStatement } = require('../utils/sqlStatementBuilders');
+const {
+  periodTimes,
+  MONTHLY_PERMISSION_COUNT_LIMIT,
+  MONTHLY_PERMISSION_MINUTES_LIMIT,
+  getDelayMinutes,
+  getPermissionDurationMinutes,
+  getMonthlyAllowanceBalance
+} = require('../utils/dailyMetrics');
 
 const router = express.Router();
 
@@ -12,15 +20,6 @@ const periods = [
   'نوبة عصر',
   'نوبة ليل',
   'صباحاً'
-];
-
-const departmentOrder = [
-  'البلاغات',
-  'العمليات',
-  'الخدمات المساندة',
-  'الموارد البشرية',
-  'المعلومات',
-  'الاحصاء'
 ];
 
 const tableSections = {
@@ -90,6 +89,21 @@ function getMonthBounds(value) {
   };
 }
 
+function normalizeValidDateInput(value) {
+  const match = normalizeDateInput(value).match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (!match) return '';
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) {
+    return '';
+  }
+
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
 function getPermissionSourceQuery() {
   return dailyTables.map((table) => `
     SELECT '${table}' AS SourceTable, ID, EmpID, Name, Today, Status, Period, Type, InTime, OutTime
@@ -130,11 +144,11 @@ async function validateMonthlyPermissionLimit(record, excludedTable = '', exclud
   const totalCount = usage.count + 1;
   const totalMinutes = usage.minutes + getPermissionDurationMinutes(record);
 
-  if (totalCount > 4) {
+  if (totalCount > MONTHLY_PERMISSION_COUNT_LIMIT) {
     return `لا يمكن تسجيل الأذن: الحد الشهري هو 4 أذونات، والمستخدم حاليًا ${totalCount} أذونات.`;
   }
 
-  if (totalMinutes > (12 * 60)) {
+  if (totalMinutes > MONTHLY_PERMISSION_MINUTES_LIMIT) {
     const hours = Math.floor(totalMinutes / 60);
     const minutes = totalMinutes % 60;
     return `لا يمكن تسجيل الأذن: إجمالي ساعات الأذن للشهر أصبح ${hours}:${String(minutes).padStart(2, '0')} ويتجاوز الحد المسموح 12:00 ساعة.`;
@@ -159,37 +173,6 @@ function resolveDailyTableByDepartment(department) {
   if (value === 'الخدمات المساندة') return 'Daily3';
   if (['الموارد البشرية', 'المعلومات', 'الاحصاء'].includes(value)) return 'Daily4';
   return '';
-}
-
-async function getLookupDepartments() {
-  const departments = (await db.prepare(`
-    SELECT DISTINCT TRIM(Department) AS value
-    FROM DepartmentSectionLookup
-    WHERE IsActive = 1 AND TRIM(Department) <> ''
-    ORDER BY SortOrder ASC, ID ASC
-  `).all()).map((row) => normalizeDepartment(row.value));
-
-  const known = departmentOrder.filter((department) => departments.includes(department));
-  const extra = departments.filter((department) => !departmentOrder.includes(department));
-  return [...known, ...extra];
-}
-
-function buildInsertStatement(table, payload) {
-  const keys = columns.filter((column) => Object.prototype.hasOwnProperty.call(payload, column));
-  if (!keys.length) return null;
-  return {
-    sql: `INSERT INTO ${table} (${keys.join(',')}) VALUES (${keys.map(() => '?').join(',')})`,
-    values: keys.map((key) => payload[key])
-  };
-}
-
-function buildUpdateStatement(table, payload, id) {
-  const keys = columns.filter((column) => Object.prototype.hasOwnProperty.call(payload, column));
-  if (!keys.length) return null;
-  return {
-    sql: `UPDATE ${table} SET ${keys.map((key) => `${key} = ?`).join(', ')} WHERE ID = ?`,
-    values: [...keys.map((key) => payload[key]), id]
-  };
 }
 
 async function findActiveEmployees(department, section = '') {
@@ -331,13 +314,17 @@ router.get('/permission-summary', async (req, res) => {
       EmpID: req.query.empId,
       Name: req.query.name
     }, excludedTable, excludedId));
+    const balance = getMonthlyAllowanceBalance({
+      permissionCount: usage.count,
+      permissionMinutes: usage.minutes
+    });
 
     res.json({
       usedCount: usage.count,
       usedMinutes: usage.minutes,
-      remainingCount: Math.max(0, 4 - usage.count),
-      remainingMinutes: Math.max(0, (12 * 60) - usage.minutes),
-      exceeded: usage.count >= 4 || usage.minutes >= (12 * 60)
+      remainingCount: balance.remainingPermissionCount,
+      remainingMinutes: balance.remainingPermissionMinutes,
+      exceeded: balance.remainingPermissionCount === 0 || balance.remainingPermissionMinutes === 0
     });
   } catch (error) {
     console.error(error);
@@ -347,29 +334,59 @@ router.get('/permission-summary', async (req, res) => {
 
 router.get('/monthly-alerts', async (req, res) => {
   try {
-    const bounds = getMonthBounds(req.query.today);
-    if (!bounds) {
+    const usesSelectedRange = req.query.range === 'selected';
+    const fromDate = usesSelectedRange && req.query.fromDate
+      ? normalizeValidDateInput(req.query.fromDate)
+      : '';
+    const toDate = usesSelectedRange && req.query.toDate
+      ? normalizeValidDateInput(req.query.toDate)
+      : '';
+    if ((req.query.fromDate && !fromDate) || (req.query.toDate && !toDate)) {
+      return res.status(400).json({ message: 'يجب تحديد نطاق تاريخ صحيح لحساب الأذونات.' });
+    }
+    if (fromDate && toDate && fromDate > toDate) {
+      return res.status(400).json({ message: 'تاريخ البداية يجب أن يسبق تاريخ النهاية.' });
+    }
+
+    const bounds = usesSelectedRange ? null : getMonthBounds(req.query.today);
+    if (!usesSelectedRange && !bounds) {
       return res.status(400).json({ message: 'يجب تحديد تاريخ صحيح لحساب تنبيهات الشهر.' });
+    }
+
+    const dateFilters = [];
+    const dateParams = [];
+    if (usesSelectedRange ? fromDate : bounds.from) {
+      dateFilters.push('date(REPLACE(Today, \'/\', \'-\')) >= date(?)');
+      dateParams.push(usesSelectedRange ? fromDate : bounds.from);
+    }
+    if (usesSelectedRange ? toDate : bounds.to) {
+      dateFilters.push('date(REPLACE(Today, \'/\', \'-\')) <= date(?)');
+      dateParams.push(usesSelectedRange ? toDate : bounds.to);
     }
 
     const records = filterByDataScope(await db.prepare(`
       SELECT EmpID, Name, Department, Section, Status, Period, Type, InTime, OutTime, Today
       FROM DailyAll
-      WHERE date(REPLACE(Today, '/', '-')) BETWEEN date(?) AND date(?)
-        AND TRIM(Status) IN ('حضور بعد غياب', 'أذن', 'استئذان', 'إذن', 'اذن')
-    `).all(bounds.from, bounds.to), req.access);
+      WHERE ${[...dateFilters, "TRIM(Status) IN ('حضور بعد غياب', 'أذن', 'استئذان', 'إذن', 'اذن')"].join(' AND ')}
+    `).all(...dateParams), req.access);
 
     const usageByEmployee = new Map();
     records.forEach((record) => {
       const empId = String(record.EmpID || '').trim();
       const name = String(record.Name || '').trim();
       const normalizedName = name.toLowerCase().replace(/\s+/g, ' ').trim();
-      const key = normalizedName ? `name:${normalizedName}` : `emp:${empId}`;
+      const monthMatch = normalizeDateInput(record.Today).match(/^(\d{4})-(\d{1,2})-/);
+      const usageMonth = monthMatch
+        ? `${monthMatch[1]}-${String(Number(monthMatch[2])).padStart(2, '0')}`
+        : '';
+      const employeeKey = empId ? `emp:${empId}` : `name:${normalizedName}`;
+      const key = usesSelectedRange && usageMonth ? `${employeeKey}:${usageMonth}` : employeeKey;
       if (!name && !empId) return;
 
       const usage = usageByEmployee.get(key) || {
         EmpID: empId,
         Name: name,
+        ...(usesSelectedRange && usageMonth ? { UsageMonth: usageMonth } : {}),
         lateMinutes: 0,
         permissionCount: 0,
         permissionMinutes: 0
@@ -387,9 +404,7 @@ router.get('/monthly-alerts', async (req, res) => {
 
     res.json([...usageByEmployee.values()].map((usage) => ({
       ...usage,
-      lateExceeded: usage.lateMinutes > 105,
-      permissionTimeExceeded: usage.permissionMinutes > (12 * 60),
-      permissionCountExceeded: usage.permissionCount > 4
+      ...getMonthlyAllowanceBalance(usage)
     })));
   } catch (error) {
     console.error(error);
@@ -746,7 +761,7 @@ router.post('/table/:table', async (req, res) => {
     return res.status(400).json({ message: permissionLimitError });
   }
 
-  const statement = buildInsertStatement(table, payload);
+  const statement = buildInsertStatement(table, columns, payload);
   if (!statement) {
     return res.status(400).json({ message: 'البيانات المرسلة غير كاملة' });
   }
@@ -867,7 +882,7 @@ router.put('/table/:table/:id', async (req, res) => {
     return res.status(400).json({ message: permissionLimitError });
   }
 
-  const statement = buildUpdateStatement(table, payload, id);
+  const statement = buildUpdateStatement(table, columns, payload, id);
   if (!statement) {
     return res.status(400).json({ message: 'البيانات المرسلة غير كاملة' });
   }

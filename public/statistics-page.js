@@ -5,26 +5,53 @@
     return;
   }
 
-  const categoryRanks = {
-    officers: ['عميد', 'عقيد', 'مقدم', 'رائد', 'نقيب', 'ملازم اول', 'ملازم'],
-    nonCommissioned: ['وكيل اول ضابط', 'وكيل ضابط', 'رقيب اول', 'رقيب', 'عريف', 'وكيل عريف', 'شرطي'],
-    maleCivilians: ['مدني'],
-    femaleCivilians: ['مدنية'],
-    professionals: ['مهني']
-  };
-
+  const rankCategories = [
+    { label: 'الضباط', ranks: ['عميد', 'عقيد', 'مقدم', 'رائد', 'نقيب', 'ملازم اول', 'ملازم'] },
+    { label: 'ضباط الصف', ranks: ['وكيل اول ضابط', 'وكيل ضابط', 'رقيب اول', 'رقيب', 'عريف', 'وكيل عريف', 'شرطي'] },
+    { label: 'المدنيين', ranks: ['مدني', 'مدنية'] },
+    { label: 'المهنيين', ranks: ['مهني'] }
+  ];
+  const defaultSectionOrder = [
+    'أ - البلاغات', 'ب - البلاغات', 'ج - البلاغات', 'د - البلاغات', 'هـ - البلاغات',
+    'ثابت صبح', 'أ - فريق عمل البلاغات', 'ب - فريق عمل البلاغات', 'ج - فريق عمل البلاغات',
+    'د - فريق عمل البلاغات', 'هـ - فريق عمل البلاغات', 'فريق عمل البلاغات صباحاً',
+    'سكرتارية البلاغات', 'أ - العمليات', 'ب - العمليات', 'ج - العمليات', 'د - العمليات',
+    'هـ - العمليات', 'سكرتارية العمليات', 'أ - الخدمات', 'ب - الخدمات', 'ج - الخدمات',
+    'د - الخدمات', 'هـ - الخدمات', 'سكرتارية الخدمات', 'صباحاً'
+  ];
+  const defaultSectionOrderIndex = new Map(
+    defaultSectionOrder.map((section, index) => [section, index])
+  );
+  const defaultDepartmentOrder = [
+    'البلاغات',
+    'العمليات',
+    'الخدمات المساندة',
+    'الموارد البشرية',
+    'المعلومات',
+    'الاحصاء'
+  ];
+  const defaultDepartmentOrderIndex = new Map(
+    defaultDepartmentOrder.map((department, index) => [department, index])
+  );
+  const excludedDepartments = new Set([
+    'إدارة البلاغات',
+    'ادارة البلاغات',
+    'ادارة البلاغت',
+    'مسئول اداري',
+    'مسئول إداري',
+    'مسؤول اداري',
+    'مسؤول إداري'
+  ]);
   const rankOrder = new Map();
-  Object.values(categoryRanks).forEach((ranks) => {
+  rankCategories.forEach(({ ranks }) => {
     ranks.forEach((rank) => {
       const key = normalizeRank(rank);
       if (!rankOrder.has(key)) rankOrder.set(key, rankOrder.size);
     });
   });
-  const sectionCardDepartments = new Set(['البلاغات', 'العمليات']);
-
   const statisticTypeInput = document.getElementById('statisticType');
-  const departmentInput = document.getElementById('statisticDepartment');
   const sectionCards = document.getElementById('sectionCards');
+  const cardsHint = document.getElementById('cardsHint');
   const rowsBody = document.getElementById('rows');
   const countLabel = document.getElementById('countLabel');
   const tableFilterInput = document.getElementById('tableFilterInput');
@@ -33,8 +60,9 @@
   const printBtn = document.getElementById('printBtn');
   const backBtn = document.getElementById('backBtn');
   let employees = [];
-  let departmentSectionRows = [];
-  let selectedSection = '';
+  let selectedPath = { rank: '', work: '', department: '', section: '' };
+  let tableScope = null;
+  let cardLevel = 'work';
   const statisticsSort = { key: null, direction: 'asc' };
 
   function normalizeRank(value) {
@@ -80,80 +108,161 @@
     return normalized === 'الإحصاء' ? 'الاحصاء' : normalized;
   }
 
-  function usesSectionCards() {
-    return sectionCardDepartments.has(normalizeDepartment(departmentInput.value));
+  function getActiveEmployees() {
+    return employees.filter((employee) => String(employee.Status || '').trim() === 'نشط');
   }
 
-  function getRankDepartmentEmployees() {
-    const ranks = new Set((categoryRanks[statisticTypeInput.value] || []).map(normalizeRank));
-    const department = normalizeDepartment(departmentInput.value);
-
-    return employees.filter((employee) =>
-      String(employee.Status || '').trim() === 'نشط'
-      && (!ranks.size || ranks.has(normalizeRank(employee.Title)))
-      && (!department || normalizeDepartment(employee.Department) === department)
-    );
+  function getRankCategory(label) {
+    return rankCategories.find((category) => category.label === label);
   }
 
-  function getCategoryEmployees() {
-    if (!statisticTypeInput.value && !departmentInput.value) return [];
-    if (usesSectionCards() && !selectedSection) return [];
-
-    const baseEmployees = getRankDepartmentEmployees();
-    return selectedSection
-      ? baseEmployees.filter((employee) => String(employee.Section || '').trim() === selectedSection)
-      : baseEmployees;
+  function getEmployeesAtPath(path = selectedPath) {
+    return getActiveEmployees().filter((employee) => {
+      if (path.rank) {
+        const category = getRankCategory(path.rank);
+        const matchesRank = category
+          ? category.ranks.some((rank) => normalizeRank(employee.Title) === normalizeRank(rank))
+          : normalizeRank(employee.Title) === normalizeRank(path.rank);
+        if (!matchesRank) return false;
+      }
+      if (path.work && String(employee.Work || '').trim() !== path.work) return false;
+      if (
+        path.department &&
+        normalizeDepartment(employee.Department) !== normalizeDepartment(path.department)
+      ) return false;
+      if (path.section && String(employee.Section || '').trim() !== path.section) return false;
+      return true;
+    });
   }
 
-  function getDepartmentSections(department) {
-    const sections = departmentSectionRows
-      .filter((item) => normalizeDepartment(item.Department) === department)
-      .map((item) => String(item.Section || '').trim());
-    return Array.from(new Set(sections.filter(Boolean)));
+  function getCardValues(level, source) {
+    if (level === 'rank') return rankCategories.map(({ label }) => label);
+    const field = level === 'work' ? 'Work' : level === 'department' ? 'Department' : 'Section';
+    const values = source.map((employee) => String(employee[field] || '').trim()).filter(Boolean);
+    const uniqueValues = Array.from(new Set(values));
+    if (level === 'section') {
+      return uniqueValues
+        .filter((section) => !['الضباط', 'العسكريين'].includes(section))
+        .sort((left, right) => {
+          const leftIndex = defaultSectionOrderIndex.get(left);
+          const rightIndex = defaultSectionOrderIndex.get(right);
+          if (leftIndex !== undefined || rightIndex !== undefined) {
+            if (leftIndex === undefined) return 1;
+            if (rightIndex === undefined) return -1;
+            return leftIndex - rightIndex;
+          }
+          return left.localeCompare(right, 'ar');
+        });
+    }
+    if (level === 'department') {
+      return uniqueValues
+        .filter((department) => !excludedDepartments.has(department))
+        .sort((left, right) => {
+          const leftIndex = defaultDepartmentOrderIndex.get(normalizeDepartment(left));
+          const rightIndex = defaultDepartmentOrderIndex.get(normalizeDepartment(right));
+          if (leftIndex !== undefined || rightIndex !== undefined) {
+            if (leftIndex === undefined) return 1;
+            if (rightIndex === undefined) return -1;
+            return leftIndex - rightIndex;
+          }
+          return left.localeCompare(right, 'ar');
+        });
+    }
+    return uniqueValues.sort((left, right) => left.localeCompare(right, 'ar'));
+  }
+
+  function getNextCardLevel(level) {
+    if (level === 'work') return 'department';
+    if (level === 'department') return 'section';
+    return '';
+  }
+
+  function updateCardSelection() {
+    sectionCards.querySelectorAll('.statistics-card').forEach((card) => {
+      const selectedValue = selectedPath[card.dataset.level] || '';
+      card.classList.toggle('active', selectedValue === card.dataset.value);
+    });
+  }
+
+  function selectCard(level, value) {
+    if (level === 'rank') {
+      selectedPath = { rank: value, work: '', department: '', section: '' };
+    } else if (level === 'work') {
+      selectedPath = { rank: '', work: value, department: '', section: '' };
+    } else if (level === 'department') {
+      selectedPath = { ...selectedPath, department: value, section: '' };
+    } else {
+      selectedPath = { ...selectedPath, section: value };
+    }
+    tableScope = { ...selectedPath };
+    updateCardSelection();
+    renderRows();
   }
 
   function renderSectionCards() {
     sectionCards.innerHTML = '';
-    if (!usesSectionCards()) {
+    const type = statisticTypeInput.value;
+    if (!type) {
       sectionCards.hidden = true;
+      cardsHint.hidden = true;
       return;
     }
 
-    const department = normalizeDepartment(departmentInput.value);
-    const baseEmployees = getRankDepartmentEmployees();
-    getDepartmentSections(department).forEach((section) => {
-      const count = baseEmployees.filter((employee) => String(employee.Section || '').trim() === section).length;
+    const level = type === 'rank' ? 'rank' : cardLevel;
+    const baseEmployees = level === 'rank'
+      ? getActiveEmployees()
+      : getEmployeesAtPath(level === 'department' ? {
+        ...selectedPath,
+        department: '',
+        section: ''
+      } : level === 'section' ? { ...selectedPath, section: '' } : {});
+    const nextLevel = getNextCardLevel(level);
+    cardsHint.textContent = nextLevel
+      ? 'انقر على البطاقة مرة واحدة لعرض بياناتها في الجدول وانقر مرتين على البطاقة للانتقال الى المرحلة التالية'
+      : 'انقر على البطاقة مرة واحدة لعرض بياناتها في الجدول.';
+    cardsHint.hidden = false;
+
+    getCardValues(level, baseEmployees).forEach((value) => {
+      const count = level === 'rank'
+        ? baseEmployees.filter((employee) =>
+          getRankCategory(value).ranks.some((rank) => normalizeRank(employee.Title) === normalizeRank(rank))
+        ).length
+        : baseEmployees.filter((employee) => {
+          const field = level === 'work' ? 'Work' : level === 'department' ? 'Department' : 'Section';
+          const employeeValue = String(employee[field] || '').trim();
+          return level === 'department'
+            ? normalizeDepartment(employeeValue) === normalizeDepartment(value)
+            : employeeValue === value;
+        }).length;
       const card = document.createElement('button');
       card.type = 'button';
-      card.className = `section-card${section === selectedSection ? ' active' : ''}`;
-      card.innerHTML = `<strong>${escapeHtml(section)}</strong><span>عدد الموظفين: ${count}</span>`;
+      card.className = 'statistics-card';
+      card.dataset.level = level;
+      card.dataset.value = value;
+      card.innerHTML = `<strong>${escapeHtml(value)}</strong><span>مجموع الموظفين: ${count}</span>`;
       card.addEventListener('click', () => {
-        selectedSection = section;
+        selectCard(level, value);
+      });
+      card.addEventListener('dblclick', (event) => {
+        event.preventDefault();
+        selectCard(level, value);
+        const next = getNextCardLevel(level);
+        if (!next) return;
+        cardLevel = next;
+        statisticTypeInput.value = next;
+        tableScope = null;
         renderSectionCards();
         renderRows();
       });
       sectionCards.appendChild(card);
     });
     sectionCards.hidden = !sectionCards.children.length;
-  }
-
-  function populateDepartments() {
-    const selected = departmentInput.value;
-    const departments = Array.from(new Set(departmentSectionRows
-      .map((item) => normalizeDepartment(item.Department))
-      .filter(Boolean)));
-    departmentInput.innerHTML = '<option value="">-- اختر --</option>';
-    departments.forEach((department) => {
-      const option = document.createElement('option');
-      option.value = department;
-      option.textContent = department;
-      departmentInput.appendChild(option);
-    });
-    if (departments.includes(selected)) departmentInput.value = selected;
+    updateCardSelection();
   }
 
   function getSelectedEmployees() {
-    const categoryEmployees = getCategoryEmployees();
+    if (!tableScope) return [];
+    const categoryEmployees = getEmployeesAtPath(tableScope);
     const terms = String(tableFilterInput.value || '').trim().toLowerCase().split(/\s+/).filter(Boolean);
     const filteredEmployees = terms.length ? categoryEmployees.filter((employee) => {
       const searchableText = [
@@ -191,7 +300,12 @@
       });
     }
 
-    return filteredEmployees.sort(byId);
+    return filteredEmployees.sort((left, right) => {
+      const difference = byId(left, right);
+      return statisticsSort.key === 'serial' && statisticsSort.direction === 'desc'
+        ? -difference
+        : difference;
+    });
   }
 
   function updateSortHeaderIndicators() {
@@ -200,27 +314,25 @@
       const marker = isActive ? (statisticsSort.direction === 'asc' ? ' ↑' : ' ↓') : '';
       header.textContent = `الرتبة${marker}`;
     });
+    document.querySelectorAll('.sortable-serial-header').forEach((header) => {
+      const isActive = statisticsSort.key === header.dataset.sortKey;
+      const marker = isActive ? (statisticsSort.direction === 'asc' ? ' ↑' : ' ↓') : '';
+      header.textContent = `م${marker}`;
+      header.setAttribute('aria-sort', isActive
+        ? (statisticsSort.direction === 'asc' ? 'ascending' : 'descending')
+        : 'none');
+    });
   }
 
   function renderRows() {
-    const categoryEmployees = getCategoryEmployees();
+    const categoryEmployees = tableScope ? getEmployeesAtPath(tableScope) : [];
     const selectedEmployees = getSelectedEmployees();
     rowsBody.innerHTML = '';
     countLabel.textContent = tableFilterInput.value.trim()
       ? `عدد السجلات: ${selectedEmployees.length} من ${categoryEmployees.length}`
       : `عدد السجلات: ${selectedEmployees.length}`;
 
-    if (!statisticTypeInput.value && !departmentInput.value) {
-      rowsBody.innerHTML = '<tr><td colspan="12">لاتوجد بيانات حالياً.</td></tr>';
-      return;
-    }
-
-    if (usesSectionCards() && !selectedSection) {
-      rowsBody.innerHTML = '<tr><td colspan="12">لاتوجد بيانات حالياً.</td></tr>';
-      return;
-    }
-
-    if (!selectedEmployees.length) {
+    if (!tableScope || !selectedEmployees.length) {
       rowsBody.innerHTML = '<tr><td colspan="12">لاتوجد بيانات حالياً.</td></tr>';
       return;
     }
@@ -252,12 +364,9 @@
 
     try {
       const authHeaders = { Authorization: 'Bearer ' + authToken };
-      const [response, sectionsResponse] = await Promise.all([
-        fetch('/api/employees', { headers: authHeaders }),
-        fetch('/api/employees/department-sections', { headers: authHeaders })
-      ]);
+      const response = await fetch('/api/employees', { headers: authHeaders });
 
-      if (response.status === 401 || sectionsResponse.status === 401) {
+      if (response.status === 401) {
         sessionStorage.removeItem('authToken');
         window.location.replace('/');
         return;
@@ -267,11 +376,7 @@
       if (!response.ok) {
         throw new Error(String(data?.message || '').trim() || 'تعذر تحميل بيانات الموظفين.');
       }
-      const sectionsData = await sectionsResponse.json().catch(() => []);
-
       employees = Array.isArray(data) ? data : [];
-      departmentSectionRows = sectionsResponse.ok && Array.isArray(sectionsData) ? sectionsData : [];
-      populateDepartments();
       renderSectionCards();
       renderRows();
     } catch (error) {
@@ -286,11 +391,13 @@
   }
 
   statisticTypeInput.addEventListener('change', () => {
-    renderSectionCards();
-    renderRows();
-  });
-  departmentInput.addEventListener('change', () => {
-    selectedSection = '';
+    selectedPath = { rank: '', work: '', department: '', section: '' };
+    tableScope = null;
+    cardLevel = statisticTypeInput.value === 'department'
+      ? 'department'
+      : statisticTypeInput.value === 'section'
+        ? 'section'
+        : 'work';
     renderSectionCards();
     renderRows();
   });
@@ -306,12 +413,25 @@
       renderRows();
     });
   });
+  document.querySelectorAll('.sortable-serial-header').forEach((header) => {
+    header.addEventListener('click', () => {
+      if (statisticsSort.key === 'serial') {
+        statisticsSort.direction = statisticsSort.direction === 'asc' ? 'desc' : 'asc';
+      } else {
+        statisticsSort.key = 'serial';
+        statisticsSort.direction = 'asc';
+      }
+      updateSortHeaderIndicators();
+      renderRows();
+    });
+  });
   tableFilterInput.addEventListener('input', renderRows);
+  tableFilterInput.addEventListener('search', renderRows);
   refreshBtn.addEventListener('click', loadEmployees);
   printBtn.addEventListener('click', () => {
-    if (!statisticTypeInput.value && !departmentInput.value) {
+    if (!tableScope) {
       statusLine.className = 'status-line show error';
-      statusLine.textContent = 'اختر الرتبة أو القسم قبل الطباعة.';
+      statusLine.textContent = 'اختر بطاقة لعرض بياناتها قبل الطباعة.';
       return;
     }
     window.print();

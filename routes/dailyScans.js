@@ -43,7 +43,6 @@ function readIndex(record) {
 }
 
 function writeIndex(record, index) {
-  const directory = getSectionDirectory(record);
   const indexPath = getIndexPath(record);
   const temporaryPath = `${indexPath}.${process.pid}.${Date.now()}.tmp`;
   ensureDailyScanSectionDirectory(record.Section);
@@ -174,7 +173,6 @@ router.post('/:table/:recordId', receivePdfScan, async (req, res) => {
     return res.status(400).json({ message: 'الملف المرفوع ليس ملف PDF صالحًا.' });
   }
 
-  const directory = getSectionDirectory(target.record);
   const createdAt = new Date();
   const nextFile = getNextFile(target.record, createdAt);
   const temporaryPath = `${nextFile.filePath}.${process.pid}.${Date.now()}.tmp`;

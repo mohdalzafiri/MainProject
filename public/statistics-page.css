@@ -5,23 +5,30 @@ body.app-shell {
 }
 
 .statistics-selector {
-  width: min(520px, 100%);
+  width: min(420px, 100%);
   display: grid;
   gap: 12px;
 }
 
-.section-cards {
+.statistics-cards-hint {
+  margin: 14px 0 0;
+  color: #64748b;
+  font-weight: 700;
+}
+
+.statistics-cards {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 10px;
   margin-top: 14px;
 }
 
-.section-cards[hidden] {
+.statistics-cards[hidden],
+.statistics-cards-hint[hidden] {
   display: none;
 }
 
-.section-card {
+.statistics-card {
   display: grid;
   gap: 6px;
   justify-items: center;
@@ -35,28 +42,28 @@ body.app-shell {
   text-align: center;
 }
 
-.section-card strong {
+.statistics-card strong {
   font-size: 1.3rem;
   font-weight: 800;
   overflow-wrap: anywhere;
 }
 
-.section-card span {
+.statistics-card span {
   font-size: 0.82rem;
   color: #64748b;
 }
 
-.section-card:hover {
+.statistics-card:hover {
   border-color: #2563eb;
 }
 
-.section-card.active {
+.statistics-card.active {
   border-color: #1d4ed8;
   background: #1d4ed8;
   color: #ffffff;
 }
 
-.section-card.active span {
+.statistics-card.active span {
   color: #dbeafe;
 }
 
@@ -129,7 +136,8 @@ body.app-shell {
 @media print {
   .header .actions,
   .statistics-selector,
-  .section-cards,
+  .statistics-cards,
+  .statistics-cards-hint,
   .toolbar,
   .table-tools,
   .status-line,

@@ -88,11 +88,15 @@
     }
 
     .admin-only-field {
-      display: none;
+      display: none !important;
+    }
+
+    .admin-only-field.admin-visible {
+      display: grid !important;
     }
 
     .user-name-column {
-      display: none;
+      display: none !important;
     }
 
     label {
@@ -152,12 +156,6 @@
       justify-content: center;
       line-height: 1;
       padding: 0;
-    }
-
-    .date-picker-trigger::before {
-      content: '📅';
-      font-size: 14px;
-      line-height: 1;
     }
 
     .date-picker-trigger:hover { background: #eef2ff; }
@@ -322,13 +320,6 @@
       white-space: nowrap;
     }
 
-    .btn-icon,
-    .action-icon {
-      font-size: 1.05em;
-      line-height: 1;
-      flex: 0 0 auto;
-    }
-
     .btn {
       display: inline-flex;
       align-items: center;
@@ -393,6 +384,8 @@
     }
   </style>
   <link rel="stylesheet" href="/layout-defaults.css" />
+  <link rel="stylesheet" href="/email-attachments.css" />
+  <script src="/app-theme.js"></script>
   <script src="/role-access.js" defer></script>
 </head>
 <body class="app-shell">
@@ -403,7 +396,7 @@
         <p>إدارة بيانات الوارد مع إضافة وتعديل وحذف وطباعة السجلات.</p>
       </div>
       <div class="actions">
-        <button type="button" class="btn dark" id="backBtn"><span class="btn-icon" aria-hidden="true">↩️</span><span>العودة للرئيسية</span></button>
+        <button type="button" class="btn dark home-nav-button" id="backBtn">العودة للرئيسية</button>
       </div>
     </header>
 
@@ -471,33 +464,16 @@
         </div>
 
         <div class="toolbar">
-          <button type="submit" class="btn success" id="addBtn"><span class="btn-icon" aria-hidden="true">➕</span><span>اضافة بيانات جديدة</span></button>
-          <button type="button" class="btn warning" id="updateBtn"><span class="btn-icon" aria-hidden="true">✏️</span><span>تعديل بيانات</span></button>
-          <button type="button" class="btn danger" id="deleteBtn"><span class="btn-icon" aria-hidden="true">🗑️</span><span>حذف بيانات</span></button>
-          <button type="button" class="btn primary" id="printBtn"><span class="btn-icon" aria-hidden="true">🖨️</span><span>طباعة بيانات</span></button>
+          <button type="submit" class="btn success" id="addBtn">اضافة بيانات جديدة</button>
+          <button type="button" class="btn warning" id="updateBtn">تعديل بيانات</button>
+          <button type="button" class="btn danger" id="deleteBtn">حذف بيانات</button>
+          <button type="button" class="btn primary" id="printBtn">طباعة بيانات</button>
         </div>
       </form>
 
       <div id="statusLine" class="status-line"></div>
 
-      <div class="doc-images-box">
-        <div class="doc-images-head">
-          <span>صور المستندات الرسمية</span>
-          <span id="docImageCount">0 / 0</span>
-        </div>
-        <div class="doc-images-view">
-          <button type="button" class="doc-images-nav" id="docImagePrevBtn">◀</button>
-          <div class="doc-images-frame">
-            <img id="docImagePreview" alt="صورة مستند" />
-            <div id="docImageEmpty">اختر سجلًا أولًا لعرض صور المستندات.</div>
-          </div>
-          <button type="button" class="doc-images-nav" id="docImageNextBtn">▶</button>
-        </div>
-        <div class="doc-images-actions">
-          <button type="button" class="btn primary" id="docImageUploadBtn">تصوير/رفع مستند</button>
-          <input id="docImageInput" type="file" accept="image/*" capture="environment" hidden />
-        </div>
-      </div>
+      <div class="doc-images-box"></div>
     </section>
 
     <section class="panel">
@@ -505,14 +481,14 @@
       <div class="table-tools">
         <p id="countLabel">عدد السجلات: 0</p>
         <input id="tableSearch" class="table-search" type="search" placeholder="بحث في السجلات" />
-        <button type="button" class="btn primary" id="refreshBtn"><span class="btn-icon" aria-hidden="true">🔄</span><span>تحديث العرض</span></button>
+        <button type="button" class="btn primary" id="refreshBtn">تحديث العرض</button>
       </div>
 
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>م</th>
+              <th class="sortable-id-header" aria-sort="none" style="cursor: pointer;">م</th>
               <th>رقم الوارد</th>
               <th>تاريخ الوارد</th>
               <th>رقم الكتاب الوارد</th>
@@ -530,7 +506,8 @@
     </section>
   </div>
 
-  <script src="/record-photos.js"></script>
+  <script src="/daily-scanner.js"></script>
+  <script src="/email-scanner.js"></script>
   <script>
     const authToken = sessionStorage.getItem('authToken');
     if (!authToken) {
@@ -587,7 +564,8 @@
     const apiBase = '/api/incoming';
     let allRecords = [];
     let selectedRowId = null;
-    const recordPhotos = initRecordPhotos({
+    let idSortDirection = null;
+    const recordPhotos = initEmailScanner({
       moduleKey: 'incoming',
       authToken,
       getRecordId: () => selectedRowId,
@@ -605,7 +583,7 @@
     }
 
     function isAdminUser() {
-      return String(currentUser?.role || '').toLowerCase() === 'admin' || String(currentUser?.username || '').toLowerCase() === 'admin';
+      return String(currentUser?.role || '').trim().toLowerCase() === 'admin';
     }
 
     function syncUserNameColumnVisibility() {
@@ -687,11 +665,10 @@
     }
 
     function setCurrentUser() {
-      const displayName = String(currentUser?.name || currentUser?.username || '').trim();
-      userNameInput.value = displayName;
+      userNameInput.value = String(currentUser?.username || '').trim();
 
       if (userNameField) {
-        userNameField.style.display = isAdminUser() ? 'grid' : 'none';
+        userNameField.classList.toggle('admin-visible', isAdminUser());
       }
 
       syncUserNameColumnVisibility();
@@ -731,7 +708,7 @@
       sourceDepartmentInput.value = String(record.SourceDepartment || '');
       specialDepartmentInput.value = String(record.SpecialDepartment || '');
       notesInput.value = String(record.Notes || '');
-      userNameInput.value = String(record.UserName || currentUser?.name || currentUser?.username || '');
+      userNameInput.value = String(record.UserName || currentUser?.username || '');
       syncDateDisplays();
       Array.from(rowsBody.querySelectorAll('tr')).forEach((row) => {
         row.classList.toggle('selected', Number(row.dataset.id || 0) === selectedRowId);
@@ -756,7 +733,13 @@
     }
 
     function renderRows() {
-      const records = getVisibleRecords();
+      const visibleRecords = getVisibleRecords();
+      const records = idSortDirection
+        ? [...visibleRecords].sort((left, right) => {
+          const difference = (Number(left.ID) || 0) - (Number(right.ID) || 0);
+          return idSortDirection === 'desc' ? -difference : difference;
+        })
+        : visibleRecords;
       countLabel.textContent = `عدد السجلات: ${records.length}`;
 
       if (!records.length) {
@@ -791,6 +774,14 @@
         });
       });
     }
+
+    document.querySelector('.sortable-id-header').addEventListener('click', (event) => {
+      idSortDirection = idSortDirection === 'asc' ? 'desc' : 'asc';
+      const header = event.currentTarget;
+      header.textContent = `م ${idSortDirection === 'asc' ? '↑' : '↓'}`;
+      header.setAttribute('aria-sort', idSortDirection === 'asc' ? 'ascending' : 'descending');
+      renderRows();
+    });
 
     async function loadRecords() {
       clearStatus();
@@ -938,7 +929,6 @@
             <tr><th>الجهة الوارد منها</th><td>${valueOrDash(row.SourceDepartment)}</td></tr>
             <tr><th>القسم المختص</th><td>${valueOrDash(row.SpecialDepartment)}</td></tr>
             <tr><th>ملاحظات</th><td>${valueOrDash(row.Notes)}</td></tr>
-            <tr><th>اسم المستخدم</th><td>${valueOrDash(row.UserName)}</td></tr>
           </table>
         </body>
         </html>

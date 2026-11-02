@@ -7,6 +7,7 @@
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="icon" type="image/png" href="/images/logo.png?v=20261028" />
   <link rel="stylesheet" href="/layout-defaults.css" />
+  <script src="/app-theme.js"></script>
   <meta name="theme-color" content="#f6faff" />
   <meta name="apple-mobile-web-app-title" content="إدارة البلاغات" />
   <link rel="apple-touch-icon" href="/images/logo.png?v=20261028" />
@@ -36,6 +37,7 @@
       transition: color .2s ease, background .2s ease;
     }
 
+    html.dark-mode body.app-shell,
     body.app-shell.dark-mode {
       --mobile-bg: #071525;
       --mobile-surface: rgba(15, 35, 58, .94);
@@ -50,7 +52,7 @@
       background:
         radial-gradient(ellipse at 5% 10%, rgba(14, 116, 184, .22), transparent 32%),
         radial-gradient(ellipse at 95% 26%, rgba(29, 78, 216, .16), transparent 34%),
-        linear-gradient(180deg, #07111f 0%, var(--mobile-bg) 100%);
+        linear-gradient(180deg, #07111f 0%, var(--mobile-bg) 100%) !important;
     }
 
     body.app-shell::before {
@@ -327,6 +329,14 @@
         box-shadow: 0 0 45px rgba(15, 64, 109, .08);
       }
     }
+
+    @media (min-width: 768px) and (orientation: portrait) {
+      .services { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+
+    @media (min-width: 768px) and (orientation: landscape) {
+      .services { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+    }
   </style>
 </head>
 <body class="app-shell">
@@ -561,19 +571,17 @@
 
     function applyTheme(theme) {
       const isDark = theme === 'dark';
-      document.body.classList.toggle('dark-mode', isDark);
+      window.AppTheme.apply(theme);
       themeState.textContent = isDark ? 'مفعل' : 'متوقف';
-      document.querySelector('meta[name="theme-color"]').content = isDark ? '#071525' : '#f6faff';
     }
 
-    const savedTheme = localStorage.getItem('mobileTheme') === 'dark' ? 'dark' : 'light';
+    const savedTheme = window.AppTheme.get();
     applyTheme(savedTheme);
     desktopModeState.textContent = sessionStorage.getItem('uiMode') === 'desktop' ? 'مفعل' : 'متوقف';
     loadProfileImage();
     themeToggleBtn.addEventListener('click', () => {
       const nextTheme = document.body.classList.contains('dark-mode') ? 'light' : 'dark';
-      localStorage.setItem('mobileTheme', nextTheme);
-      applyTheme(nextTheme);
+      applyTheme(window.AppTheme.set(nextTheme));
     });
     desktopModeBtn.addEventListener('click', () => {
       sessionStorage.setItem('uiMode', 'desktop');

@@ -4,6 +4,8 @@ function pad2(value) {
 
 function getSafeFilePart(value, fallback) {
   const text = String(value || '').trim()
+    // Keep platform-invalid filename characters and control codes out of generated paths.
+    // eslint-disable-next-line no-control-regex
     .replace(/[<>:"/\\|?*\u0000-\u001f]/g, '_')
     .replace(/\s+/g, '_')
     .replace(/_+/g, '_')

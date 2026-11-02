@@ -80,11 +80,15 @@
     .field.full { grid-column: 1 / -1; }
 
     .admin-only-field {
-      display: none;
+      display: none !important;
+    }
+
+    .admin-only-field.admin-visible {
+      display: grid !important;
     }
 
     .user-name-column {
-      display: none;
+      display: none !important;
     }
 
     .transfer-columns {
@@ -158,12 +162,6 @@
       justify-content: center;
       line-height: 1;
       padding: 0;
-    }
-
-    .date-picker-trigger::before {
-      content: '📅';
-      font-size: 14px;
-      line-height: 1;
     }
 
     .date-picker-trigger:hover { background: #eef2ff; }
@@ -344,6 +342,8 @@
     }
   </style>
   <link rel="stylesheet" href="/layout-defaults.css" />
+  <link rel="stylesheet" href="/email-attachments.css" />
+  <script src="/app-theme.js"></script>
   <script src="/role-access.js" defer></script>
 </head>
 <body class="app-shell">
@@ -354,7 +354,7 @@
         <p>إدارة بيانات الموظفين المنقولين بين الأقسام والنوبات.</p>
       </div>
       <div class="actions">
-        <button type="button" class="btn dark" id="backBtn">رجوع للرئيسية</button>
+        <button type="button" class="btn dark home-nav-button" id="backBtn">العودة للرئيسية</button>
       </div>
     </header>
 
@@ -440,17 +440,17 @@
       <h2>صندوق عرض البيانات</h2>
       <div class="table-tools">
         <p id="countLabel">عدد السجلات: 0</p>
-        <input id="nameFilterInput" class="table-search" placeholder="فلترة بالاسم أثناء الكتابة" />
+        <input id="nameFilterInput" class="table-search" type="search" placeholder="فلترة بالاسم أثناء الكتابة" />
         <button type="button" class="btn primary" id="refreshBtn">تحديث العرض</button>
       </div>
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>م</th>
+              <th class="sortable-date-header" data-sort-key="id" aria-sort="none" style="cursor: pointer;">م</th>
               <th>اسم الموظف</th>
               <th>الحالة</th>
-              <th>تاريخ النقل</th>
+              <th class="sortable-date-header" data-sort-key="date" aria-sort="none" style="cursor: pointer;">تاريخ النقل</th>
               <th>من القسم</th>
               <th>إلى القسم</th>
               <th>من النوبة</th>
@@ -495,7 +495,7 @@
       window.location.href = '/';
     }
 
-    const isAdminUser = String(currentUser?.role || currentUser?.username || '').trim().toLowerCase() === 'admin';
+    const isAdminUser = String(currentUser?.role || '').trim().toLowerCase() === 'admin';
 
     const form = document.getElementById('transferForm');
     const transferIdInput = document.getElementById('transferId');
@@ -529,6 +529,7 @@
     let allTransfers = [];
     let allEmployees = [];
     let selectedEmployee = null;
+    let transferSort = { key: null, direction: 'asc' };
     attachQueryNameCompletion(nameInput, () => allEmployees.map((item) => String(item.Name || '').trim()));
     let departmentSectionRows = [];
     const recordPhotos = initRecordPhotos({
@@ -539,7 +540,7 @@
     });
 
     if (userNameField) {
-      userNameField.style.display = isAdminUser ? 'grid' : 'none';
+      userNameField.classList.toggle('admin-visible', isAdminUser);
     }
 
     function syncUserNameColumnVisibility() {
@@ -692,8 +693,8 @@
 
     function collectPayload() {
       const userNameValue = isAdminUser
-        ? String(userNameInput.value || currentUser.name || currentUser.username || 'system').trim()
-        : String(currentUser.name || currentUser.username || 'system').trim();
+        ? String(userNameInput.value || currentUser.username || 'system').trim()
+        : String(currentUser.username || 'system').trim();
 
       return {
         EmpID: selectedEmployee?.ID || null,
@@ -750,7 +751,7 @@
       populateDepartmentOptions();
       populateSectionOptions();
       if (userNameInput) {
-        userNameInput.value = String(currentUser?.name || currentUser?.username || 'system');
+        userNameInput.value = String(currentUser?.username || 'system');
       }
       syncUserNameColumnVisibility();
       Array.from(rowsBody.querySelectorAll('tr')).forEach((row) => row.classList.remove('selected'));
@@ -774,26 +775,27 @@
       syncDateDisplays();
       noteInput.value = item.Note || '';
       if (userNameInput) {
-        userNameInput.value = item.UserName || currentUser?.name || currentUser?.username || 'system';
+        userNameInput.value = item.UserName || currentUser?.username || 'system';
       }
       recordPhotos.load();
     }
 
     function renderRows(items) {
       rowsBody.innerHTML = '';
+      const sortedItems = applyTransferSort(items);
 
-      if (!Array.isArray(items) || items.length === 0) {
+      if (sortedItems.length === 0) {
         rowsBody.innerHTML = `<tr><td colspan="${isAdminUser ? 10 : 9}">لاتوجد بيانات حالياً.</td></tr>`;
         countLabel.textContent = 'عدد السجلات: 0';
         syncUserNameColumnVisibility();
         return;
       }
 
-      items.forEach((item) => {
+      sortedItems.forEach((item, index) => {
         const tr = document.createElement('tr');
         tr.dataset.id = item.ID;
         tr.innerHTML = `
-          <td class="mono">${item.ID ?? ''}</td>
+          <td class="mono">${index + 1}</td>
           <td>${item.Name ?? ''}</td>
           <td>${item.Status ?? ''}</td>
           <td class="mono">${formatDateYmdSlash(item.Enddate)}</td>
@@ -815,7 +817,7 @@
         rowsBody.appendChild(tr);
       });
 
-      countLabel.textContent = `عدد السجلات: ${items.length}`;
+      countLabel.textContent = `عدد السجلات: ${sortedItems.length}`;
       syncUserNameColumnVisibility();
 
       if (selectedId) {
@@ -824,6 +826,40 @@
           selectedRow.classList.add('selected');
         }
       }
+    }
+
+    function applyTransferSort(items) {
+      const sortedItems = Array.isArray(items) ? [...items] : [];
+      if (!transferSort.key) return sortedItems;
+
+      return sortedItems.sort((left, right) => {
+        let difference;
+        if (transferSort.key === 'id') {
+          difference = (Number(left.ID) || 0) - (Number(right.ID) || 0);
+        } else {
+          const leftDate = parseFlexibleDate(left.Enddate);
+          const rightDate = parseFlexibleDate(right.Enddate);
+          const leftValue = leftDate && !Number.isNaN(leftDate.getTime()) ? leftDate.getTime() : Number.NEGATIVE_INFINITY;
+          const rightValue = rightDate && !Number.isNaN(rightDate.getTime()) ? rightDate.getTime() : Number.NEGATIVE_INFINITY;
+          difference = leftValue - rightValue;
+        }
+
+        return transferSort.direction === 'asc' ? difference : -difference;
+      });
+    }
+
+    function updateTransferSortHeaders() {
+      document.querySelectorAll('.sortable-date-header').forEach((header) => {
+        const key = header.dataset.sortKey;
+        const isActive = transferSort.key === key;
+        const label = key === 'id' ? 'م' : 'تاريخ النقل';
+        const marker = isActive ? (transferSort.direction === 'asc' ? ' ↑' : ' ↓') : '';
+        header.textContent = `${label}${marker}`;
+        header.setAttribute(
+          'aria-sort',
+          isActive ? (transferSort.direction === 'asc' ? 'ascending' : 'descending') : 'none'
+        );
+      });
     }
 
     function applyNameFilter() {
@@ -849,6 +885,23 @@
       );
       renderRows(filtered);
     }
+
+    document.querySelectorAll('.sortable-date-header').forEach((header) => {
+      header.addEventListener('click', () => {
+        const key = header.dataset.sortKey;
+        if (!key) return;
+
+        if (transferSort.key === key) {
+          transferSort.direction = transferSort.direction === 'asc' ? 'desc' : 'asc';
+        } else {
+          transferSort.key = key;
+          transferSort.direction = 'asc';
+        }
+
+        updateTransferSortHeaders();
+        applyNameFilter();
+      });
+    });
 
     async function loadEmployees() {
       const data = await requestJson('/api/employees', {
@@ -1195,6 +1248,7 @@
     });
 
     nameFilterInput.addEventListener('input', applyNameFilter);
+    nameFilterInput.addEventListener('search', applyNameFilter);
 
     toDepartmentInput.addEventListener('focus', () => {
       populateDepartmentOptions(normalizeDepartment(toDepartmentInput.value));

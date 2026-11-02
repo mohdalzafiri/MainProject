@@ -9,6 +9,7 @@ const { receivePdfScan, isPdfScanFile } = require('../services/pdfScanUpload');
 const {
   departmentMailScanRoot,
   getDepartmentMailScanDirectory,
+  getLegacyDepartmentMailScanDirectory,
   ensureDepartmentMailScanDirectory,
   getDepartmentMailScanKey
 } = require('../services/departmentMailScanStorage');
@@ -58,10 +59,18 @@ function getAssignment(record) {
     throw new Error(`Department mail scan filename is invalid for record ${record.ID}`);
   }
 
+  const currentPath = path.join(departmentMailScanRoot, 'DepartmentMail', departmentFolder, sectionFolder, fileName);
+  const legacyPath = path.join(
+    getLegacyDepartmentMailScanDirectory({
+      Department: assignment.department,
+      Section: assignment.section
+    }),
+    fileName
+  );
   return {
     ...assignment,
     fileName,
-    filePath: path.join(departmentMailScanRoot, departmentFolder, sectionFolder, fileName)
+    filePath: fs.existsSync(currentPath) || !fs.existsSync(legacyPath) ? currentPath : legacyPath
   };
 }
 

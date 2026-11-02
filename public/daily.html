@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>اليوميات</title>
   <link rel="stylesheet" href="/layout-defaults.css" />
+  <script src="/app-theme.js"></script>
   <style>
     body.app-shell {
       background: linear-gradient(180deg, #dfeaff 0%, #f8fbff 100%);
@@ -716,6 +717,7 @@
       <div class="title-block">
         <h1>واجهة اليوميات</h1>
         <p>إدارة بيانات اليوميات: إضافة، تعديل، حذف، طباعة وعرض السجلات.</p>
+        <button type="button" class="btn dark home-nav-button" id="backBtn">العودة للرئيسية</button>
       </div>
       <div class="actions">
         <div class="daily-shortcuts" aria-label="واجهات مرتبطة">
@@ -726,7 +728,6 @@
           <button type="button" class="btn primary" data-page-key="reduction" data-page-route="/reduction.html" data-page-title="تخفيف العمل">تخفيف العمل</button>
           <button type="button" class="btn primary" data-page-key="outsideEmployees" data-page-route="/outside-employees.html" data-page-title="خارج الإدارة">خارج الإدارة</button>
         </div>
-        <button type="button" class="btn dark" id="backBtn">العودة للرئيسية</button>
       </div>
     </header>
 
@@ -791,8 +792,8 @@
             </div>
           </form>
           <div id="statusLine" class="status-line"></div>
-          <section class="daily-scanner-panel" aria-labelledby="dailyScannerTitle">
-            <h3 id="dailyScannerTitle">ماسح مستندات اليومية</h3>
+          <section class="daily-scanner-panel" aria-labelledby="dailyScannerTitle" hidden>
+            <h3 id="dailyScannerTitle">البريد الإلكتروني</h3>
             <p>اختر سجلًا محفوظًا، ثم التقط صفحات المستند وحدّد زوايا الورقة. ستُجمع الصفحات في ملف PDF واحد باسم تلقائي.</p>
             <div class="daily-scanner-actions">
               <button type="button" class="btn primary" id="dailyScanCaptureBtn" disabled>التقاط / اختيار صفحة</button>
@@ -814,7 +815,7 @@
           <div class="table-tools">
             <p id="countLabel">عدد السجلات: 0</p>
             <div class="search-box">
-              <input id="searchName" class="table-search" type="text" placeholder="فلترة بالاسم أثناء الكتابة" autocomplete="off" list="employeeSuggestions" />
+              <input id="searchName" class="table-search" type="search" placeholder="فلترة بالاسم أثناء الكتابة" autocomplete="off" list="employeeSuggestions" />
               <datalist id="employeeSuggestions"></datalist>
               <div id="searchSuggestions" class="search-suggestions" hidden></div>
             </div>
@@ -830,7 +831,7 @@
               <thead>
                 <tr>
                   <th>م</th>
-                  <th>الاسم</th>
+                  <th>اسم الموظف</th>
                   <th>الحالة</th>
                   <th>الحضور</th>
                   <th>الانصراف</th>
@@ -906,6 +907,7 @@
   </dialog>
   <script src="/daily-scanner.js"></script>
   <script src="/status-catalog.js"></script>
+  <script src="/daily-allowance-tooltip.js"></script>
   <script>
     const form = document.getElementById('dailyForm');
     const todayInput = document.getElementById('today');
@@ -1003,8 +1005,7 @@
     const dailyScanner = window.initDailyScanner({
       authToken,
       canEdit: currentRole === 'admin'
-        || (currentRole !== 'view' && Array.isArray(editablePages) && editablePages.includes('daily')),
-      onStatus: showStatus
+        || (currentRole !== 'view' && Array.isArray(editablePages) && editablePages.includes('daily'))
     });
     let visibleRows = [];
     let basePeriods = [];
@@ -1108,6 +1109,9 @@
 
       const name = document.createElement('span');
       name.textContent = String(item.Name || '');
+      name.tabIndex = 0;
+      name.title = DailyAllowanceTooltip.buildTooltip(item, monthlyAlertMap);
+      name.setAttribute('aria-label', name.title);
       container.appendChild(name);
 
       getMonthlyAlerts(item).forEach((message) => {
@@ -1429,14 +1433,7 @@
     async function loadMonthlyAlerts(today) {
       const params = new URLSearchParams({ today });
       const data = await requestJson(`/api/daily-logs/monthly-alerts?${params.toString()}`, { headers: getHeaders() });
-      const alerts = new Map();
-      (Array.isArray(data) ? data : []).forEach((usage) => {
-        const empId = String(usage.EmpID || '').trim();
-        const name = normalizeText(usage.Name);
-        if (empId) alerts.set(`emp:${empId}`, usage);
-        if (name) alerts.set(`name:${name}`, usage);
-      });
-      monthlyAlertMap = alerts;
+      monthlyAlertMap = DailyAllowanceTooltip.createUsageMap(data);
     }
 
     function getNameFilteredRows() {
@@ -1715,23 +1712,23 @@
       summaryFooter.style.color = 'var(--ui-muted)';
 
       if (totalEmployees === 0) {
-        summaryFooter.textContent = 'ℹ️ لا توجد بيانات كافية لتقييم وضع حضور النوبة';
+        summaryFooter.textContent = 'لا توجد بيانات كافية لتقييم وضع حضور النوبة';
         summaryFooter.style.background = '#f1f5f9';
         summaryFooter.style.color = '#475569';
       } else if (presenceRate >= 0.9) {
-        summaryFooter.textContent = '✅ وضع حضور النوبة ممتاز';
+        summaryFooter.textContent = 'وضع حضور النوبة ممتاز';
         summaryFooter.style.background = '#dcfce7';
         summaryFooter.style.color = '#166534';
       } else if (presenceRate >= 0.75) {
-        summaryFooter.textContent = '🟦 وضع حضور النوبة جيد';
+        summaryFooter.textContent = 'وضع حضور النوبة جيد';
         summaryFooter.style.background = '#dbeafe';
         summaryFooter.style.color = '#1d4ed8';
       } else if (presenceRate >= 0.5) {
-        summaryFooter.textContent = '⚠️ وضع حضور النوبة مقبول ويحتاج متابعة';
+        summaryFooter.textContent = 'وضع حضور النوبة مقبول ويحتاج متابعة';
         summaryFooter.style.background = '#fef9c3';
         summaryFooter.style.color = '#854d0e';
       } else {
-        summaryFooter.textContent = '⛔ وضع حضور النوبة ضعيف ويحتاج تدخلًا سريعًا';
+        summaryFooter.textContent = 'وضع حضور النوبة ضعيف ويحتاج تدخلًا سريعًا';
         summaryFooter.style.background = '#fee2e2';
         summaryFooter.style.color = '#991b1b';
       }
@@ -2375,7 +2372,7 @@
             <thead>
               <tr>
                 <th>م</th>
-                <th>الاسم</th>
+                <th>اسم الموظف</th>
                 <th>الحالة</th>
                 <th>الفترة</th>
                 <th>الحضور</th>
@@ -2452,10 +2449,21 @@
       await refreshDailyView();
     });
 
-    searchNameInput.addEventListener('input', applyNameFilterAndRender);
-    searchNameInput.addEventListener('input', () => {
-      scheduleEmployeeSuggestionsLoad();
-    });
+    function handleSearchNameInput() {
+      applyNameFilterAndRender();
+      if (String(searchNameInput.value || '').trim()) {
+        scheduleEmployeeSuggestionsLoad();
+        return;
+      }
+
+      if (suggestionDebounceHandle) {
+        clearTimeout(suggestionDebounceHandle);
+      }
+      clearEmployeeSuggestions();
+    }
+
+    searchNameInput.addEventListener('input', handleSearchNameInput);
+    searchNameInput.addEventListener('search', handleSearchNameInput);
     searchNameInput.addEventListener('focus', () => {
       if (searchSuggestionsBox.children.length > 0) {
         searchSuggestionsBox.hidden = false;

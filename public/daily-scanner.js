@@ -80,6 +80,8 @@
     var undoButton = document.getElementById('dailyScanUndoBtn');
     var saveButton = document.getElementById('dailyScanSaveBtn');
     var deleteButton = document.getElementById('dailyScanDeleteBtn');
+    var previousPageButton = opts.previousPageButton || null;
+    var nextPageButton = opts.nextPageButton || null;
     var canvas = document.getElementById('dailyScanCanvas');
     var canvasContext = canvas.getContext('2d');
     var pageCount = document.getElementById('dailyScanPageCount');
@@ -91,6 +93,8 @@
     var image = null;
     var corners = [];
     var activeCorner = -1;
+    var previewPageIndex = -1;
+    var previewRenderToken = 0;
     var requestToken = 0;
 
     if (!document.getElementById('dailyScannerStyle')) {
@@ -151,6 +155,36 @@
       pageCount.textContent = 'صفحات PDF: ' + pages.length;
       undoButton.disabled = pages.length === 0;
       saveButton.disabled = pages.length === 0 || !currentRecord || !canEdit;
+      if (previousPageButton) previousPageButton.disabled = previewPageIndex <= 0;
+      if (nextPageButton) nextPageButton.disabled = previewPageIndex < 0 || previewPageIndex >= pages.length - 1;
+    }
+
+    function showQueuedPage(index) {
+      if (index < 0 || index >= pages.length) return;
+      var queuedPage = pages[index];
+      var queuedImage = new Image();
+      var renderToken = ++previewRenderToken;
+      previewPageIndex = index;
+      setPageCount();
+      queuedImage.onload = function () {
+        if (renderToken !== previewRenderToken) return;
+        image = document.createElement('canvas');
+        image.width = queuedPage.width;
+        image.height = queuedPage.height;
+        image.getContext('2d').drawImage(queuedImage, 0, 0);
+        corners = [];
+        canvas.width = queuedPage.width;
+        canvas.height = queuedPage.height;
+        canvas.hidden = false;
+        cornersHint.hidden = true;
+        addPageButton.disabled = true;
+        drawPreview();
+        setPageCount();
+      };
+      queuedImage.onerror = function () {
+        setStatus('تعذر عرض الصفحة المحددة من المستند.', true);
+      };
+      queuedImage.src = queuedPage.dataUrl;
     }
 
     function loadImage(file) {
@@ -191,10 +225,10 @@
         }
         verticalEdges.push(verticalScore / (sample.height - 20));
       }
-      for (var y = 2; y < sample.height - 2; y += 1) {
+      for (var row = 2; row < sample.height - 2; row += 1) {
         var horizontalScore = 0;
-        for (var x = 10; x < sample.width - 10; x += 1) {
-          horizontalScore += Math.abs(gray(x, y + 1) - gray(x, y - 1));
+        for (var column = 10; column < sample.width - 10; column += 1) {
+          horizontalScore += Math.abs(gray(column, row + 1) - gray(column, row - 1));
         }
         horizontalEdges.push(horizontalScore / (sample.width - 20));
       }
@@ -254,7 +288,9 @@
       canvas.hidden = false;
       cornersHint.hidden = false;
       addPageButton.disabled = false;
+      previewPageIndex = -1;
       drawPreview();
+      setPageCount();
     }
 
     function solveLinearSystem(matrix, values) {
@@ -414,6 +450,7 @@
       requestToken += 1;
       pages = [];
       image = null;
+      previewPageIndex = -1;
       currentRecord = nextRecord;
       hasSavedPdf = false;
       canvas.hidden = true;
@@ -506,6 +543,7 @@
     });
 
     canvas.addEventListener('pointerdown', function (event) {
+      if (corners.length !== 4) return;
       var bounds = canvas.getBoundingClientRect();
       var x = (event.clientX - bounds.left) * canvas.width / bounds.width;
       var y = (event.clientY - bounds.top) * canvas.height / bounds.height;
@@ -536,11 +574,7 @@
       if (!image || corners.length !== 4) return;
       try {
         pages.push(cropPage());
-        image = null;
-        canvas.hidden = true;
-        cornersHint.hidden = true;
-        addPageButton.disabled = true;
-        setPageCount();
+        showQueuedPage(pages.length - 1);
         setStatus('تمت إضافة الصفحة. التقط الصفحة التالية أو احفظ جميع الصفحات في PDF واحد.');
       } catch (error) {
         setStatus(error.message || 'تعذر تجهيز الصفحة. تحقق من حدود الورقة.', true);
@@ -549,9 +583,30 @@
 
     undoButton.addEventListener('click', function () {
       pages.pop();
-      setPageCount();
+      if (image && corners.length === 4) {
+        previewPageIndex = -1;
+        setPageCount();
+      } else if (pages.length) showQueuedPage(Math.min(previewPageIndex, pages.length - 1));
+      else {
+        previewPageIndex = -1;
+        image = null;
+        canvas.hidden = true;
+        setPageCount();
+      }
       setStatus('تم حذف آخر صفحة من المسح غير المحفوظ.');
     });
+
+    if (previousPageButton) {
+      previousPageButton.addEventListener('click', function () {
+        showQueuedPage(previewPageIndex - 1);
+      });
+    }
+
+    if (nextPageButton) {
+      nextPageButton.addEventListener('click', function () {
+        showQueuedPage(previewPageIndex + 1);
+      });
+    }
 
     saveButton.addEventListener('click', async function () {
       if (!currentRecord || !pages.length) return;
@@ -584,6 +639,10 @@
           throw new Error(payload.message || fallbackMessage);
         }
         pages = [];
+        previewPageIndex = -1;
+        image = null;
+        canvas.hidden = true;
+        cornersHint.hidden = true;
         hasSavedPdf = true;
         setPageCount();
         await loadSavedFile(requestToken);

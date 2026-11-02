@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>سجل النظام</title>
   <link rel="stylesheet" href="/layout-defaults.css" />
+  <script src="/app-theme.js"></script>
   <style>
     body.app-shell {
       background: linear-gradient(180deg, #dfeaff 0%, #f8fbff 100%);
@@ -161,7 +162,7 @@
         <p>تسجيل وأرشفة وطباعة سجل العمليات ومستخدمي النظام الإداري.</p>
       </div>
       <div class="actions">
-        <button type="button" class="btn dark" id="backBtn">العودة للرئيسية</button>
+        <button type="button" class="btn dark home-nav-button" id="backBtn">العودة للرئيسية</button>
       </div>
     </section>
 
@@ -424,7 +425,7 @@
 
     function formatAction(item) {
       const action = String(item?.Action || '').trim();
-      return isMobileRecord(item) ? `📱 ${action}` : action;
+      return isMobileRecord(item) ? `${action} (الموبايل)` : action;
     }
 
     function renderRows(items) {

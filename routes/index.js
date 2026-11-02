@@ -20,8 +20,10 @@ const wordTemplatesRoutes = require('./wordTemplates');
 const attachmentsRoutes = require('./attachments');
 const dailyScansRoutes = require('./dailyScans');
 const departmentMailScansRoutes = require('./departmentMailScans');
+const notificationsRoutes = require('./notifications');
 const authMiddleware = require('../auth/auth');
 const { logSystem } = require('../database');
+const { getUploadNotificationMessage, notifyFileUpload } = require('../services/appNotificationService');
 const { runWithRequestAuditContext } = require('../utils/requestAuditContext');
 const {
 	ADMIN_ONLY_PAGE_KEYS,
@@ -47,6 +49,7 @@ router.use((req, res, next) => {
 			if (!auditContext.isMobile || auditContext.logged) return;
 
 			const method = String(req.method || '').toUpperCase();
+			if ((method === 'GET' || method === 'HEAD') && req.path === '/notifications') return;
 			const target = String(req.path || '').split('/').filter(Boolean)[0] || 'api';
 			void logSystem({
 				userName: auditContext.userName || 'unknown',
@@ -227,6 +230,17 @@ router.use('/auth', authRoutes);
 router.use(authMiddleware);
 router.use(attachAccessContext);
 router.use(enforceRouteAccess);
+router.use((req, res, next) => {
+	const notificationMessage = getUploadNotificationMessage(req.method, req.path);
+	if (notificationMessage) {
+		res.once('finish', () => {
+			if (res.statusCode >= 200 && res.statusCode < 300) {
+				void notifyFileUpload(notificationMessage);
+			}
+		});
+	}
+	next();
+});
 
 router.use('/daily-logs', dailyLogsRoutes);
 router.use('/daily-scans', dailyScansRoutes);
@@ -248,5 +262,6 @@ router.use('/settings', settingsRoutes);
 router.use('/archive', archiveRoutes);
 router.use('/word-templates', wordTemplatesRoutes);
 router.use('/attachments', attachmentsRoutes);
+router.use('/notifications', notificationsRoutes);
 
 module.exports = router;

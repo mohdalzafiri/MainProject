@@ -35,30 +35,6 @@ function getTimestamp() {
   return getCurrentTimestamp();
 }
 
-function buildInsertStatement(payload) {
-  const keys = ['DocNumber', 'DocDate', 'Subject', 'Recipient', 'Notes', 'UserName', 'CreatedAt', 'UpdatedAt']
-    .filter((column) => Object.prototype.hasOwnProperty.call(payload, column));
-
-  if (!keys.length) return null;
-
-  return {
-    sql: `INSERT INTO ${tableName} (${keys.join(',')}) VALUES (${keys.map(() => '?').join(',')})`,
-    values: keys.map((key) => payload[key])
-  };
-}
-
-function buildUpdateStatement(payload, id) {
-  const keys = ['DocNumber', 'DocDate', 'Subject', 'Recipient', 'Notes', 'UserName', 'CreatedAt', 'UpdatedAt']
-    .filter((column) => Object.prototype.hasOwnProperty.call(payload, column));
-
-  if (!keys.length) return null;
-
-  return {
-    sql: `UPDATE ${tableName} SET ${keys.map((key) => `${key} = ?`).join(', ')} WHERE ID = ?`,
-    values: [...keys.map((key) => payload[key]), id]
-  };
-}
-
 router.get('/', async (req, res) => {
   try {
     const rows = (await db.prepare(`
@@ -101,7 +77,7 @@ router.post('/', async (req, res) => {
   const subject = normalize(req.body.Subject);
   const recipient = normalize(req.body.Recipient);
   const notes = normalize(req.body.Notes);
-  const userName = normalize(req.body.UserName) || (req.user == null ? undefined : req.user.name) || (req.user == null ? undefined : req.user.username) || 'system';
+  const userName = normalize(req.body.UserName) || (req.user == null ? undefined : req.user.username) || (req.user == null ? undefined : req.user.name) || 'system';
 
   if (!docNumber) return res.status(400).json({ message: 'رقم الصادر مطلوب.' });
   if (!docDate) return res.status(400).json({ message: 'تاريخ الصادر مطلوب.' });
@@ -141,7 +117,7 @@ router.put('/:id', async (req, res) => {
   const subject = normalize(req.body.Subject);
   const recipient = normalize(req.body.Recipient);
   const notes = normalize(req.body.Notes);
-  const userName = normalize(req.body.UserName) || (req.user == null ? undefined : req.user.name) || (req.user == null ? undefined : req.user.username) || 'system';
+  const userName = normalize(req.body.UserName) || (req.user == null ? undefined : req.user.username) || (req.user == null ? undefined : req.user.name) || 'system';
 
   if (!docNumber) return res.status(400).json({ message: 'رقم الصادر مطلوب.' });
   if (!docDate) return res.status(400).json({ message: 'تاريخ الصادر مطلوب.' });
@@ -188,7 +164,7 @@ router.delete('/:id', async (req, res) => {
     }
 
     (await logSystem({
-      userName: normalize(req.body.userName) || (req.user == null ? undefined : req.user.name) || (req.user == null ? undefined : req.user.username) || 'system',
+      userName: normalize(req.body.userName) || (req.user == null ? undefined : req.user.username) || (req.user == null ? undefined : req.user.name) || 'system',
       action: 'Delete',
       page: 'Outgoing',
       details: `Deleted outgoing ID=${id}`

@@ -82,11 +82,15 @@
     }
 
     .admin-only-field {
-      display: none;
+      display: none !important;
+    }
+
+    .admin-only-field.admin-visible {
+      display: grid !important;
     }
 
     .user-name-column {
-      display: none;
+      display: none !important;
     }
 
     label {
@@ -147,12 +151,6 @@
       justify-content: center;
       line-height: 1;
       padding: 0;
-    }
-
-    .date-picker-trigger::before {
-      content: '📅';
-      font-size: 14px;
-      line-height: 1;
     }
 
     .date-picker-trigger:hover {
@@ -344,6 +342,8 @@
     }
   </style>
   <link rel="stylesheet" href="/layout-defaults.css" />
+  <link rel="stylesheet" href="/email-attachments.css" />
+  <script src="/app-theme.js"></script>
   <script src="/role-access.js" defer></script>
 </head>
 <body class="app-shell">
@@ -354,7 +354,7 @@
         <p>إدارة بيانات دورات الموظفين وعرض كل الموظفين الحاصلين على دورات.</p>
       </div>
       <div class="actions">
-        <button type="button" class="btn dark" id="backBtn">رجوع للرئيسية</button>
+        <button type="button" class="btn dark home-nav-button" id="backBtn">العودة للرئيسية</button>
       </div>
     </header>
 
@@ -438,46 +438,29 @@
 
       <div id="statusLine" class="status-line"></div>
 
-      <div class="doc-images-box">
-        <div class="doc-images-head">
-          <span>صور المستندات الرسمية</span>
-          <span id="docImageCount">0 / 0</span>
-        </div>
-        <div class="doc-images-view">
-          <button type="button" class="doc-images-nav" id="docImagePrevBtn">◀</button>
-          <div class="doc-images-frame">
-            <img id="docImagePreview" alt="صورة مستند" />
-            <div id="docImageEmpty">اختر سجلًا أولًا لعرض صور المستندات.</div>
-          </div>
-          <button type="button" class="doc-images-nav" id="docImageNextBtn">▶</button>
-        </div>
-        <div class="doc-images-actions">
-          <button type="button" class="btn primary" id="docImageUploadBtn">تصوير/رفع مستند</button>
-          <input id="docImageInput" type="file" accept="image/*" capture="environment" hidden />
-        </div>
-      </div>
+      <div class="doc-images-box"></div>
     </section>
 
     <section class="panel">
       <h2>صندوق عرض البيانات</h2>
       <div class="table-tools">
         <p id="countLabel">عدد السجلات: 0</p>
-        <input id="nameFilterInput" class="table-search" placeholder="فلترة بالاسم أثناء الكتابة" />
+        <input id="nameFilterInput" class="table-search" type="search" placeholder="فلترة بالاسم أثناء الكتابة" />
         <button type="button" class="btn primary" id="refreshBtn">تحديث العرض</button>
       </div>
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>م</th>
+              <th class="sortable-date-header" data-sort-key="id" aria-sort="none" style="cursor: pointer;">م</th>
               <th>اسم الموظف</th>
               <th>الحالة</th>
               <th>اسم الدورة</th>
               <th>القسم</th>
               <th>النوبة</th>
               <th>جهة الدورة</th>
-              <th>البداية</th>
-              <th>النهاية</th>
+              <th class="sortable-date-header" data-sort-key="start" aria-sort="none" style="cursor: pointer;">البداية</th>
+              <th class="sortable-date-header" data-sort-key="end" aria-sort="none" style="cursor: pointer;">النهاية</th>
               <th>عدد الايام</th>
               <th>ملاحظات</th>
               <th class="user-name-column">اسم المستخدم</th>
@@ -489,7 +472,8 @@
     </section>
   </div>
 
-  <script src="/record-photos.js"></script>
+  <script src="/daily-scanner.js"></script>
+  <script src="/email-scanner.js"></script>
   <script src="/text-encoding.js"></script>
   <script src="/query-name-completion.js"></script>
   <script>
@@ -518,7 +502,7 @@
       window.location.href = '/';
     }
 
-    const isAdminUser = String(currentUser?.role || currentUser?.username || '').trim().toLowerCase() === 'admin';
+    const isAdminUser = String(currentUser?.role || '').trim().toLowerCase() === 'admin';
 
     const form = document.getElementById('courseForm');
     const courseIdInput = document.getElementById('courseId');
@@ -555,8 +539,9 @@
     let allCourses = [];
     let allEmployees = [];
     let selectedEmployee = null;
+    let courseSort = { key: null, direction: 'asc' };
     attachQueryNameCompletion(nameInput, () => allEmployees.map((item) => String(item.Name || '').trim()));
-    const recordPhotos = initRecordPhotos({
+    const recordPhotos = initEmailScanner({
       moduleKey: 'courses',
       authToken,
       getRecordId: () => selectedId,
@@ -564,7 +549,7 @@
     });
 
     if (userNameField) {
-      userNameField.style.display = isAdminUser ? 'grid' : 'none';
+      userNameField.classList.toggle('admin-visible', isAdminUser);
     }
 
     function syncUserNameColumnVisibility() {
@@ -762,7 +747,7 @@
       departmentInput.value = '';
       sectionInput.value = '';
       if (userNameInput) {
-        userNameInput.value = String(currentUser?.name || currentUser?.username || 'system');
+        userNameInput.value = String(currentUser?.username || 'system');
       }
       syncUserNameColumnVisibility();
       Array.from(rowsBody.querySelectorAll('tr')).forEach((row) => row.classList.remove('selected'));
@@ -800,19 +785,20 @@
 
     function renderRows(items) {
       rowsBody.innerHTML = '';
+      const sortedItems = applyCourseSort(items);
 
-      if (!Array.isArray(items) || items.length === 0) {
+      if (sortedItems.length === 0) {
         rowsBody.innerHTML = `<tr><td colspan="${isAdminUser ? 12 : 11}">لاتوجد بيانات حالياً.</td></tr>`;
         countLabel.textContent = 'عدد السجلات: 0';
         syncUserNameColumnVisibility();
         return;
       }
 
-      items.forEach((item) => {
+      sortedItems.forEach((item, index) => {
         const tr = document.createElement('tr');
         tr.dataset.id = item.ID;
         tr.innerHTML = `
-          <td class="mono">${item.ID ?? ''}</td>
+          <td class="mono">${index + 1}</td>
           <td>${item.Name ?? ''}</td>
           <td>${item.Status ?? ''}</td>
           <td>${item.CourseName ?? ''}</td>
@@ -836,7 +822,7 @@
         rowsBody.appendChild(tr);
       });
 
-      countLabel.textContent = `عدد السجلات: ${items.length}`;
+      countLabel.textContent = `عدد السجلات: ${sortedItems.length}`;
       syncUserNameColumnVisibility();
 
       if (selectedId) {
@@ -845,6 +831,44 @@
           selectedRow.classList.add('selected');
         }
       }
+    }
+
+    function applyCourseSort(items) {
+      const sortedItems = Array.isArray(items) ? [...items] : [];
+      if (!courseSort.key) return sortedItems;
+
+      return sortedItems.sort((left, right) => {
+        let leftValue;
+        let rightValue;
+
+        if (courseSort.key === 'id') {
+          leftValue = Number(left.ID) || 0;
+          rightValue = Number(right.ID) || 0;
+        } else {
+          const dateKey = courseSort.key === 'start' ? 'Startdate' : 'Enddate';
+          const leftDate = parseFlexibleDate(left[dateKey]);
+          const rightDate = parseFlexibleDate(right[dateKey]);
+          leftValue = leftDate && !Number.isNaN(leftDate.getTime()) ? leftDate.getTime() : Number.NEGATIVE_INFINITY;
+          rightValue = rightDate && !Number.isNaN(rightDate.getTime()) ? rightDate.getTime() : Number.NEGATIVE_INFINITY;
+        }
+
+        const difference = leftValue - rightValue;
+        return courseSort.direction === 'asc' ? difference : -difference;
+      });
+    }
+
+    function updateCourseSortHeaders() {
+      document.querySelectorAll('.sortable-date-header').forEach((header) => {
+        const key = header.dataset.sortKey;
+        const isActive = courseSort.key === key;
+        const label = key === 'id' ? 'م' : key === 'start' ? 'البداية' : 'النهاية';
+        const marker = isActive ? (courseSort.direction === 'asc' ? ' ↑' : ' ↓') : '';
+        header.textContent = `${label}${marker}`;
+        header.setAttribute(
+          'aria-sort',
+          isActive ? (courseSort.direction === 'asc' ? 'ascending' : 'descending') : 'none'
+        );
+      });
     }
 
     function applyNameFilter() {
@@ -871,6 +895,23 @@
       );
       renderRows(filtered);
     }
+
+    document.querySelectorAll('.sortable-date-header').forEach((header) => {
+      header.addEventListener('click', () => {
+        const key = header.dataset.sortKey;
+        if (!key) return;
+
+        if (courseSort.key === key) {
+          courseSort.direction = courseSort.direction === 'asc' ? 'desc' : 'asc';
+        } else {
+          courseSort.key = key;
+          courseSort.direction = 'asc';
+        }
+
+        updateCourseSortHeaders();
+        applyNameFilter();
+      });
+    });
 
     async function loadEmployees() {
       const data = await requestJson('/api/employees', {
@@ -1231,6 +1272,7 @@
     nameFilterInput.addEventListener('input', () => {
       applyNameFilter();
     });
+    nameFilterInput.addEventListener('search', applyNameFilter);
 
     form.addEventListener('submit', async (event) => {
       event.preventDefault();

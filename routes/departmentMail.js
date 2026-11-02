@@ -50,8 +50,8 @@ registerDatabaseInitializer(ensureDepartmentMailTable);
 
 function getUserName(req) {
   return normalize(req.body.UserName)
-    || normalize(req.user && req.user.name)
     || normalize(req.user && req.user.username)
+    || normalize(req.user && req.user.name)
     || 'system';
 }
 
@@ -66,10 +66,7 @@ function validatePayload(req, res) {
     UserName: getUserName(req)
   };
 
-  if (!payload.MailNumber) res.status(400).json({ message: 'رقم البريد مطلوب.' });
-  else if (!payload.MailDate) res.status(400).json({ message: 'تاريخ البريد مطلوب.' });
-  else if (!payload.Subject) res.status(400).json({ message: 'الموضوع مطلوب.' });
-  else if (!payload.Department) res.status(400).json({ message: 'القسم مطلوب.' });
+  if (!payload.Department) res.status(400).json({ message: 'القسم مطلوب.' });
   else if (!payload.Section) res.status(400).json({ message: 'النوبة مطلوبة.' });
   else if (!isWithinDataScope(payload, req.access)) {
     res.status(403).json({ message: 'القسم أو النوبة خارج نطاق صلاحيات المستخدم.' });

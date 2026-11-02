@@ -27,6 +27,28 @@ When creating new frontend pages (especially inside `public/`), apply these defa
   - Keep top and bottom spacing equal (for example: `padding: 16px 0;`).
 - Keep page content aligned to top using `align-content: start` for grid containers.
 - Do not add visual footer sections or extra bottom spacer blocks unless explicitly requested.
+- For main-interface navigation buttons, use the shared `العودة للرئيسية` label and `.home-nav-button` class. Keep it below the page title/description, aligned to the right, with the shared dark slate color from `/layout-defaults.css`.
+- Use `/layout-defaults.css` as the shared typography source: Tahoma/Arial, 14px base text and controls, 28px page titles (24px on narrow screens), 20px section headings, 18px subsection headings, and 13px form labels. Preserve smaller sizes only for secondary metadata and compact status badges.
+- Keep CRUD buttons text-only, using the shared `.btn.success`, `.btn.warning`, `.btn.danger`, and `.btn.primary` styles; do not add decorative emoji icons.
+
+## Existing Interface Design
+- On existing pages, preserve the original layout and visual design. Do not redesign, rearrange, or restyle interface elements beyond the specific requested change without the user's explicit approval.
+
+## Unified Interface Defaults
+- Use `/layout-defaults.css` as the single source for app typography, spacing, border radii, shadows, controls, panels, tables, and table toolbars across desktop and mobile application pages.
+- Build new application pages with `body.app-shell`, `.page.app-page`, `.panel`, `.field`, `.toolbar`, `.table-tools`, `.table-wrap`, `.btn`, and the existing shared tokens instead of defining page-specific duplicates.
+- Use the shared spacing and radius scale (`--ui-space-*`, `--ui-panel-radius`, `--ui-card-radius`, `--ui-table-radius`, `--ui-control-radius`, and `--ui-btn-radius`) and shared panel/control shadows. Preserve deliberate page structure and specialized content layouts.
+- For record tables, use the shared table style. Put record count on its own row, then keep the search field on the RTL right and refresh/actions on the left in `.table-tools`; reuse `.table-tools-search-refresh` when its search-refresh pattern applies.
+- Use text-only CRUD buttons with the standard `.btn.success`, `.btn.warning`, `.btn.danger`, and `.btn.primary` classes. Do not use decorative emoji icons.
+- When a functional icon is needed, use a small monochrome SVG symbol from `/ui-icons.svg`; keep it `aria-hidden="true"` when adjacent text already provides its accessible name. Do not add icon fonts, emoji glyphs, or a new icon package.
+- Keep icons limited to meaningful actions or navigation; do not decorate labels or status messages with emoji.
+
+## Performance Defaults
+- Use the server's slow-request and slow-database logs plus five-minute count/average/p95 summaries to identify bottlenecks before optimizing.
+- `SLOW_REQUEST_MS` controls slow API request warnings (default 1000 ms); `SLOW_DB_QUERY_MS` controls slow database warnings (default 200 ms). Performance logs must not include request bodies, query parameters, or database parameter values.
+- Cache only public static assets briefly; never add shared browser caching to authenticated API responses, archive files, or user-specific data.
+- Keep table text filtering debounced and load archive previews only when they approach the viewport.
+- Do not add database indexes, server pagination, or broad data-loading changes without measurements and tests showing the affected query and preserving data-scope behavior.
 
 ## Date/Time Defaults
 - Use date format: `yyyy/mm/dd`.
@@ -71,6 +93,12 @@ When creating new frontend pages (especially inside `public/`), apply these defa
 - In all current and future tables, when a table has no rows, show exactly this text in the empty row: `لاتوجد بيانات حالياً.`
 - Do not use page-specific or explanatory wording for empty tables.
 
+## Table Search and Refresh Toolbar
+- For current or future table sections with a record count, search field, and refresh button, use `.table-tools.table-tools-search-refresh` from `/layout-defaults.css`.
+- Keep the count on its own row above the controls, right-aligned.
+- Keep the search field wide on the right and the blue `.btn.primary` refresh button on the left in the same row.
+- Do not add page-specific sizing or colors for this toolbar.
+
 ## Default CRUD Buttons
 - For current and future CRUD table interfaces, use the project-standard toolbar in this order:
   - Green success button: `إضافة بيانات`
@@ -84,7 +112,7 @@ When creating new frontend pages (especially inside `public/`), apply these defa
 - Suggested names must respect the user's data scope (department/section/subsection); admin is exempt.
 
 ## System Version
-- Current system version: 3.3.1 (shown on public/login.html for regular and mobile, and in package.json).
+- Current system version: 3.3.3 (shown on public/login.html for regular and mobile, and in package.json).
 - Bump only the last number (patch) when the user explicitly orders a version update at the end of a change; keep both places in sync.
 
 ## Release Finalization

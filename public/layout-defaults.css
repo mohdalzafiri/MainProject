@@ -2,17 +2,29 @@
   --app-page-max-width: 1600px;
   --app-page-side-gap: 20px;
   --app-page-block-padding: 16px 0;
-  --app-page-gap: 16px;
+  --app-page-gap: var(--ui-space-4);
 
   --ui-panel-radius: 18px;
   --ui-panel-padding: 18px;
   --ui-panel-shadow: 0 14px 35px rgba(15, 23, 42, 0.08);
   --ui-control-radius: 10px;
   --ui-control-padding: 10px;
-  --ui-btn-radius: 12px;
+  --ui-btn-radius: 10px;
   --ui-btn-padding: 10px 16px;
   --ui-table-min-width: 1100px;
   --ui-table-font-size: 14px;
+  --ui-font-family: Tahoma, Arial, sans-serif;
+  --ui-font-size: 14px;
+  --ui-space-1: 4px;
+  --ui-space-2: 8px;
+  --ui-space-3: 12px;
+  --ui-space-4: 16px;
+  --ui-space-5: 20px;
+  --ui-space-6: 24px;
+  --ui-icon-size: 22px;
+  --ui-card-radius: 14px;
+  --ui-table-radius: 12px;
+  --ui-control-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
 
   --ui-text: #0f172a;
   --ui-muted: #64748b;
@@ -36,6 +48,120 @@ body.app-shell {
   display: flex;
   justify-content: center;
   overflow-x: hidden;
+  font-family: var(--ui-font-family);
+  font-size: var(--ui-font-size);
+}
+
+body.app-shell :is(button, input, select, textarea) {
+  font-family: inherit;
+  font-size: var(--ui-font-size);
+}
+
+body:is(.app-shell, .auth-shell) :is(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 3px solid #2563eb;
+  outline-offset: 2px;
+}
+
+html.dark-mode body:is(.app-shell, .auth-shell) :is(a, button, input, select, textarea, [tabindex]):focus-visible,
+body:is(.app-shell, .auth-shell).dark-mode :is(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline-color: #93c5fd;
+}
+
+@media (forced-colors: active) {
+  body:is(.app-shell, .auth-shell) :is(a, button, input, select, textarea, [tabindex]):focus-visible {
+    outline-color: Highlight;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body:is(.app-shell, .auth-shell) *,
+  body:is(.app-shell, .auth-shell) *::before,
+  body:is(.app-shell, .auth-shell) *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+body.app-shell h1 {
+  font-size: 28px;
+}
+
+body.app-shell h2 {
+  font-size: 20px;
+}
+
+body.app-shell h3 {
+  font-size: 18px;
+}
+
+html.dark-mode {
+  color-scheme: dark;
+  --ui-text: #e5edf8;
+  --ui-muted: #a7b5c8;
+  --ui-border: rgba(148, 163, 184, 0.22);
+  --ui-surface: #142238;
+  --ui-primary: #3b82f6;
+  --ui-primary-dark: #2563eb;
+}
+
+html.dark-mode body.app-shell,
+body.app-shell.dark-mode {
+  color: var(--ui-text);
+  background: #0b1422 !important;
+}
+
+html.dark-mode body.auth-shell,
+body.auth-shell.dark-mode {
+  color-scheme: dark;
+}
+
+html.dark-mode body.app-shell :is(.panel, .card, .stat-card, .summary-card, .form-card, .content-card, .section-card, .table-wrap, .modal, .modal-content, .drawer, .scope-column, .permission-chip, .tab-panel, .search-panel, .results-panel, .action-item, .folder-card, .archive-card, .empty-state, [class*="-card"], [class*="-panel"]),
+body.app-shell.dark-mode :is(.panel, .card, .stat-card, .summary-card, .form-card, .content-card, .section-card, .table-wrap, .modal, .modal-content, .drawer, .scope-column, .permission-chip, .tab-panel, .search-panel, .results-panel, .action-item, .folder-card, .archive-card, .empty-state, [class*="-card"], [class*="-panel"]) {
+  color: var(--ui-text);
+  background: #142238 !important;
+  border-color: var(--ui-border);
+}
+
+html.dark-mode body.app-shell :is(table, thead, tbody, tr, th, td),
+body.app-shell.dark-mode :is(table, thead, tbody, tr, th, td) {
+  color: var(--ui-text);
+  border-color: var(--ui-border);
+}
+
+html.dark-mode body.app-shell table,
+body.app-shell.dark-mode table {
+  background-color: #142238 !important;
+}
+
+html.dark-mode body.app-shell :is(th, thead th),
+body.app-shell.dark-mode :is(th, thead th) {
+  background-color: #1d304a !important;
+}
+
+html.dark-mode body.app-shell tbody tr:hover,
+body.app-shell.dark-mode tbody tr:hover {
+  background-color: #203650 !important;
+}
+
+html.dark-mode body.app-shell :is(input, select, textarea),
+body.app-shell.dark-mode :is(input, select, textarea) {
+  color: var(--ui-text);
+  background-color: #0d1a2b !important;
+  border-color: #40536b;
+}
+
+html.dark-mode body.app-shell :is(label, h1, h2, h3, h4, p, .muted, .hint, .description),
+body.app-shell.dark-mode :is(label, h1, h2, h3, h4, p, .muted, .hint, .description) {
+  color: var(--ui-text);
+}
+
+html.dark-mode body.auth-shell .card,
+body.auth-shell.dark-mode .card {
+  color: #e5edf8 !important;
+  background-color: #142238 !important;
+  border-color: var(--ui-border) !important;
 }
 
 body.auth-shell {
@@ -47,6 +173,11 @@ body.auth-shell {
   justify-content: center;
   align-items: center;
   overflow-x: hidden;
+  font-family: var(--ui-font-family);
+}
+
+body.auth-shell :is(button, input, select, textarea) {
+  font-family: inherit;
 }
 
 body.app-shell > .page,
@@ -71,6 +202,21 @@ body.app-shell .header {
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+}
+
+body.app-shell .header:has(.home-nav-button) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: start;
+  align-items: start;
+  gap: 8px;
+}
+
+body.app-shell .header:has(.home-nav-button) > .actions,
+body.app-shell .header:has(.home-nav-button) > .top-actions,
+body.app-shell .header:has(> .home-nav-button) > .home-nav-button {
+  justify-self: start;
+  width: auto;
 }
 
 body.app-shell .header h1 {
@@ -105,6 +251,7 @@ body.app-shell .btn {
   color: #fff;
   transition: transform .18s ease, background .18s ease;
   background: var(--ui-primary);
+  box-shadow: var(--ui-control-shadow);
 }
 
 body.app-shell .btn:hover {
@@ -149,6 +296,22 @@ body.app-shell .btn.ghost {
   background: #475569;
 }
 
+body.app-shell .btn.home-nav-button {
+  min-height: 38px;
+  padding: 10px 16px;
+  border-radius: var(--ui-btn-radius);
+  background: #475569;
+  white-space: nowrap;
+}
+
+body.app-shell .btn.home-nav-button:hover {
+  background: #334155;
+}
+
+body.app-shell button:not(.app-notification-button):not(.app-notification-toast) {
+  border-radius: var(--ui-btn-radius);
+}
+
 body.app-shell .btn.dark:hover,
 body.app-shell .btn.ghost:hover {
   background: #334155;
@@ -160,6 +323,73 @@ body.app-shell .panel {
   border-radius: var(--ui-panel-radius);
   padding: var(--ui-panel-padding);
   box-shadow: var(--ui-panel-shadow);
+}
+
+body.app-shell :is(.card, .stat-card, .summary-card, .form-card, .content-card, .section-card, .folder-card, .archive-card, .action-item, .stat-block, .view-only-detail-card, .mobile-employee-card, .mobile-daily-card) {
+  border-radius: var(--ui-card-radius);
+  box-shadow: var(--ui-panel-shadow);
+}
+
+body.app-shell :is(.view-only-detail-item, .mobile-employee-card-item, .mobile-employee-card-note) {
+  border-radius: var(--ui-control-radius);
+}
+
+body.app-shell .empty-state {
+  border-radius: var(--ui-card-radius);
+}
+
+body.app-shell :is(.buttons-grid, .stats-grid, .summary-row, .summary-row-3, .cards-grid) {
+  gap: var(--ui-space-4);
+}
+
+body.app-shell :is(.summary-row, .summary-row-3) {
+  margin-top: 0;
+}
+
+body.app-shell :is(.action-item, .folder-card) {
+  border-radius: var(--ui-card-radius);
+}
+
+body.app-shell :is(.field, .inline-grid) {
+  gap: var(--ui-space-3);
+}
+
+body.app-shell .field {
+  row-gap: var(--ui-space-2);
+}
+
+body.app-shell .page.app-page .table-wrap {
+  border-radius: var(--ui-table-radius);
+  box-shadow: var(--ui-control-shadow);
+}
+
+body.app-shell :is(th, td) {
+  line-height: 1.5;
+  vertical-align: middle;
+}
+
+body.app-shell th {
+  font-weight: 700;
+}
+
+body.app-shell :is(.btn-icon, .action-icon) {
+  display: inline-block;
+  width: var(--ui-icon-size);
+  height: var(--ui-icon-size);
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+body.app-shell .page-permission-action svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 body.app-shell .panel h2 {
@@ -253,9 +483,12 @@ body.app-shell .date-picker-trigger {
 }
 
 body.app-shell .date-picker-trigger::before {
-  content: '📅';
-  font-size: 14px;
-  line-height: 1;
+  content: '';
+  width: 15px;
+  height: 15px;
+  background-color: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='5' width='18' height='16' rx='2'/%3E%3Cpath d='M16 3v4M8 3v4M3 10h18M8 14h.01M12 14h.01M16 14h.01'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='5' width='18' height='16' rx='2'/%3E%3Cpath d='M16 3v4M8 3v4M3 10h18M8 14h.01M12 14h.01M16 14h.01'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 
 body.app-shell .native-date-input {
@@ -309,32 +542,100 @@ body.app-shell .status-line.error {
   color: #991b1b;
 }
 
-body.app-shell .table-tools {
-  display: flex;
-  justify-content: space-between;
+body.app-shell .page.app-page .table-tools {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
+  gap: var(--ui-space-2) var(--ui-space-3);
   margin-bottom: 10px;
 }
 
-body.app-shell .table-tools p {
+body.app-shell .page.app-page .table-tools > p {
+  grid-column: 1 / -1;
   margin: 0;
   font-weight: 700;
   color: var(--ui-muted);
 }
 
-body.app-shell .table-wrap {
-  overflow: auto;
+body.app-shell .page.app-page .table-tools > :is(input, .table-search, .search-box) {
+  grid-column: 1;
+  min-width: 0;
+  width: 100%;
+}
+
+body.app-shell .page.app-page .table-tools > .bottom-actions {
+  grid-column: 2;
+  justify-self: start;
+  width: auto;
+}
+
+body.app-shell .page.app-page .table-tools > .btn {
+  grid-column: 2;
+  justify-self: start;
+  white-space: nowrap;
+}
+
+body.app-shell .table-tools-search-refresh {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+
+body.app-shell .table-tools-search-refresh > p {
+  width: 100%;
+  text-align: right;
+}
+
+body.app-shell .table-tools-search-refresh .table-search-tools {
+  display: flex;
+  flex-direction: row;
+  direction: rtl;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+}
+
+body.app-shell .table-tools-search-refresh .table-search-tools .table-search {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+  height: 40px;
+}
+
+body.app-shell .table-tools-search-refresh .table-search-tools .btn {
+  flex: 0 0 auto;
+  min-height: 38px;
+  padding: 10px 14px;
+  white-space: nowrap;
+}
+
+body.app-shell .page.app-page .table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
   border: 1px solid var(--ui-border);
   background: #fff;
-  border-radius: 14px;
+  border-radius: var(--ui-table-radius);
+}
+
+body.app-shell .page.app-page .table-wrap:focus-visible {
+  outline: 3px solid #2563eb;
+  outline-offset: 2px;
+}
+
+html.dark-mode body.app-shell .page.app-page .table-wrap:focus-visible,
+body.app-shell.dark-mode .page.app-page .table-wrap:focus-visible {
+  outline-color: #93c5fd;
 }
 
 body.app-shell table {
   width: 100%;
   border-collapse: collapse;
   min-width: var(--ui-table-min-width);
+  table-layout: auto;
 }
 
 body.app-shell th,
@@ -436,6 +737,12 @@ body.app-shell .mono {
     align-items: flex-start;
   }
 
+  body.app-shell .header:has(.home-nav-button) > .actions,
+  body.app-shell .header:has(.home-nav-button) > .top-actions,
+  body.app-shell .header:has(> .home-nav-button) > .home-nav-button {
+    width: auto;
+  }
+
   body.app-shell .actions,
   body.app-shell .header-actions,
   body.app-shell .toolbar,
@@ -443,15 +750,30 @@ body.app-shell .mono {
     width: 100%;
   }
 
-  body.app-shell .table-tools {
-    align-items: flex-start;
-  }
 }
 
 @media (max-width: 680px) {
   body.app-shell .grid,
   body.app-shell .form-grid {
     grid-template-columns: 1fr;
+  }
+
+  body.app-shell h1 {
+    font-size: 24px;
+  }
+
+  body.app-shell .page.app-page .table-tools {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  body.app-shell .page.app-page .table-tools > :is(input, .table-search, .search-box, .bottom-actions, .btn) {
+    grid-column: 1;
+    justify-self: stretch;
+    width: 100%;
+  }
+
+  body.app-shell .page.app-page .table-tools > .bottom-actions {
+    flex-wrap: wrap;
   }
 
   body.app-shell .header {

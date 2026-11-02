@@ -5,6 +5,7 @@ const Database = require('better-sqlite3');
 const { createPostgresProvider, createSqliteProvider } = require('./database/providers');
 const { removeSync } = require('./utils/fsCompat');
 const { getRequestAuditContext } = require('./utils/requestAuditContext');
+const { migrateUserNameRecords } = require('./utils/migrateUserNameRecords');
 
 const dbClient = String(process.env.DB_CLIENT || 'sqlite').trim().toLowerCase();
 if (!['sqlite', 'postgres'].includes(dbClient)) {
@@ -768,6 +769,10 @@ async function initializeDatabase() {
   await initializationPromise;
   for (const initializer of databaseInitializers) {
     await initializer();
+  }
+  const updatedUserNameRecords = await migrateUserNameRecords(db);
+  if (updatedUserNameRecords > 0) {
+    console.log(`Migrated ${updatedUserNameRecords} historical user-name records to account usernames.`);
   }
 }
 

@@ -102,7 +102,6 @@ async function stopDatabaseMaintenance() {
 }
 
 module.exports = {
-  runDailyDatabaseMaintenance,
   startDatabaseMaintenance,
   stopDatabaseMaintenance
 };

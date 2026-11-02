@@ -1,6 +1,7 @@
 ﻿const express = require('express');
 const { db, logSystem, registerDatabaseInitializer } = require('../database');
 const { filterByDataScope, isWithinDataScope } = require('../auth/dataScope');
+const { buildInsertStatement, buildUpdateStatement } = require('../utils/sqlStatementBuilders');
 
 const router = express.Router();
 const columns = ['EmpID', 'Name', 'Department', 'Section', 'Status', 'Type', 'Startdate', 'Enddate', 'Days', 'Note', 'UserName'];
@@ -66,24 +67,6 @@ async function findDuplicateHoliday(payload, excludeId = null) {
   return (await db.prepare(sql).get(...args));
 }
 
-function buildInsertStatement(payload) {
-  const keys = columns.filter((column) => Object.prototype.hasOwnProperty.call(payload, column));
-  if (!keys.length) return null;
-  return {
-    sql: `INSERT INTO Holiday (${keys.join(',')}) VALUES (${keys.map(() => '?').join(',')})`,
-    values: keys.map((key) => payload[key])
-  };
-}
-
-function buildUpdateStatement(payload, id) {
-  const keys = columns.filter((column) => Object.prototype.hasOwnProperty.call(payload, column));
-  if (!keys.length) return null;
-  return {
-    sql: `UPDATE Holiday SET ${keys.map((key) => `${key} = ?`).join(', ')} WHERE ID = ?`,
-    values: [...keys.map((key) => payload[key]), id]
-  };
-}
-
 router.get('/', async (req, res) => {
   const records = (await db.prepare('SELECT * FROM Holiday ORDER BY Startdate DESC').all());
   res.json(filterByDataScope(records, req.access));
@@ -111,7 +94,7 @@ router.post('/', async (req, res) => {
     return res.status(409).json({ message: 'لا يمكن إدخال نفس الإجازة مرتين لنفس الموظف.' });
   }
 
-  const statement = buildInsertStatement(req.body);
+  const statement = buildInsertStatement('Holiday', columns, req.body);
   if (!statement) {
     return res.status(400).json({ message: 'البيانات المرسلة غير كافية' });
   }
@@ -140,7 +123,7 @@ router.put('/:id', async (req, res) => {
     return res.status(409).json({ message: 'لا يمكن تكرار نفس الإجازة لنفس الموظف.' });
   }
 
-  const statement = buildUpdateStatement(req.body, id);
+  const statement = buildUpdateStatement('Holiday', columns, req.body, id);
   if (!statement) {
     return res.status(400).json({ message: 'البيانات المرسلة غير كافية' });
   }

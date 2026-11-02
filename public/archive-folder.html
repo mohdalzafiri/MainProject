@@ -63,6 +63,7 @@
     @media (max-width: 700px) { .cards-grid { grid-template-columns: 1fr; } .tools { align-items: stretch; } }
   </style>
   <link rel="stylesheet" href="/layout-defaults.css" />
+  <script src="/app-theme.js"></script>
 </head>
 <body class="app-shell">
   <main class="page app-page">
@@ -104,6 +105,8 @@
     const searchInput = document.getElementById('searchInput');
     const statusBox = document.getElementById('statusBox');
     let records = [];
+    let previewObserver = null;
+    const previewObjectUrls = new Set();
 
     if (!isForceListPage && categoryKey === 'statements') {
       window.location.replace('/archive.html');
@@ -209,7 +212,23 @@
       const term = searchInput.value.trim().toLowerCase();
       const filtered = records.filter((item) => !term || [item.FileName, item.Extension, item.FileType]
         .some((value) => String(value || '').toLowerCase().includes(term)));
+      previewObserver?.disconnect();
+      previewObserver = null;
+      previewObjectUrls.forEach((url) => URL.revokeObjectURL(url));
+      previewObjectUrls.clear();
       filesGrid.innerHTML = '';
+      if ('IntersectionObserver' in window) {
+        previewObserver = new IntersectionObserver((entries, observer) => {
+          entries.forEach((entry) => {
+            if (!entry.isIntersecting) return;
+            observer.unobserve(entry.target);
+            loadGeneratedPreview(entry.target).catch((error) => {
+              setError(error.message || 'تعذر تحميل معاينة الملف.');
+            });
+          });
+        }, { rootMargin: '200px' });
+      }
+
       if (!filtered.length) {
         filesGrid.innerHTML = '<div class="empty-state">لا توجد ملفات في هذا المجلد حاليًا.</div>';
         return;
@@ -247,7 +266,13 @@
           deleteForceList(item, event.currentTarget);
         });
         filesGrid.appendChild(card);
-        loadGeneratedPreview(card).catch(() => {});
+        if (card.querySelector('iframe[data-preview-url]') && previewObserver) {
+          previewObserver.observe(card);
+        } else if (card.querySelector('iframe[data-preview-url]')) {
+          loadGeneratedPreview(card).catch((error) => {
+            setError(error.message || 'تعذر تحميل معاينة الملف.');
+          });
+        }
       });
     }
 
@@ -266,7 +291,10 @@
       const frame = card.querySelector('iframe[data-preview-url]');
       if (!frame) return;
       const blob = await fetchAuthorizedBlob(frame.dataset.previewUrl);
-      frame.src = URL.createObjectURL(blob);
+      if (!card.isConnected) return;
+      const objectUrl = URL.createObjectURL(blob);
+      previewObjectUrls.add(objectUrl);
+      frame.src = objectUrl;
     }
 
     async function downloadFile(item) {
@@ -338,7 +366,10 @@
         : `ملفات مجلد ${category.LabelAr}`;
       document.title = isForceListPage ? pageLabel : `${category.LabelAr} - الأرشيف`;
       if (isForceListPage) {
-        document.getElementById('backBtn').textContent = 'العودة إلى الرئيسية';
+        const backButton = document.getElementById('backBtn');
+        backButton.textContent = 'العودة للرئيسية';
+        backButton.classList.remove('secondary');
+        backButton.classList.add('dark', 'home-nav-button');
       }
       const [subfolders, folderRecords] = await Promise.all([
         authorizedJson(`/api/archive/categories?parent=${encodeURIComponent(categoryKey)}`),

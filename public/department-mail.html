@@ -5,11 +5,38 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>بريد الأقسام والنوبات</title>
   <link rel="stylesheet" href="/layout-defaults.css" />
+  <link rel="stylesheet" href="/email-attachments.css" />
+  <script src="/app-theme.js"></script>
   <script src="/role-access.js" defer></script>
   <style>
     body.app-shell { background: linear-gradient(180deg, #dfeaff 0%, #f8fbff 100%); }
     .field.full { grid-column: 1 / -1; }
-    .table-search { width: min(360px, 100%); }
+    .admin-only-field { display: none !important; }
+    .admin-only-field.admin-visible { display: grid !important; }
+    .user-name-column { display: none !important; }
+    body.app-shell .date-range-tools {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      max-width: 720px;
+      margin-bottom: 12px;
+    }
+    body.app-shell .department-mail-filters {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      flex: 0 1 720px;
+      min-width: 0;
+      width: 100%;
+      max-width: 720px;
+    }
+    body.app-shell .department-mail-form-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    body.app-shell .table-tools-search-refresh .department-mail-search-tools {
+      justify-content: space-between;
+      align-items: flex-end;
+    }
     .doc-images-box {
       margin-top: 16px;
       padding: 14px;
@@ -65,6 +92,10 @@
       .doc-images-frame { min-height: 170px; }
       table { min-width: 900px; }
     }
+    @media (max-width: 680px) {
+      body.app-shell .date-range-tools { grid-template-columns: minmax(0, 1fr); }
+      body.app-shell .department-mail-filters { grid-template-columns: minmax(0, 1fr); }
+    }
   </style>
 </head>
 <body class="app-shell">
@@ -75,7 +106,7 @@
         <p>إدارة البريد الداخلي الموجّه إلى الأقسام والنوبات.</p>
       </div>
       <div class="actions">
-        <button type="button" class="btn dark" id="backBtn">العودة للرئيسية</button>
+        <button type="button" class="btn dark home-nav-button" id="backBtn">العودة للرئيسية</button>
       </div>
     </header>
 
@@ -83,22 +114,18 @@
       <h2>تعبئة / إظهار البيانات</h2>
       <form id="departmentMailForm" autocomplete="off">
         <input id="recordId" type="hidden" />
-        <div class="grid">
+        <div class="grid department-mail-form-grid">
           <div class="field">
-            <label for="mailNumber" class="required">رقم البريد</label>
-            <input id="mailNumber" type="text" inputmode="numeric" required />
-          </div>
-          <div class="field">
-            <label for="mailDate" class="required">تاريخ البريد</label>
+            <label for="mailDate">التاريخ</label>
             <div class="date-picker-wrap">
               <input id="mailDateDisplay" class="date-display-input" type="text" placeholder="yyyy/mm/dd" readonly />
-              <button type="button" class="date-picker-trigger" data-picker-id="mailDate" aria-label="اختيار تاريخ البريد"></button>
+              <button type="button" class="date-picker-trigger" data-picker-id="mailDate" aria-label="اختيار التاريخ"></button>
               <input id="mailDate" class="native-date-input" type="date" />
             </div>
           </div>
-          <div class="field full">
-            <label for="subject" class="required">الموضوع</label>
-            <input id="subject" type="text" required />
+          <div class="field">
+            <label for="mailWeekday">اليوم</label>
+            <input id="mailWeekday" type="text" readonly />
           </div>
           <div class="field">
             <label for="department" class="required">القسم</label>
@@ -126,58 +153,51 @@
       </form>
       <div id="statusLine" class="status-line"></div>
 
-      <section class="daily-scanner-panel" aria-labelledby="dailyScannerTitle">
-        <h3 id="dailyScannerTitle">المسح الضوئي لبريد الأقسام</h3>
-        <p>اختر سجلًا محفوظًا، ثم التقط صفحات المستند وحدّد زوايا الورقة. ستُجمع الصفحات في ملف PDF واحد باسم تلقائي.</p>
-        <div class="daily-scanner-actions">
-          <button type="button" class="btn primary" id="dailyScanCaptureBtn" disabled>التقاط / اختيار صفحة</button>
-          <button type="button" class="btn success" id="dailyScanAddBtn" disabled>إضافة الصفحة المحددة</button>
-          <button type="button" class="btn warning" id="dailyScanUndoBtn" disabled>حذف آخر صفحة</button>
-          <button type="button" class="btn success" id="dailyScanSaveBtn" disabled>إنشاء وحفظ PDF</button>
-          <button type="button" class="btn danger" id="dailyScanDeleteBtn" hidden>حذف PDF المحفوظ</button>
-        </div>
-        <input id="dailyScanInput" type="file" accept="image/*" capture="environment" hidden />
-        <p id="dailyScanCornersHint" hidden>اسحب الزوايا الخضراء لتحديد حدود الورقة، ثم أضف الصفحة.</p>
-        <canvas id="dailyScanCanvas" hidden aria-label="معاينة الصورة وحدود الورقة"></canvas>
-        <p id="dailyScanPageCount">صفحات PDF: 0</p>
-        <a id="dailyScanSavedFile" href="#" hidden></a>
-      </section>
-
-      <div class="doc-images-box">
-        <div class="doc-images-head">
-          <span>صور المستندات الرسمية</span>
-          <span id="docImageCount">0 / 0</span>
-        </div>
-        <div class="doc-images-view">
-          <button type="button" class="doc-images-nav" id="docImagePrevBtn" aria-label="الصورة السابقة">◀</button>
-          <div class="doc-images-frame">
-            <img id="docImagePreview" alt="صورة مستند" />
-            <div id="docImageEmpty">اختر سجلًا أولًا لعرض صور المستندات.</div>
-          </div>
-          <button type="button" class="doc-images-nav" id="docImageNextBtn" aria-label="الصورة التالية">▶</button>
-        </div>
-        <div class="doc-images-actions">
-          <button type="button" class="btn primary" id="docImageUploadBtn">تصوير/رفع مستند</button>
-          <input id="docImageInput" type="file" accept="image/*" capture="environment" hidden />
-        </div>
-      </div>
+      <div class="doc-images-box"></div>
     </section>
 
     <section class="panel">
       <h2>صندوق عرض البيانات</h2>
-      <div class="table-tools">
+      <div class="table-tools table-tools-search-refresh">
         <p id="countLabel">عدد السجلات: 0</p>
-        <input id="tableSearch" class="table-search" type="search" placeholder="بحث في السجلات" />
-        <button type="button" class="btn dark" id="refreshBtn">تحديث العرض</button>
+        <div class="table-search-tools department-mail-search-tools">
+          <div class="department-mail-filters">
+            <div class="field">
+              <label for="filterDepartment">القسم</label>
+              <select id="filterDepartment"><option value="">-- اختر --</option></select>
+            </div>
+            <div class="field">
+              <label for="filterSection">النوبة</label>
+              <select id="filterSection"><option value="">-- اختر --</option></select>
+            </div>
+          </div>
+          <button type="button" class="btn primary" id="refreshBtn">تحديث العرض</button>
+        </div>
+      </div>
+      <div class="date-range-tools">
+        <div class="field">
+          <label for="filterFromDate">من التاريخ</label>
+          <div class="date-picker-wrap">
+            <input id="filterFromDateDisplay" class="date-display-input" type="text" placeholder="yyyy/mm/dd" readonly />
+            <button type="button" class="date-picker-trigger" data-picker-id="filterFromDate" aria-label="اختيار من التاريخ"></button>
+            <input id="filterFromDate" class="native-date-input" type="date" />
+          </div>
+        </div>
+        <div class="field">
+          <label for="filterToDate">إلى التاريخ</label>
+          <div class="date-picker-wrap">
+            <input id="filterToDateDisplay" class="date-display-input" type="text" placeholder="yyyy/mm/dd" readonly />
+            <button type="button" class="date-picker-trigger" data-picker-id="filterToDate" aria-label="اختيار إلى التاريخ"></button>
+            <input id="filterToDate" class="native-date-input" type="date" />
+          </div>
+        </div>
       </div>
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>م</th>
-              <th>رقم البريد</th>
-              <th>تاريخ البريد</th>
-              <th>الموضوع</th>
+              <th class="sortable-id-header" aria-sort="none" style="cursor: pointer;">م</th>
+              <th>التاريخ</th>
               <th>القسم</th>
               <th>النوبة</th>
               <th>ملاحظات</th>
@@ -190,8 +210,8 @@
     </section>
   </main>
 
-  <script src="/record-photos.js"></script>
   <script src="/daily-scanner.js"></script>
+  <script src="/email-scanner.js"></script>
   <script>
     const authToken = sessionStorage.getItem('authToken');
     if (!authToken) window.location.href = '/';
@@ -215,10 +235,9 @@
 
     const form = document.getElementById('departmentMailForm');
     const recordIdInput = document.getElementById('recordId');
-    const mailNumberInput = document.getElementById('mailNumber');
     const mailDateDisplayInput = document.getElementById('mailDateDisplay');
     const mailDateInput = document.getElementById('mailDate');
-    const subjectInput = document.getElementById('subject');
+    const mailWeekdayInput = document.getElementById('mailWeekday');
     const departmentInput = document.getElementById('department');
     const sectionInput = document.getElementById('section');
     const notesInput = document.getElementById('notes');
@@ -226,7 +245,12 @@
     const userNameField = document.getElementById('userNameField');
     const rowsBody = document.getElementById('rows');
     const countLabel = document.getElementById('countLabel');
-    const tableSearch = document.getElementById('tableSearch');
+    const filterDepartmentInput = document.getElementById('filterDepartment');
+    const filterSectionInput = document.getElementById('filterSection');
+    const filterFromDateInput = document.getElementById('filterFromDate');
+    const filterToDateInput = document.getElementById('filterToDate');
+    const filterFromDateDisplayInput = document.getElementById('filterFromDateDisplay');
+    const filterToDateDisplayInput = document.getElementById('filterToDateDisplay');
     const statusLine = document.getElementById('statusLine');
     const addBtn = document.getElementById('addBtn');
     const updateBtn = document.getElementById('updateBtn');
@@ -237,22 +261,16 @@
     let allRecords = [];
     let departmentSections = [];
     let selectedRowId = null;
+    let idSortDirection = null;
     const currentRole = String(currentUser?.role || '').trim().toLowerCase();
     const editablePages = Array.isArray(currentUser?.editablePages) ? currentUser.editablePages : currentUser?.allowedPages;
-    const documentScanner = window.initDailyScanner({
+    const emailScanner = initEmailScanner({
       authToken,
+      moduleKey: 'departmentmail',
+      getRecordId: () => selectedRowId,
+      getApiBase: (record) => `/api/department-mail-scans/${encodeURIComponent(String(record.id))}`,
       canEdit: currentRole === 'admin'
         || (currentRole !== 'view' && Array.isArray(editablePages) && editablePages.includes('departmentMail')),
-      recordLabel: 'بريد الأقسام',
-      emptyMessage: 'اختر سجل بريد أقسام محفوظًا من الجدول لفتح ملف المسح.',
-      getRecordIdentity: (record) => String(record.ID || ''),
-      getApiBase: (record) => `/api/department-mail-scans/${encodeURIComponent(String(record.id))}`,
-      onStatus: showStatus
-    });
-    const recordPhotos = initRecordPhotos({
-      moduleKey: 'departmentmail',
-      authToken,
-      getRecordId: () => selectedRowId,
       onStatus: showStatus
     });
 
@@ -298,8 +316,25 @@
       return formatDate(value).replace(/\//g, '-');
     }
 
+    function setTodayDate() {
+      const today = new Date();
+      mailDateInput.value = `${today.getFullYear()}-${pad2(today.getMonth() + 1)}-${pad2(today.getDate())}`;
+      syncDateDisplay();
+    }
+
     function syncDateDisplay() {
       mailDateDisplayInput.value = formatDate(mailDateInput.value);
+      const selectedDate = mailDateInput.value
+        ? new Date(`${mailDateInput.value}T00:00:00`)
+        : null;
+      mailWeekdayInput.value = selectedDate && !Number.isNaN(selectedDate.getTime())
+        ? new Intl.DateTimeFormat('ar', { weekday: 'long' }).format(selectedDate)
+        : '';
+    }
+
+    function syncFilterDateDisplays() {
+      filterFromDateDisplayInput.value = formatDate(filterFromDateInput.value);
+      filterToDateDisplayInput.value = formatDate(filterToDateInput.value);
     }
 
     function getHeaders() {
@@ -321,10 +356,14 @@
       return data;
     }
 
-    function populateSelect(select, values, preferredValue = '') {
+    function populateSelect(select, values, preferredValue = '', emptyLabel = '-- اختر --') {
       const uniqueValues = [...new Set(values.map((value) => String(value || '').trim()).filter(Boolean))];
       if (preferredValue && !uniqueValues.includes(preferredValue)) uniqueValues.push(preferredValue);
-      select.innerHTML = '<option value="">-- اختر --</option>';
+      select.innerHTML = '';
+      const emptyOption = document.createElement('option');
+      emptyOption.value = '';
+      emptyOption.textContent = emptyLabel;
+      select.appendChild(emptyOption);
       uniqueValues.forEach((value) => {
         const option = document.createElement('option');
         option.value = value;
@@ -349,6 +388,27 @@
       );
     }
 
+    function populateFilterDepartments(preferredValue = '') {
+      populateSelect(
+        filterDepartmentInput,
+        departmentSections.map((item) => item.Department),
+        preferredValue,
+        '-- اختر --'
+      );
+    }
+
+    function populateFilterSections(preferredValue = '') {
+      const department = String(filterDepartmentInput.value || '').trim();
+      populateSelect(
+        filterSectionInput,
+        departmentSections
+          .filter((item) => !department || String(item.Department || '').trim() === department)
+          .map((item) => item.Section),
+        preferredValue,
+        '-- اختر --'
+      );
+    }
+
     async function loadDepartmentSections() {
       const data = await requestJson('/api/employees/department-sections', {
         headers: { Authorization: `Bearer ${authToken}` }
@@ -356,13 +416,17 @@
       departmentSections = Array.isArray(data) ? data : [];
       const currentDepartment = departmentInput.value;
       const currentSection = sectionInput.value;
+      const currentFilterDepartment = filterDepartmentInput.value;
+      const currentFilterSection = filterSectionInput.value;
       populateDepartments(currentDepartment);
       populateSections(currentSection);
+      populateFilterDepartments(currentFilterDepartment);
+      populateFilterSections(currentFilterSection);
     }
 
     function syncAdminFields() {
-      userNameInput.value = String(currentUser?.name || currentUser?.username || 'system');
-      if (userNameField) userNameField.style.display = isAdminUser() ? 'grid' : 'none';
+      userNameInput.value = String(currentUser?.username || 'system');
+      if (userNameField) userNameField.classList.toggle('admin-visible', isAdminUser());
       userNameColumnCells().forEach((cell) => {
         cell.style.display = isAdminUser() ? 'table-cell' : 'none';
       });
@@ -372,52 +436,56 @@
       form.reset();
       recordIdInput.value = '';
       selectedRowId = null;
+      setTodayDate();
       populateDepartments();
       populateSections();
-      syncDateDisplay();
       syncAdminFields();
-      recordPhotos.clear();
-      documentScanner.clear();
+      emailScanner.clear();
       rowsBody.querySelectorAll('tr').forEach((row) => row.classList.remove('selected'));
     }
 
     function loadRecord(record) {
       selectedRowId = Number(record.ID || 0) || null;
       recordIdInput.value = selectedRowId || '';
-      mailNumberInput.value = record.MailNumber || '';
       mailDateInput.value = toDateInput(record.MailDate);
-      subjectInput.value = record.Subject || '';
       populateDepartments(record.Department || '');
       populateSections(record.Section || '');
       notesInput.value = record.Notes || '';
-      userNameInput.value = record.UserName || currentUser?.name || currentUser?.username || '';
+      userNameInput.value = record.UserName || currentUser?.username || '';
       syncDateDisplay();
       rowsBody.querySelectorAll('tr').forEach((row) => {
         row.classList.toggle('selected', Number(row.dataset.id || 0) === selectedRowId);
       });
-      recordPhotos.load();
-      documentScanner.setRecord(record, 'DepartmentMail');
+      emailScanner.load();
     }
 
     function getVisibleRecords() {
-      const query = String(tableSearch.value || '').trim().toLowerCase();
-      if (!query) return allRecords;
-      return allRecords.filter((record) => [
-        record.MailNumber,
-        record.MailDate,
-        record.Subject,
-        record.Department,
-        record.Section,
-        record.Notes,
-        record.UserName
-      ].some((value) => String(value || '').toLowerCase().includes(query)));
+      const department = String(filterDepartmentInput.value || '').trim();
+      const section = String(filterSectionInput.value || '').trim();
+      const fromDate = filterFromDateInput.value;
+      const toDate = filterToDateInput.value;
+      return allRecords.filter((record) => {
+        if (department && String(record.Department || '').trim() !== department) return false;
+        if (section && String(record.Section || '').trim() !== section) return false;
+
+        const recordDate = toDateInput(record.MailDate);
+        if (fromDate && (!recordDate || recordDate < fromDate)) return false;
+        if (toDate && (!recordDate || recordDate > toDate)) return false;
+        return true;
+      });
     }
 
     function renderRows() {
-      const records = getVisibleRecords();
+      const visibleRecords = getVisibleRecords();
+      const records = idSortDirection
+        ? [...visibleRecords].sort((left, right) => {
+          const difference = (Number(left.ID) || 0) - (Number(right.ID) || 0);
+          return idSortDirection === 'desc' ? -difference : difference;
+        })
+        : visibleRecords;
       countLabel.textContent = `عدد السجلات: ${records.length}`;
       if (!records.length) {
-        rowsBody.innerHTML = `<tr><td colspan="${isAdminUser() ? 8 : 7}">لاتوجد بيانات حالياً.</td></tr>`;
+        rowsBody.innerHTML = `<tr><td colspan="${isAdminUser() ? 6 : 5}">لاتوجد بيانات حالياً.</td></tr>`;
         syncAdminFields();
         return;
       }
@@ -425,9 +493,7 @@
       rowsBody.innerHTML = records.map((record, index) => `
         <tr data-id="${Number(record.ID)}">
           <td class="mono">${index + 1}</td>
-          <td class="mono">${escapeHtml(record.MailNumber)}</td>
           <td class="mono">${escapeHtml(record.MailDate)}</td>
-          <td>${escapeHtml(record.Subject)}</td>
           <td>${escapeHtml(record.Department)}</td>
           <td>${escapeHtml(record.Section)}</td>
           <td>${escapeHtml(record.Notes)}</td>
@@ -444,6 +510,14 @@
       syncAdminFields();
     }
 
+    document.querySelector('.sortable-id-header').addEventListener('click', (event) => {
+      idSortDirection = idSortDirection === 'asc' ? 'desc' : 'asc';
+      const header = event.currentTarget;
+      header.textContent = `م ${idSortDirection === 'asc' ? '↑' : '↓'}`;
+      header.setAttribute('aria-sort', idSortDirection === 'asc' ? 'ascending' : 'descending');
+      renderRows();
+    });
+
     async function loadRecords() {
       const data = await requestJson(apiBase, {
         headers: { Authorization: `Bearer ${authToken}` }
@@ -454,21 +528,16 @@
 
     function collectPayload() {
       return {
-        MailNumber: String(mailNumberInput.value || '').trim(),
         MailDate: formatDate(mailDateInput.value),
-        Subject: String(subjectInput.value || '').trim(),
         Department: String(departmentInput.value || '').trim(),
         Section: String(sectionInput.value || '').trim(),
         Notes: String(notesInput.value || '').trim(),
-        UserName: String(userNameInput.value || currentUser?.name || currentUser?.username || 'system').trim()
+        UserName: String(userNameInput.value || currentUser?.username || 'system').trim()
       };
     }
 
     function validatePayload(payload) {
       const missing = [];
-      if (!payload.MailNumber) missing.push('رقم البريد');
-      if (!payload.MailDate) missing.push('تاريخ البريد');
-      if (!payload.Subject) missing.push('الموضوع');
       if (!payload.Department) missing.push('القسم');
       if (!payload.Section) missing.push('النوبة');
       if (!missing.length) return true;
@@ -485,9 +554,7 @@
         return;
       }
       const fields = [
-        ['رقم البريد', payload.MailNumber],
         ['تاريخ البريد', payload.MailDate],
-        ['الموضوع', payload.Subject],
         ['القسم', payload.Department],
         ['النوبة', payload.Section],
         ['ملاحظات', payload.Notes || '--']
@@ -568,7 +635,23 @@
 
     departmentInput.addEventListener('change', () => populateSections());
     mailDateInput.addEventListener('change', syncDateDisplay);
-    tableSearch.addEventListener('input', renderRows);
+    filterDepartmentInput.addEventListener('change', () => {
+      populateFilterSections();
+      renderRows();
+    });
+    filterSectionInput.addEventListener('change', renderRows);
+    [filterFromDateInput, filterToDateInput].forEach((input) => {
+      input.addEventListener('change', () => {
+        syncFilterDateDisplays();
+        renderRows();
+      });
+    });
+    document.querySelectorAll('.date-picker-trigger').forEach((button) => {
+      const pickerInput = document.getElementById(button.dataset.pickerId);
+      if (pickerInput) {
+        button.addEventListener('click', () => pickerInput.showPicker?.() || pickerInput.focus());
+      }
+    });
     document.getElementById('printBtn').addEventListener('click', printCurrentRecord);
     document.getElementById('refreshBtn').addEventListener('click', async () => {
       clearStatus();
@@ -585,6 +668,7 @@
     (async () => {
       try {
         syncAdminFields();
+        setTodayDate();
         await loadDepartmentSections();
         await loadRecords();
       } catch (error) {

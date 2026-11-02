@@ -5,6 +5,8 @@ const multer = require("multer");
 const { db, logSystem } = require("../database");
 const { isWithinDataScope } = require("../auth/dataScope");
 const { removeSync } = require("../utils/fsCompat");
+const { receivePdfScan, isPdfScanFile } = require("../services/pdfScanUpload");
+const { getEmailScanPath, ensureEmailScanDirectory } = require("../services/emailScanStorage");
 const router = express.Router();
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -16,8 +18,7 @@ const moduleConfig = {
   courses: { table: "Course", pageKey: "courses", pageName: "Course" },
   transfers: { table: "Transfer", pageKey: "transfers", pageName: "Transfer" },
   outgoing: { table: "OutgoingDocuments", pageKey: "outgoing", pageName: "Outgoing" },
-  incoming: { table: "IncomingDocuments", pageKey: "incoming", pageName: "Incoming" },
-  departmentmail: { table: "DepartmentMail", pageKey: "departmentMail", pageName: "DepartmentMail", scoped: true }
+  incoming: { table: "IncomingDocuments", pageKey: "incoming", pageName: "Incoming" }
 };
 function parseRecordId(rawValue) {
   const value = Number(rawValue || 0);
@@ -77,6 +78,100 @@ function getNextFileName(moduleKey, recordId) {
   const nextIndex = maxIndex + 1;
   return `${String(nextIndex).padStart(3, "0")}.jpg`;
 }
+
+async function authorizeEmailScan(req, res, method) {
+  const moduleKey = normalizeModule(req.params.module);
+  const recordId = parseRecordId(req.params.recordId);
+  const access = ensureAllowed(req, moduleKey, method);
+  if (!access.ok) {
+    res.status(access.status).json({ message: access.message });
+    return null;
+  }
+  if (!recordId) {
+    res.status(400).json({ message: "معرّف السجل غير صالح." });
+    return null;
+  }
+  if (!await ensureRecordExists(access.config, recordId, req.access)) {
+    res.status(404).json({ message: "السجل المطلوب غير موجود أو غير متاح ضمن نطاق صلاحيتك." });
+    return null;
+  }
+  return { moduleKey, recordId, config: access.config };
+}
+
+router.get("/email-scans/:module/:recordId/pdf", async (req, res) => {
+  const target = await authorizeEmailScan(req, res, "GET");
+  if (!target) return;
+  const filePath = getEmailScanPath(target.moduleKey, target.recordId);
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ message: "لا يوجد بريد إلكتروني ممسوح لهذا السجل." });
+  }
+
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", 'attachment; filename="email.pdf"');
+  const stream = fs.createReadStream(filePath);
+  stream.on("error", (error) => {
+    console.error(error);
+    if (!res.headersSent) res.status(500).json({ message: "تعذر قراءة ملف البريد الإلكتروني." });
+    else res.destroy(error);
+  });
+  return stream.pipe(res);
+});
+
+router.get("/email-scans/:module/:recordId", async (req, res) => {
+  const target = await authorizeEmailScan(req, res, "GET");
+  if (!target) return;
+  const filePath = getEmailScanPath(target.moduleKey, target.recordId);
+  return res.json({
+    exists: fs.existsSync(filePath),
+    fileName: fs.existsSync(filePath) ? "email.pdf" : ""
+  });
+});
+
+router.post("/email-scans/:module/:recordId", receivePdfScan, async (req, res) => {
+  const target = await authorizeEmailScan(req, res, "POST");
+  if (!target) return;
+  if (!isPdfScanFile(req.file)) {
+    return res.status(400).json({ message: "الملف المرفوع ليس ملف PDF صالحًا." });
+  }
+
+  const filePath = getEmailScanPath(target.moduleKey, target.recordId);
+  try {
+    ensureEmailScanDirectory(target.moduleKey, target.recordId);
+    fs.writeFileSync(filePath, req.file.buffer);
+    await logSystem({
+      userName: (req.user && req.user.username) || "system",
+      role: (req.user && req.user.role) || "",
+      action: "Upload",
+      page: target.config.pageName,
+      details: `Uploaded email scan PDF ${target.moduleKey}/${target.recordId}/email.pdf`
+    });
+    return res.json({ fileName: "email.pdf" });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "تعذر حفظ ملف البريد الإلكتروني." });
+  }
+});
+
+router.delete("/email-scans/:module/:recordId", async (req, res) => {
+  const target = await authorizeEmailScan(req, res, "DELETE");
+  if (!target) return;
+  const filePath = getEmailScanPath(target.moduleKey, target.recordId);
+  try {
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    await logSystem({
+      userName: (req.user && req.user.username) || "system",
+      role: (req.user && req.user.role) || "",
+      action: "Delete",
+      page: target.config.pageName,
+      details: `Deleted email scan PDF ${target.moduleKey}/${target.recordId}/email.pdf`
+    });
+    return res.json({ message: "تم حذف البريد الإلكتروني المحفوظ." });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "تعذر حذف ملف البريد الإلكتروني." });
+  }
+});
+
 router.get("/:module/:recordId", async (req, res) => {
   const moduleKey = normalizeModule(req.params.module);
   const recordId = parseRecordId(req.params.recordId);

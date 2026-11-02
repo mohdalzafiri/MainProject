@@ -1,5 +1,6 @@
 const express = require('express');
 const { db, logSystem, registerDatabaseInitializer } = require('../database');
+const { buildInsertStatement, buildUpdateStatement } = require('../utils/sqlStatementBuilders');
 
 const router = express.Router();
 const columns = ['EmpID', 'Name', 'Department', 'Section', 'Status', 'CourseName', 'CourseProvider', 'Startdate', 'Enddate', 'Days', 'Note', 'UserName'];
@@ -64,24 +65,6 @@ async function findDuplicateCourse(payload, excludeId = null) {
   return (await db.prepare(sql).get(...args));
 }
 
-function buildInsertStatement(payload) {
-  const keys = columns.filter((column) => Object.prototype.hasOwnProperty.call(payload, column));
-  if (!keys.length) return null;
-  return {
-    sql: `INSERT INTO Course (${keys.join(',')}) VALUES (${keys.map(() => '?').join(',')})`,
-    values: keys.map((key) => payload[key])
-  };
-}
-
-function buildUpdateStatement(payload, id) {
-  const keys = columns.filter((column) => Object.prototype.hasOwnProperty.call(payload, column));
-  if (!keys.length) return null;
-  return {
-    sql: `UPDATE Course SET ${keys.map((key) => `${key} = ?`).join(', ')} WHERE ID = ?`,
-    values: [...keys.map((key) => payload[key]), id]
-  };
-}
-
 registerDatabaseInitializer(ensureCourseTable);
 
 router.get('/', async (req, res) => {
@@ -105,7 +88,7 @@ router.post('/', async (req, res) => {
     return res.status(409).json({ message: 'لا يمكن إدخال نفس الدورة مرتين لنفس الموظف.' });
   }
 
-  const statement = buildInsertStatement(req.body);
+  const statement = buildInsertStatement('Course', columns, req.body);
   if (!statement) {
     return res.status(400).json({ message: 'البيانات المرسلة غير كافية' });
   }
@@ -126,7 +109,7 @@ router.put('/:id', async (req, res) => {
     return res.status(409).json({ message: 'لا يمكن تكرار نفس الدورة لنفس الموظف.' });
   }
 
-  const statement = buildUpdateStatement(req.body, id);
+  const statement = buildUpdateStatement('Course', columns, req.body, id);
   if (!statement) {
     return res.status(400).json({ message: 'البيانات المرسلة غير كافية' });
   }

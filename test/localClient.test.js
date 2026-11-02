@@ -55,8 +55,18 @@ test('serves local files and proxies API requests to the central server', async 
     assert.equal(departmentMailResponse.status, 200);
     const departmentMailHtml = await departmentMailResponse.text();
     assert.match(departmentMailHtml, /<title>بريد الأقسام والنوبات<\/title>/);
-    assert.match(departmentMailHtml, /id="dailyScanCanvas"/);
+    assert.match(departmentMailHtml, /class="doc-images-box"/);
+    assert.match(departmentMailHtml, /email-scanner\.js/);
     assert.match(departmentMailHtml, /department-mail-scans/);
+
+    const emailScannerResponse = await fetch(`${localUrl}/email-scanner.js`);
+    assert.equal(emailScannerResponse.status, 200);
+    const emailScannerScript = await emailScannerResponse.text();
+    assert.match(emailScannerScript, /email-scans/);
+    assert.match(emailScannerScript, /dailyScanCanvas/);
+    assert.match(emailScannerScript, /email-scanner-header/);
+    assert.match(emailScannerScript, /<p id="dailyScanPageCount">صفحات PDF: 0<\/p>/);
+    assert.match(emailScannerScript, /if \(message === emptyStatusMessage && !isError\) return/);
 
     const mobileDepartmentMailResponse = await fetch(`${localUrl}/mobile/department-mail.html`);
     assert.equal(mobileDepartmentMailResponse.status, 200);
@@ -74,12 +84,16 @@ test('serves local files and proxies API requests to the central server', async 
     const dailyHtml = await dailyResponse.text();
     assert.match(dailyHtml, /MainProjectStatusCatalog\.statuses/);
     assert.match(dailyHtml, /MainProjectStatusCatalog\.getAdjustedTimes/);
+    assert.doesNotMatch(dailyHtml, /onStatus:\s*showStatus/);
 
     const mobileDailyResponse = await fetch(`${localUrl}/mobile/daily.html`);
     assert.equal(mobileDailyResponse.status, 200);
     const mobileDailyHtml = await mobileDailyResponse.text();
+    assert.match(mobileDailyHtml, /width: var\(--ui-table-min-width\);\s*min-width: var\(--ui-table-min-width\)/);
+    assert.doesNotMatch(mobileDailyHtml, /width:\s*760px;\s*min-width:\s*760px/);
     assert.match(mobileDailyHtml, /MainProjectStatusCatalog\.statuses/);
     assert.match(mobileDailyHtml, /MainProjectStatusCatalog\.getAdjustedTimes/);
+    assert.doesNotMatch(mobileDailyHtml, /onStatus:\s*showStatus/);
 
     const statusCatalogResponse = await fetch(`${localUrl}/status-catalog.js`);
     assert.equal(statusCatalogResponse.status, 200);
@@ -91,6 +105,12 @@ test('serves local files and proxies API requests to the central server', async 
     assert.match(mobileProfileHtml, /id="profileRankSummary"/);
     assert.doesNotMatch(mobileProfileHtml, /id="profileRank"/);
     assert.match(mobileProfileHtml, /id="profileJobTitle"/);
+
+    const mobileDashboardResponse = await fetch(`${localUrl}/mobile-dashboard.html`);
+    assert.equal(mobileDashboardResponse.status, 200);
+    const mobileDashboardHtml = await mobileDashboardResponse.text();
+    assert.match(mobileDashboardHtml, /min-width:\s*768px\)\s*and\s*\(orientation:\s*portrait\)[\s\S]*?grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
+    assert.match(mobileDashboardHtml, /min-width:\s*768px\)\s*and\s*\(orientation:\s*landscape\)[\s\S]*?grid-template-columns:\s*repeat\(5,\s*minmax\(0,\s*1fr\)\)/);
 
     const faviconResponse = await fetch(`${localUrl}/favicon.ico`);
     assert.equal(faviconResponse.status, 200);

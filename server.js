@@ -5,9 +5,26 @@ const os = require('os');
 const path = require('path');
 const fs = require('fs');
 require('dotenv').config();
+const { performance } = require('perf_hooks');
+const {
+  flushOperationMetrics,
+  getThreshold,
+  logSlowOperation,
+  recordOperation
+} = require('./utils/performanceMetrics');
 
 const archiveRoutes = require('./routes/archive');
 const app = express();
+const slowRequestThresholdMs = getThreshold(process.env.SLOW_REQUEST_MS, 1000);
+const performanceSummaryTimer = setInterval(flushOperationMetrics, 5 * 60 * 1000);
+performanceSummaryTimer.unref();
+const staticAssetOptions = {
+  setHeaders(res, filePath) {
+    if (/\.(?:css|js|mjs|svg|woff2?|ttf|otf|png|jpe?g|webp|gif|ico)$/i.test(filePath)) {
+      res.setHeader('Cache-Control', 'public, max-age=300, stale-while-revalidate=60');
+    }
+  }
+};
 
 function getLanIps() {
   const nets = os.networkInterfaces();
@@ -57,6 +74,23 @@ app.use((req, res, next) => {
   }
   next();
 });
+app.use('/api', (req, res, next) => {
+  const startedAt = performance.now();
+  res.once('finish', () => {
+    const route = req.route && req.route.path;
+    const rootPath = String(req.path || '').split('/').filter(Boolean)[0] || 'root';
+    const routePath = route && route !== '/' ? route : '';
+    const label = `${req.method} /api/${rootPath}${routePath}`;
+    const durationMs = performance.now() - startedAt;
+    recordOperation('http', label, durationMs);
+    logSlowOperation('http', durationMs, slowRequestThresholdMs, {
+      method: req.method,
+      route: label,
+      status: res.statusCode
+    });
+  });
+  next();
+});
 
 app.get('/mobile', (req, res) => {
   res.redirect(302, '/mobile-dashboard.html');
@@ -66,7 +100,7 @@ app.get('/mobile/dashboard.html', (req, res) => {
   res.redirect(302, '/mobile-dashboard.html');
 });
 
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'), staticAssetOptions));
 app.use('/archive-files', express.static(archiveRoutes.archiveRoot || path.join(__dirname, 'Archive')));
 
 app.get('/force-list.html', (req, res) => {
@@ -89,11 +123,11 @@ app.get(/^\/mobile\/(.+)$/, (req, res, next) => {
   next();
 });
 
-app.use('/mobile', express.static(path.join(__dirname, 'mobile')));
+app.use('/mobile', express.static(path.join(__dirname, 'mobile'), staticAssetOptions));
 
 // Routes
 const apiRoutes = require('./routes');
-const { db, closeDatabase } = require('./database');
+const { db, closeDatabase, initializeDatabase } = require('./database');
 const { startDatabaseMaintenance, stopDatabaseMaintenance } = require('./services/databaseMaintenanceService');
 
 app.get('/api/health', (req, res) => {
@@ -115,13 +149,28 @@ app.get('/', (req, res) => {
 const PORT = process.env.PORT || 5000;
 const HOST = process.env.HOST || '0.0.0.0';
 
-const server = app.listen(PORT, HOST, () => {
-  console.log(`Server is running on ${HOST}:${PORT}`);
-  console.log(`Local URL: http://localhost:${PORT}`);
-  getLanIps().forEach((ip) => {
-    console.log(`LAN URL: http://${ip}:${PORT}`);
+let server;
+
+async function startServer() {
+  await initializeDatabase();
+  server = app.listen(PORT, HOST, () => {
+    console.log(`Server is running on ${HOST}:${PORT}`);
+    console.log(`Local URL: http://localhost:${PORT}`);
+    getLanIps().forEach((ip) => {
+      console.log(`LAN URL: http://${ip}:${PORT}`);
+    });
+    startDatabaseMaintenance();
   });
-  startDatabaseMaintenance();
+}
+
+startServer().catch(async (error) => {
+  console.error('Database initialization failed:', error);
+  try {
+    await closeDatabase();
+  } catch (closeError) {
+    console.error('Database close failed after initialization error:', closeError);
+  }
+  process.exitCode = 1;
 });
 
 let isShuttingDown = false;
@@ -130,6 +179,11 @@ function shutdown(signal) {
   if (isShuttingDown) return;
   isShuttingDown = true;
   console.log(`${signal} received; closing server and database.`);
+
+  if (!server) {
+    closeDatabase();
+    return;
+  }
 
   server.close(async () => {
     await stopDatabaseMaintenance();

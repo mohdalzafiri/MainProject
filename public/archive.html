@@ -135,7 +135,7 @@
 
     .folder-meta { margin: 0; color: var(--muted); font-size: .9rem; }
     .folder-arrow { color: var(--primary); font-size: 1.5rem; }
-    .folder-lock { color: #92400e; font-size: 1.1rem; margin-inline-start: 6px; }
+    .folder-lock { display: inline-block; width: 16px; height: 16px; color: #92400e; margin-inline-start: 6px; vertical-align: middle; fill: none; stroke: currentColor; stroke-width: 1.8; }
 
     .empty-state {
       text-align: center;
@@ -153,6 +153,7 @@
     }
   </style>
   <link rel="stylesheet" href="/layout-defaults.css" />
+  <script src="/app-theme.js"></script>
 </head>
 <body class="app-shell">
   <div class="page app-page">
@@ -162,7 +163,7 @@
         <p>اختر المجلد لعرض الملفات الرسمية المحفوظة داخله.</p>
       </div>
       <div class="top-actions">
-        <button class="btn secondary" type="button" id="backBtn">العودة إلى الرئيسية</button>
+        <button class="btn dark home-nav-button" type="button" id="backBtn">العودة للرئيسية</button>
       </div>
     </div>
 
@@ -222,7 +223,7 @@
         card.innerHTML = `
           <span class="folder-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7.5a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 10h18"/></svg></span>
           <div>
-            <h2 class="folder-name">${item.LabelAr}${item.KeyName === 'confidential-books' ? '<span class="folder-lock" aria-label="مجلد مقفل">🔒</span>' : ''}</h2>
+            <h2 class="folder-name">${item.LabelAr}${item.KeyName === 'confidential-books' ? '<svg class="folder-lock" role="img" aria-label="مجلد مقفل"><use href="/ui-icons.svg#lock"></use></svg>' : ''}</h2>
             <p class="folder-meta">${Number(item.FileCount || 0)} ملف · ${item.KeyName}</p>
           </div>
           <span class="folder-arrow" aria-hidden="true">‹</span>

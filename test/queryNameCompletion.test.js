@@ -6,15 +6,31 @@ function createInput(names) {
   const listeners = {};
   const input = {
     value: '',
-    addEventListener(type, handler) { listeners[type] = handler; }
+    addEventListener(type, handler) {
+      listeners[type] = listeners[type] || [];
+      listeners[type].push(handler);
+    },
+    dispatchEvent(event) {
+      (listeners[event.type] || []).forEach((handler) => handler(event));
+    }
   };
   const api = attachQueryNameCompletion(input, () => names, { document: null });
   return {
     input,
     api,
-    type(value) { input.value = value; listeners.input({}); },
-    key(key) { const event = { key, preventDefault() {} }; listeners.keydown(event); },
-    blur() { listeners.blur({}); }
+    type(value) {
+      input.value = value;
+      input.dispatchEvent({ type: 'input' });
+    },
+    search(value) {
+      input.value = value;
+      input.dispatchEvent({ type: 'search' });
+    },
+    key(key) {
+      const event = { key, preventDefault() {} };
+      input.dispatchEvent({ type: 'keydown', ...event });
+    },
+    blur() { input.dispatchEvent({ type: 'blur' }); }
   };
 }
 
@@ -28,6 +44,19 @@ test('list shrinks while typing and matches Arabic letter variants', () => {
   assert.deepEqual(api.getItems(), ['احمد سالم']);
   type('');
   assert.deepEqual(api.getItems(), []);
+});
+
+test('native search clear closes name suggestions', () => {
+  const { input, api, type, search } = createInput(['محمد سالم']);
+  let clearEvents = 0;
+  input.addEventListener('input', () => {
+    if (!input.value) clearEvents += 1;
+  });
+  type('محمد');
+  assert.deepEqual(api.getItems(), ['محمد سالم']);
+  search('');
+  assert.deepEqual(api.getItems(), []);
+  assert.equal(clearEvents, 1);
 });
 
 test('keyboard selection fills the field and closes the list', () => {

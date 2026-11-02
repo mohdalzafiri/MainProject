@@ -82,6 +82,7 @@
       word-break: normal;
       vertical-align: top;
     }
+    .employees-table .sortable-id-header { cursor: pointer; }
 
     .employees-table th:nth-child(1),
     .employees-table td:nth-child(1) { width: 5%; }
@@ -199,6 +200,7 @@
 
   </style>
   <link rel="stylesheet" href="/layout-defaults.css" />
+  <script src="/app-theme.js"></script>
   <script src="/role-access.js" defer></script>
 </head>
 <body class="app-shell">
@@ -209,7 +211,7 @@
         <p>إدارة بيانات الموظفين: إضافة، تعديل، حذف، طباعة، وعرض كامل السجلات.</p>
       </div>
       <div class="actions">
-        <button type="button" class="btn dark" id="backBtn">العودة للرئيسية</button>
+        <button type="button" class="btn dark home-nav-button" id="backBtn">العودة للرئيسية</button>
       </div>
     </section>
 
@@ -433,7 +435,7 @@
         <table class="employees-table">
           <thead>
             <tr>
-              <th>م</th>
+              <th class="sortable-id-header sortable-header" data-sort-key="id" aria-sort="none">م</th>
               <th>الرتبة</th>
               <th>اسم الموظف</th>
               <th>الرقم المدني</th>
@@ -441,8 +443,8 @@
               <th>القسم</th>
               <th>النوبة</th>
               <th>مقر العمل</th>
-              <th>تاريخ التعيين</th>
-              <th>تاريخ المباشرة</th>
+              <th class="sortable-header" data-sort-key="empDate" aria-sort="none" style="cursor: pointer;">تاريخ التعيين</th>
+              <th class="sortable-header" data-sort-key="startDate" aria-sort="none" style="cursor: pointer;">تاريخ المباشرة</th>
               <th>حالة الملف</th>
               <th>ملاحظات</th>
             </tr>
@@ -522,6 +524,7 @@
     let allEmployees = [];
     let departmentSectionRows = [];
     let dashboardUrlFilterActive = false;
+    let employeeSort = { key: null, direction: 'asc' };
 
     function normalizeFilterText(value) {
       return String(value || '')
@@ -1146,7 +1149,7 @@
         <div class="section-title">البيانات الأساسية</div>
         <table>
           <tr>
-            <td class="label">الاسم</td>
+            <td class="label">اسم الموظف</td>
             <td class="value">${valueOrDash(item.Name)}</td>
             <td class="label">الرقم المدني</td>
             <td class="value ltr">${valueOrDash(item.CivilID)}</td>
@@ -1294,9 +1297,8 @@
     function renderRows(items) {
       rowsBody.innerHTML = '';
       const activeTotal = allEmployees.filter((item) => String(item.Status || '').trim() === 'نشط').length;
-      renderMobileEmployeeCards(items);
-
       if (!Array.isArray(items) || items.length === 0) {
+        renderMobileEmployeeCards([]);
         rowsBody.innerHTML = '<tr><td colspan="12">لاتوجد بيانات حالياً.</td></tr>';
         const hasFilter = Boolean(tableFilterInput.value.trim());
         countLabel.textContent = hasFilter
@@ -1305,11 +1307,14 @@
         return;
       }
 
-      items.forEach((item) => {
+      const sortedItems = applyEmployeeSort(items);
+      renderMobileEmployeeCards(sortedItems);
+
+      sortedItems.forEach((item, index) => {
         const tr = document.createElement('tr');
         tr.dataset.id = item.ID;
         tr.innerHTML = `
-          <td class="mono">${item.ID ?? ''}</td>
+          <td class="mono">${index + 1}</td>
           <td>${item.Title ?? ''}</td>
           <td>${item.Name ?? ''}</td>
           <td>${item.CivilID ?? ''}</td>
@@ -1349,8 +1354,59 @@
         }
       }
 
-      renderMobileEmployeeCards(items);
+      renderMobileEmployeeCards(sortedItems);
     }
+
+    function applyEmployeeSort(items) {
+      const sortedItems = Array.isArray(items) ? [...items] : [];
+      if (!employeeSort.key) return sortedItems;
+
+      return sortedItems.sort((left, right) => {
+        let difference;
+        if (employeeSort.key === 'id') {
+          difference = (Number(left.ID) || 0) - (Number(right.ID) || 0);
+        } else {
+          const dateKey = employeeSort.key === 'empDate' ? 'Empdate' : 'Startdate';
+          const leftDate = parseFlexibleDate(left[dateKey]);
+          const rightDate = parseFlexibleDate(right[dateKey]);
+          if (!leftDate && !rightDate) return 0;
+          if (!leftDate) return 1;
+          if (!rightDate) return -1;
+          difference = leftDate.getTime() - rightDate.getTime();
+        }
+
+        return employeeSort.direction === 'desc' ? -difference : difference;
+      });
+    }
+
+    document.querySelectorAll('.sortable-header').forEach((header) => {
+      header.addEventListener('click', () => {
+        const key = header.dataset.sortKey;
+        if (employeeSort.key === key) {
+          employeeSort.direction = employeeSort.direction === 'asc' ? 'desc' : 'asc';
+        } else {
+          employeeSort.key = key;
+          employeeSort.direction = 'asc';
+        }
+
+        document.querySelectorAll('.sortable-header').forEach((sortableHeader) => {
+          const isActive = sortableHeader.dataset.sortKey === employeeSort.key;
+          const label = sortableHeader.dataset.sortKey === 'id'
+            ? 'م'
+            : sortableHeader.dataset.sortKey === 'empDate'
+              ? 'تاريخ التعيين'
+              : 'تاريخ المباشرة';
+          const marker = isActive ? (employeeSort.direction === 'asc' ? ' ↑' : ' ↓') : '';
+          sortableHeader.textContent = `${label}${marker}`;
+          sortableHeader.setAttribute(
+            'aria-sort',
+            isActive ? (employeeSort.direction === 'asc' ? 'ascending' : 'descending') : 'none'
+          );
+        });
+
+        applyTableFilter();
+      });
+    });
 
     function applyTableFilter() {
       const activeEmployees = allEmployees.filter((item) =>
@@ -1587,10 +1643,13 @@
       }
     });
 
-    tableFilterInput.addEventListener('input', () => {
+    function handleTableFilterInput() {
       dashboardUrlFilterActive = false;
       applyTableFilter();
-    });
+    }
+
+    tableFilterInput.addEventListener('input', handleTableFilterInput);
+    tableFilterInput.addEventListener('search', handleTableFilterInput);
 
     backBtn.addEventListener('click', () => {
       window.location.href = homeRoute;

@@ -110,6 +110,7 @@
 
   </style>
   <link rel="stylesheet" href="/layout-defaults.css" />
+  <script src="/app-theme.js"></script>
   <script src="/role-access.js" defer></script>
 </head>
 <body class="app-shell">
@@ -120,7 +121,7 @@
         <p>إدارة بيانات الموظفين: إضافة، تعديل، حذف، طباعة، وعرض كامل السجلات.</p>
       </div>
       <div class="actions">
-        <button type="button" class="btn dark" id="backBtn">العودة للرئيسية</button>
+        <button type="button" class="btn dark home-nav-button" id="backBtn">العودة للرئيسية</button>
       </div>
     </section>
 
@@ -353,8 +354,8 @@
               <th>النوبة</th>
               <th>الشعبة</th>
               <th>مقر العمل</th>
-              <th>تاريخ التعيين</th>
-              <th>تاريخ المباشرة</th>
+              <th class="sortable-header" data-sort-key="empDate" aria-sort="none" style="cursor: pointer;">تاريخ التعيين</th>
+              <th class="sortable-header" data-sort-key="startDate" aria-sort="none" style="cursor: pointer;">تاريخ المباشرة</th>
               <th>حالة الملف</th>
               <th>ملاحظات</th>
             </tr>
@@ -430,6 +431,7 @@
     let selectedId = null;
     let allEmployees = [];
     let departmentSectionRows = [];
+    let employeeSort = { key: null, direction: 'asc' };
 
     function showStatus(message, isError = false) {
       statusLine.className = `status-line show ${isError ? 'error' : 'ok'}`;
@@ -936,7 +938,7 @@
         <div class="section-title">البيانات الأساسية</div>
         <table>
           <tr>
-            <td class="label">الاسم</td>
+            <td class="label">اسم الموظف</td>
             <td class="value">${valueOrDash(item.Name)}</td>
             <td class="label">الرقم المدني</td>
             <td class="value ltr">${valueOrDash(item.CivilID)}</td>
@@ -1084,8 +1086,9 @@
     function renderRows(items) {
       rowsBody.innerHTML = '';
       const activeTotal = allEmployees.filter((item) => String(item.Status || '').trim() === 'نشط').length;
+      const sortedItems = applyEmployeeSort(items);
 
-      if (!Array.isArray(items) || items.length === 0) {
+      if (sortedItems.length === 0) {
         rowsBody.innerHTML = '<tr><td colspan="13">لاتوجد بيانات حالياً.</td></tr>';
         const hasFilter = Boolean(tableFilterInput.value.trim());
         countLabel.textContent = hasFilter
@@ -1094,7 +1097,7 @@
         return;
       }
 
-      items.forEach((item) => {
+      sortedItems.forEach((item) => {
         const tr = document.createElement('tr');
         tr.dataset.id = item.ID;
         tr.innerHTML = `
@@ -1135,6 +1138,48 @@
         }
       }
     }
+
+    function applyEmployeeSort(items) {
+      const sortedItems = Array.isArray(items) ? [...items] : [];
+      if (!employeeSort.key) return sortedItems;
+
+      return sortedItems.sort((left, right) => {
+        const dateKey = employeeSort.key === 'empDate' ? 'Empdate' : 'Startdate';
+        const leftDate = parseFlexibleDate(left[dateKey]);
+        const rightDate = parseFlexibleDate(right[dateKey]);
+        if (!leftDate && !rightDate) return 0;
+        if (!leftDate) return 1;
+        if (!rightDate) return -1;
+
+        const difference = leftDate.getTime() - rightDate.getTime();
+        return employeeSort.direction === 'desc' ? -difference : difference;
+      });
+    }
+
+    document.querySelectorAll('.sortable-header').forEach((header) => {
+      header.addEventListener('click', () => {
+        const key = header.dataset.sortKey;
+        if (employeeSort.key === key) {
+          employeeSort.direction = employeeSort.direction === 'asc' ? 'desc' : 'asc';
+        } else {
+          employeeSort.key = key;
+          employeeSort.direction = 'asc';
+        }
+
+        document.querySelectorAll('.sortable-header').forEach((sortableHeader) => {
+          const isActive = sortableHeader.dataset.sortKey === employeeSort.key;
+          const label = sortableHeader.dataset.sortKey === 'empDate' ? 'تاريخ التعيين' : 'تاريخ المباشرة';
+          const marker = isActive ? (employeeSort.direction === 'asc' ? ' ↑' : ' ↓') : '';
+          sortableHeader.textContent = `${label}${marker}`;
+          sortableHeader.setAttribute(
+            'aria-sort',
+            isActive ? (employeeSort.direction === 'asc' ? 'ascending' : 'descending') : 'none'
+          );
+        });
+
+        applyTableFilter();
+      });
+    });
 
     function applyTableFilter() {
       const activeEmployees = allEmployees.filter((item) =>
@@ -1371,6 +1416,7 @@
     tableFilterInput.addEventListener('input', () => {
       applyTableFilter();
     });
+    tableFilterInput.addEventListener('search', applyTableFilter);
 
     backBtn.addEventListener('click', () => {
       window.location.href = '/mobile-dashboard.html';

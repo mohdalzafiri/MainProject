@@ -16,15 +16,15 @@
     overlay.style.background = 'rgba(2, 6, 23, 0.92)';
     overlay.style.display = 'grid';
     overlay.style.placeItems = 'center';
-    overlay.style.padding = '16px';
+    overlay.style.padding = 'var(--ui-space-4, 16px)';
 
     const card = document.createElement('div');
     card.style.width = 'min(460px, 100%)';
-    card.style.borderRadius = '18px';
-    card.style.padding = '18px';
-    card.style.background = '#ffffff';
-    card.style.color = '#0f172a';
-    card.style.boxShadow = '0 20px 50px rgba(0,0,0,0.35)';
+    card.style.borderRadius = 'var(--ui-panel-radius, 18px)';
+    card.style.padding = 'var(--ui-panel-padding, 18px)';
+    card.style.background = 'var(--ui-surface, #ffffff)';
+    card.style.color = 'var(--ui-text, #0f172a)';
+    card.style.boxShadow = 'var(--ui-panel-shadow, 0 14px 35px rgba(15, 23, 42, 0.08))';
     card.style.textAlign = 'right';
     card.style.direction = 'rtl';
 
@@ -46,23 +46,23 @@
     const subtitle = document.createElement('p');
     subtitle.textContent = 'للاستمرار في استخدام الواجهة الرئيسية، يجب إضافة اختصار ' + options.appName + ' إلى شاشة الهاتف.';
     subtitle.style.margin = '0 0 12px';
-    subtitle.style.color = '#334155';
+    subtitle.style.color = 'var(--ui-muted, #64748b)';
     subtitle.style.lineHeight = '1.6';
 
     const status = document.createElement('div');
     status.style.minHeight = '24px';
     status.style.marginBottom = '12px';
     status.style.fontWeight = '700';
-    status.style.color = '#1e293b';
+    status.style.color = 'var(--ui-text, #0f172a)';
 
     const primaryBtn = document.createElement('button');
     primaryBtn.type = 'button';
     primaryBtn.textContent = 'إضافة الاختصار الآن';
     primaryBtn.style.width = '100%';
     primaryBtn.style.border = '0';
-    primaryBtn.style.borderRadius = '12px';
-    primaryBtn.style.padding = '12px';
-    primaryBtn.style.background = '#1d4ed8';
+    primaryBtn.style.borderRadius = 'var(--ui-btn-radius, 10px)';
+    primaryBtn.style.padding = 'var(--ui-btn-padding, 10px 16px)';
+    primaryBtn.style.background = 'var(--ui-primary, #1d4ed8)';
     primaryBtn.style.color = '#fff';
     primaryBtn.style.fontWeight = '700';
     primaryBtn.style.cursor = 'pointer';
@@ -71,22 +71,22 @@
     verifyBtn.type = 'button';
     verifyBtn.textContent = 'تحقق بعد الإضافة';
     verifyBtn.style.width = '100%';
-    verifyBtn.style.border = '1px solid #cbd5e1';
-    verifyBtn.style.borderRadius = '12px';
-    verifyBtn.style.padding = '10px';
+    verifyBtn.style.border = '1px solid var(--ui-border, #cbd5e1)';
+    verifyBtn.style.borderRadius = 'var(--ui-btn-radius, 10px)';
+    verifyBtn.style.padding = 'var(--ui-btn-padding, 10px 16px)';
     verifyBtn.style.marginTop = '8px';
-    verifyBtn.style.background = '#fff';
-    verifyBtn.style.color = '#0f172a';
+    verifyBtn.style.background = 'var(--ui-surface, #ffffff)';
+    verifyBtn.style.color = 'var(--ui-text, #0f172a)';
     verifyBtn.style.fontWeight = '700';
     verifyBtn.style.cursor = 'pointer';
 
     const iosHint = document.createElement('div');
     iosHint.style.marginTop = '10px';
     iosHint.style.padding = '10px';
-    iosHint.style.borderRadius = '10px';
-    iosHint.style.background = '#f8fafc';
-    iosHint.style.border = '1px solid #e2e8f0';
-    iosHint.style.color = '#334155';
+    iosHint.style.borderRadius = 'var(--ui-control-radius, 10px)';
+    iosHint.style.background = 'var(--ui-surface, #f8fafc)';
+    iosHint.style.border = '1px solid var(--ui-border, #e2e8f0)';
+    iosHint.style.color = 'var(--ui-muted, #64748b)';
     iosHint.style.fontSize = '13px';
     iosHint.style.lineHeight = '1.6';
     iosHint.style.display = 'none';

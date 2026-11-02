@@ -85,7 +85,7 @@ function translatePostgresSql(sql) {
     .replace(/\bdate\s*\(\s*([A-Za-z_][A-Za-z0-9_.]*)\s*\)/gi, "TO_DATE(LEFT($1::text, 10), 'YYYY-MM-DD')")
     .replace(/\bdatetime\s*\(\s*([A-Za-z_][A-Za-z0-9_.]*)\s*\)/gi, "TO_TIMESTAMP($1, 'YYYY-MM-DD HH24:MI:SS')")
     .replace(/strftime\s*\(\s*'%Y-%m'\s*,\s*'now'\s*\)/gi, "TO_CHAR(CURRENT_DATE, 'YYYY-MM')")
-    .replace(/strftime\s*\(\s*'%Y-%m'\s*,\s*([^\)]+)\)/gi, "TO_CHAR(TO_DATE($1, 'YYYY-MM-DD'), 'YYYY-MM')")
+    .replace(/strftime\s*\(\s*'%Y-%m'\s*,\s*([^)]+)\)/gi, "TO_CHAR(TO_DATE($1, 'YYYY-MM-DD'), 'YYYY-MM')")
     .replace(/"([A-Za-z_][A-Za-z0-9_]*)"/g, (_match, identifier) => `"${identifier.toLowerCase()}"`);
 
   translated = translateSqliteMaster(translated);

@@ -56,12 +56,6 @@
       transition: transform .18s ease, background .18s ease;
       text-decoration: none;
     }
-    .btn-icon,
-    .action-icon {
-      font-size: 1.05em;
-      line-height: 1;
-      flex: 0 0 auto;
-    }
     .btn:hover { transform: translateY(-1px); background: var(--primary-dark); }
     .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
     .panel {
@@ -329,6 +323,7 @@
     }
   </style>
   <link rel="stylesheet" href="/layout-defaults.css" />
+  <script src="/app-theme.js"></script>
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="icon" type="image/png" href="/images/logo.png?v=20261028" />
   <meta name="theme-color" content="#1d4ed8" />
@@ -343,29 +338,29 @@
         <p>لوحة التحكم الرئيسية مع أزرار الوصول وإحصائيات الإدارة.</p>
       </div>
       <div class="actions">
-        <button class="btn" id="logoutBtn" type="button"><span class="btn-icon" aria-hidden="true">🚪</span><span>تسجيل الخروج</span></button>
+        <button class="btn" id="logoutBtn" type="button"><svg class="btn-icon" aria-hidden="true"><use href="/ui-icons.svg#logout"></use></svg><span>تسجيل الخروج</span></button>
       </div>
     </div>
 
     <div class="panel buttons-grid">
-      <div class="action-item" id="employeesBtn"><span class="action-icon" aria-hidden="true">👥</span><span>الموظفين</span></div>
-      <a class="action-item" id="dailyBtn" href="/daily.html"><span class="action-icon" aria-hidden="true">🗓️</span><span>اليوميات</span></a>
-      <a class="action-item" id="queryBtn" href="/query.html"><span class="action-icon" aria-hidden="true">🔎</span><span>الاستعلام</span></a>
-      <a class="action-item" id="statisticsBtn" href="/statistics.html"><span class="action-icon" aria-hidden="true">📊</span><span>الاحصائيات</span></a>
-      <div class="action-item" id="holidaysBtn"><span class="action-icon" aria-hidden="true">🏖️</span><span>الاجازات</span></div>
-      <div class="action-item" id="reductionBtn"><span class="action-icon" aria-hidden="true">⏱️</span><span>تخفيف العمل</span></div>
-      <div class="action-item" id="coursesBtn"><span class="action-icon" aria-hidden="true">🎓</span><span>الدورات</span></div>
-      <div class="action-item" id="transfersBtn"><span class="action-icon" aria-hidden="true">🔄</span><span>التنقلات</span></div>
-      <div class="action-item admin-only" id="evaluationsBtn"><span class="action-icon" aria-hidden="true">⭐</span><span>تقييم الاداء</span></div>
-      <div class="action-item admin-only" id="adminFormsBtn"><span class="action-icon" aria-hidden="true">📝</span><span>النماذج الادارية</span></div>
-      <div class="action-item admin-only" id="systemLogBtn"><span class="action-icon" aria-hidden="true">📜</span><span>سجل النظام</span></div>
-      <div class="action-item admin-only" id="settingsBtn"><span class="action-icon" aria-hidden="true">⚙️</span><span>الاعدادات</span></div>
-      <a class="action-item" id="archiveBtn" href="/archive.html"><span class="action-icon" aria-hidden="true">🗂️</span><span>الأرشيف</span></a>
-      <div class="action-item" id="outsideAdminBtn"><span class="action-icon" aria-hidden="true">🏢</span><span>خارج الإدارة</span></div>
-      <a class="action-item" id="newPage1Btn" href="/outgoing.html"><span class="action-icon" aria-hidden="true">📤</span><span>الصادر</span></a>
-      <a class="action-item" id="newPage2Btn" href="/incoming.html"><span class="action-icon" aria-hidden="true">📥</span><span>الوارد</span></a>
-      <a class="action-item" id="departmentMailBtn" href="/department-mail.html"><span class="action-icon" aria-hidden="true">✉️</span><span>بريد الأقسام</span></a>
-      <a class="action-item" id="forceListBtn" href="/force-list.html"><span class="action-icon" aria-hidden="true">📋</span><span>كشف القوة</span></a>
+      <div class="action-item" id="employeesBtn"><svg class="action-icon" aria-hidden="true"><use href="/ui-icons.svg#users"></use></svg><span>الموظفين</span></div>
+      <a class="action-item" id="dailyBtn" href="/daily.html"><svg class="action-icon" aria-hidden="true"><use href="/ui-icons.svg#calendar"></use></svg><span>اليوميات</span></a>
+      <a class="action-item" id="queryBtn" href="/query.html"><svg class="action-icon" aria-hidden="true"><use href="/ui-icons.svg#search"></use></svg><span>الاستعلام</span></a>
+      <a class="action-item" id="statisticsBtn" href="/statistics.html"><svg class="action-icon" aria-hidden="true"><use href="/ui-icons.svg#chart"></use></svg><span>الاحصائيات</span></a>
+      <div class="action-item" id="holidaysBtn"><svg class="action-icon" aria-hidden="true"><use href="/ui-icons.svg#calendar"></use></svg><span>الاجازات</span></div>
+      <div class="action-item" id="reductionBtn"><svg class="action-icon" aria-hidden="true"><use href="/ui-icons.svg#clock"></use></svg><span>تخفيف العمل</span></div>
+      <div class="action-item" id="coursesBtn"><svg class="action-icon" aria-hidden="true"><use href="/ui-icons.svg#book"></use></svg><span>الدورات</span></div>
+      <div class="action-item" id="transfersBtn"><svg class="action-icon" aria-hidden="true"><use href="/ui-icons.svg#transfer"></use></svg><span>التنقلات</span></div>
+      <div class="action-item admin-only" id="evaluationsBtn"><svg class="action-icon" aria-hidden="true"><use href="/ui-icons.svg#star"></use></svg><span>تقييم الاداء</span></div>
+      <div class="action-item admin-only" id="adminFormsBtn"><svg class="action-icon" aria-hidden="true"><use href="/ui-icons.svg#file"></use></svg><span>النماذج الادارية</span></div>
+      <div class="action-item admin-only" id="systemLogBtn"><svg class="action-icon" aria-hidden="true"><use href="/ui-icons.svg#file"></use></svg><span>سجل النظام</span></div>
+      <div class="action-item admin-only" id="settingsBtn"><svg class="action-icon" aria-hidden="true"><use href="/ui-icons.svg#settings"></use></svg><span>الاعدادات</span></div>
+      <a class="action-item" id="archiveBtn" href="/archive.html"><svg class="action-icon" aria-hidden="true"><use href="/ui-icons.svg#folder"></use></svg><span>الأرشيف</span></a>
+      <div class="action-item" id="outsideAdminBtn"><svg class="action-icon" aria-hidden="true"><use href="/ui-icons.svg#building"></use></svg><span>خارج الإدارة</span></div>
+      <a class="action-item" id="newPage1Btn" href="/outgoing.html"><svg class="action-icon" aria-hidden="true"><use href="/ui-icons.svg#send"></use></svg><span>الصادر</span></a>
+      <a class="action-item" id="newPage2Btn" href="/incoming.html"><svg class="action-icon" aria-hidden="true"><use href="/ui-icons.svg#inbox"></use></svg><span>الوارد</span></a>
+      <a class="action-item" id="departmentMailBtn" href="/department-mail.html"><svg class="action-icon" aria-hidden="true"><use href="/ui-icons.svg#mail"></use></svg><span>بريد الأقسام</span></a>
+      <a class="action-item" id="forceListBtn" href="/force-list.html"><svg class="action-icon" aria-hidden="true"><use href="/ui-icons.svg#clipboard"></use></svg><span>كشف القوة</span></a>
     </div>
 
     <div class="summary-row">
@@ -435,7 +430,7 @@
           <table class="mini-table daily-summary-table">
             <thead>
               <tr>
-                <th>الاسم</th>
+                <th>اسم الموظف</th>
                 <th>الحالة</th>
                 <th>الفترة</th>
                 <th>الحضور</th>
@@ -456,7 +451,7 @@
           <table class="mini-table">
             <thead>
               <tr>
-                <th>الاسم</th>
+                <th>اسم الموظف</th>
                 <th>القسم</th>
                 <th>النوبة</th>
                 <th>نوع الاجازة</th>
@@ -890,7 +885,7 @@
 
     function formatActivityAction(item) {
       const action = String(item?.Action || '').trim();
-      return isMobileActivity(item) ? `📱 ${action}` : action;
+      return isMobileActivity(item) ? `${action} (الموبايل)` : action;
     }
 
     function renderRecentActivities(items) {
