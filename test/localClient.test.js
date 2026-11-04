@@ -75,9 +75,14 @@ test('serves local files and proxies API requests to the central server', async 
     const settingsResponse = await fetch(`${localUrl}/settings.html`);
     assert.equal(settingsResponse.status, 200);
     const settingsHtml = await settingsResponse.text();
-    assert.match(settingsHtml, /\{ key: 'departmentMail', label: 'بريد الأقسام' \}/);
+    assert.match(settingsHtml, /fetch\('\/dashboard\.html'/);
+    assert.match(settingsHtml, /fetch\('\/mobile-dashboard\.html'/);
     assert.match(settingsHtml, /grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
     assert.doesNotMatch(settingsHtml, /id="subSectionPermissions"/);
+
+    const dashboardResponse = await fetch(`${localUrl}/dashboard.html`);
+    assert.equal(dashboardResponse.status, 200);
+    assert.match(await dashboardResponse.text(), /data-page-key="departmentMail"/);
 
     const dailyResponse = await fetch(`${localUrl}/daily.html`);
     assert.equal(dailyResponse.status, 200);

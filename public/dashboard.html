@@ -263,6 +263,24 @@
       font-weight: 700;
       border-bottom: 1px solid rgba(30, 58, 138, 0.15);
     }
+    html.dark-mode body.app-shell .stat-block,
+    body.app-shell.dark-mode .stat-block,
+    html.dark-mode body.app-shell .document-summary-item,
+    body.app-shell.dark-mode .document-summary-item {
+      color: var(--ui-text);
+      background: #142238;
+      border-color: var(--ui-border);
+    }
+    html.dark-mode body.app-shell .log-type,
+    body.app-shell.dark-mode .log-type {
+      color: var(--ui-text);
+    }
+    html.dark-mode body.app-shell .group-row td,
+    body.app-shell.dark-mode .group-row td {
+      color: var(--ui-text);
+      background: #1d304a;
+      border-bottom-color: var(--ui-border);
+    }
     .log-time {
       display: inline-block;
       direction: ltr;
@@ -343,24 +361,24 @@
     </div>
 
     <div class="panel buttons-grid">
-      <div class="action-item" id="employeesBtn"><svg class="action-icon" aria-hidden="true"><use href="/ui-icons.svg#users"></use></svg><span>الموظفين</span></div>
-      <a class="action-item" id="dailyBtn" href="/daily.html"><svg class="action-icon" aria-hidden="true"><use href="/ui-icons.svg#calendar"></use></svg><span>اليوميات</span></a>
-      <a class="action-item" id="queryBtn" href="/query.html"><svg class="action-icon" aria-hidden="true"><use href="/ui-icons.svg#search"></use></svg><span>الاستعلام</span></a>
-      <a class="action-item" id="statisticsBtn" href="/statistics.html"><svg class="action-icon" aria-hidden="true"><use href="/ui-icons.svg#chart"></use></svg><span>الاحصائيات</span></a>
-      <div class="action-item" id="holidaysBtn"><svg class="action-icon" aria-hidden="true"><use href="/ui-icons.svg#calendar"></use></svg><span>الاجازات</span></div>
-      <div class="action-item" id="reductionBtn"><svg class="action-icon" aria-hidden="true"><use href="/ui-icons.svg#clock"></use></svg><span>تخفيف العمل</span></div>
-      <div class="action-item" id="coursesBtn"><svg class="action-icon" aria-hidden="true"><use href="/ui-icons.svg#book"></use></svg><span>الدورات</span></div>
-      <div class="action-item" id="transfersBtn"><svg class="action-icon" aria-hidden="true"><use href="/ui-icons.svg#transfer"></use></svg><span>التنقلات</span></div>
-      <div class="action-item admin-only" id="evaluationsBtn"><svg class="action-icon" aria-hidden="true"><use href="/ui-icons.svg#star"></use></svg><span>تقييم الاداء</span></div>
-      <div class="action-item admin-only" id="adminFormsBtn"><svg class="action-icon" aria-hidden="true"><use href="/ui-icons.svg#file"></use></svg><span>النماذج الادارية</span></div>
-      <div class="action-item admin-only" id="systemLogBtn"><svg class="action-icon" aria-hidden="true"><use href="/ui-icons.svg#file"></use></svg><span>سجل النظام</span></div>
-      <div class="action-item admin-only" id="settingsBtn"><svg class="action-icon" aria-hidden="true"><use href="/ui-icons.svg#settings"></use></svg><span>الاعدادات</span></div>
-      <a class="action-item" id="archiveBtn" href="/archive.html"><svg class="action-icon" aria-hidden="true"><use href="/ui-icons.svg#folder"></use></svg><span>الأرشيف</span></a>
-      <div class="action-item" id="outsideAdminBtn"><svg class="action-icon" aria-hidden="true"><use href="/ui-icons.svg#building"></use></svg><span>خارج الإدارة</span></div>
-      <a class="action-item" id="newPage1Btn" href="/outgoing.html"><svg class="action-icon" aria-hidden="true"><use href="/ui-icons.svg#send"></use></svg><span>الصادر</span></a>
-      <a class="action-item" id="newPage2Btn" href="/incoming.html"><svg class="action-icon" aria-hidden="true"><use href="/ui-icons.svg#inbox"></use></svg><span>الوارد</span></a>
-      <a class="action-item" id="departmentMailBtn" href="/department-mail.html"><svg class="action-icon" aria-hidden="true"><use href="/ui-icons.svg#mail"></use></svg><span>بريد الأقسام</span></a>
-      <a class="action-item" id="forceListBtn" href="/force-list.html"><svg class="action-icon" aria-hidden="true"><use href="/ui-icons.svg#clipboard"></use></svg><span>كشف القوة</span></a>
+      <div class="action-item" id="employeesBtn" data-page-key="employees"><svg class="action-icon" aria-hidden="true"><use href="/ui-icons.svg#users"></use></svg><span>الموظفين</span></div>
+      <a class="action-item" id="dailyBtn" href="/daily.html" data-page-key="daily"><svg class="action-icon" aria-hidden="true"><use href="/ui-icons.svg#calendar"></use></svg><span>اليوميات</span></a>
+      <a class="action-item" id="queryBtn" href="/query.html" data-page-key="query"><svg class="action-icon" aria-hidden="true"><use href="/ui-icons.svg#search"></use></svg><span>الاستعلام</span></a>
+      <a class="action-item" id="statisticsBtn" href="/statistics.html" data-page-key="statistics"><svg class="action-icon" aria-hidden="true"><use href="/ui-icons.svg#chart"></use></svg><span>الاحصائيات</span></a>
+      <div class="action-item" id="holidaysBtn" data-page-key="holidays"><svg class="action-icon" aria-hidden="true"><use href="/ui-icons.svg#calendar"></use></svg><span>الاجازات</span></div>
+      <div class="action-item" id="reductionBtn" data-page-key="reduction"><svg class="action-icon" aria-hidden="true"><use href="/ui-icons.svg#clock"></use></svg><span>تخفيف العمل</span></div>
+      <div class="action-item" id="coursesBtn" data-page-key="courses"><svg class="action-icon" aria-hidden="true"><use href="/ui-icons.svg#book"></use></svg><span>الدورات</span></div>
+      <div class="action-item" id="transfersBtn" data-page-key="transfers"><svg class="action-icon" aria-hidden="true"><use href="/ui-icons.svg#transfer"></use></svg><span>التنقلات</span></div>
+      <div class="action-item admin-only" id="evaluationsBtn" data-page-key="evaluations"><svg class="action-icon" aria-hidden="true"><use href="/ui-icons.svg#star"></use></svg><span>تقييم الاداء</span></div>
+      <div class="action-item admin-only" id="adminFormsBtn" data-page-key="administrative"><svg class="action-icon" aria-hidden="true"><use href="/ui-icons.svg#file"></use></svg><span>النماذج الادارية</span></div>
+      <div class="action-item admin-only" id="systemLogBtn" data-page-key="systemLog"><svg class="action-icon" aria-hidden="true"><use href="/ui-icons.svg#file"></use></svg><span>سجل النظام</span></div>
+      <div class="action-item admin-only" id="settingsBtn" data-page-key="settings"><svg class="action-icon" aria-hidden="true"><use href="/ui-icons.svg#settings"></use></svg><span>الاعدادات</span></div>
+      <a class="action-item" id="archiveBtn" href="/archive.html" data-page-key="archive"><svg class="action-icon" aria-hidden="true"><use href="/ui-icons.svg#folder"></use></svg><span>الأرشيف</span></a>
+      <div class="action-item" id="outsideAdminBtn" data-page-key="outsideEmployees"><svg class="action-icon" aria-hidden="true"><use href="/ui-icons.svg#building"></use></svg><span>خارج الإدارة</span></div>
+      <a class="action-item" id="newPage1Btn" href="/outgoing.html" data-page-key="outgoing"><svg class="action-icon" aria-hidden="true"><use href="/ui-icons.svg#send"></use></svg><span>الصادر</span></a>
+      <a class="action-item" id="newPage2Btn" href="/incoming.html" data-page-key="incoming"><svg class="action-icon" aria-hidden="true"><use href="/ui-icons.svg#inbox"></use></svg><span>الوارد</span></a>
+      <a class="action-item" id="departmentMailBtn" href="/department-mail.html" data-page-key="departmentMail"><svg class="action-icon" aria-hidden="true"><use href="/ui-icons.svg#mail"></use></svg><span>بريد الأقسام</span></a>
+      <a class="action-item" id="forceListBtn" href="/force-list.html" data-page-key="forceList"><svg class="action-icon" aria-hidden="true"><use href="/ui-icons.svg#clipboard"></use></svg><span>كشف القوة</span></a>
     </div>
 
     <div class="summary-row">
@@ -504,7 +522,6 @@
     const outsideAdminBtn = document.getElementById('outsideAdminBtn');
     const holidaysBtn = document.getElementById('holidaysBtn');
     const reductionBtn = document.getElementById('reductionBtn');
-    const queryBtn = document.getElementById('queryBtn');
     const statisticsBtn = document.getElementById('statisticsBtn');
     const coursesBtn = document.getElementById('coursesBtn');
     const transfersBtn = document.getElementById('transfersBtn');
@@ -516,9 +533,6 @@
     const adminFormsBtn = document.getElementById('adminFormsBtn');
     const systemLogBtn = document.getElementById('systemLogBtn');
     const settingsBtn = document.getElementById('settingsBtn');
-    const outgoingBtn = document.getElementById('newPage1Btn');
-    const incomingBtn = document.getElementById('newPage2Btn');
-    const departmentMailBtn = document.getElementById('departmentMailBtn');
     const todaySummaryRows = document.getElementById('todaySummaryRows');
     const leaveDailySummaryRows = document.getElementById('leaveDailySummaryRows');
     const authToken = sessionStorage.getItem('authToken');
@@ -557,32 +571,10 @@
 
     const currentRole = String(currentUser?.role || '').trim().toLowerCase();
     const isAdminUser = currentRole === 'admin';
-    const defaultAllowedPages = ['employees', 'daily', 'query', 'statistics', 'evaluations', 'holidays', 'reduction', 'courses', 'transfers', 'outsideEmployees', 'outgoing', 'incoming', 'departmentMail', 'archive', 'forceList'];
     const allowedPages = Array.isArray(currentUser?.allowedPages) && currentUser.allowedPages.length
       ? currentUser.allowedPages
       : [];
     const allowedPagesSet = new Set(allowedPages);
-
-    const interfaceButtons = {
-      employees: employeesBtn,
-      daily: document.getElementById('dailyBtn'),
-      query: queryBtn,
-      statistics: statisticsBtn,
-      holidays: holidaysBtn,
-      reduction: reductionBtn,
-      courses: coursesBtn,
-      transfers: transfersBtn,
-      outsideEmployees: outsideAdminBtn,
-      outgoing: outgoingBtn,
-      incoming: incomingBtn,
-      departmentMail: departmentMailBtn,
-      archive: document.getElementById('archiveBtn'),
-      forceList: document.getElementById('forceListBtn'),
-      evaluations: evaluationsBtn,
-      administrative: adminFormsBtn,
-      systemLog: systemLogBtn,
-      settings: settingsBtn
-    };
 
     const totalCoursesCard = document.getElementById('totalCoursesCard');
     if (totalCoursesCard) {
@@ -590,16 +582,8 @@
     }
 
     if (!isAdminUser) {
-      ['administrative', 'systemLog', 'settings'].forEach((key) => {
-        const button = interfaceButtons[key];
-        if (button) {
-          button.style.display = 'none';
-        }
-      });
-
-      defaultAllowedPages.forEach((key) => {
-        const button = interfaceButtons[key];
-        if (button && !allowedPagesSet.has(key)) {
+      document.querySelectorAll('[data-page-key]').forEach((button) => {
+        if (!allowedPagesSet.has(String(button.dataset.pageKey || ''))) {
           button.style.display = 'none';
         }
       });

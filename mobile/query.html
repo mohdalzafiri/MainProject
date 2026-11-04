@@ -106,7 +106,7 @@
       padding: 6px 12px;
       border: 1px solid var(--ui-border);
       border-radius: 14px;
-      background: #fff;
+      background: var(--ui-surface);
       margin-bottom: 10px;
       overflow-x: visible;
       box-sizing: border-box;
@@ -120,7 +120,7 @@
       flex-direction: row;
       white-space: nowrap;
       font-size: 14px;
-      color: #0f172a;
+      color: var(--ui-text);
       user-select: none;
       cursor: pointer;
       width: 100%;
@@ -131,7 +131,7 @@
       padding: 8px 4px;
       text-align: right;
       border: 0;
-      border-bottom: 1px solid #e2e8f0;
+      border-bottom: 1px solid var(--ui-border);
       border-radius: 0;
       background: transparent;
       box-sizing: border-box;
@@ -176,9 +176,9 @@
       width: 100%;
       height: 34px;
       margin: 6px 0 0;
-      border: 1px solid #cbd5e1;
-      background: #fff;
-      color: #0f172a;
+      border: 1px solid var(--ui-border);
+      background: var(--ui-surface);
+      color: var(--ui-text);
       border-radius: 8px;
       font-size: 19px;
       line-height: 1;
@@ -187,7 +187,7 @@
     }
 
     .status-filter-refresh:hover {
-      background: #eef2ff;
+      background: var(--ui-surface-hover);
     }
 
     .table-wrap table {
@@ -569,10 +569,7 @@
       monthlyUsageByEmployee = QueryAllowanceSummary.createUsageMap(monthlyData);
 
       const rows = Array.isArray(data) ? data : [];
-      currentRows = rows.filter((item) => {
-        const haystack = normalizeText([item.Status, item.Type, item.Note].filter(Boolean).join(' '));
-        return selectedStatuses.some((entry) => entry.terms.some((term) => haystack.includes(normalizeText(term))));
-      });
+      currentRows = rows;
       renderRows(getFilteredRows());
       setSearchMessage('');
     }

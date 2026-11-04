@@ -36,6 +36,7 @@ function normalizePageKey(value) {
   if (!key) return '';
 
   const normalized = key.toLowerCase().replace(/[\s_-]+/g, '');
+  if (normalized === PAGE_EDITS_CONFIGURED.toLowerCase()) return '';
   const aliases = {
     employees: 'employees',
     daily: 'daily',
@@ -61,7 +62,10 @@ function normalizePageKey(value) {
     dashboard: 'dashboard'
   };
 
-  return aliases[normalized] || '';
+  if (aliases[normalized]) return aliases[normalized];
+
+  if (!/^[a-z][a-zA-Z0-9]*(?:[-_][a-zA-Z0-9]+)*$/.test(key)) return '';
+  return key.replace(/[-_]([a-zA-Z0-9])/g, (_, character) => character.toUpperCase());
 }
 
 function parseStoredTokens(value) {
@@ -101,14 +105,14 @@ function parseStoredPagePermissions(value) {
 
     if (token.startsWith(EDIT_PERMISSION_PREFIX)) {
       const pageKey = normalizePageKey(token.slice(EDIT_PERMISSION_PREFIX.length));
-      if (pageKey && CUSTOMIZABLE_NON_ADMIN_PAGE_KEYS.includes(pageKey)) {
+      if (pageKey && !ADMIN_ONLY_PAGE_KEYS.includes(pageKey) && pageKey !== 'dashboard') {
         editablePages.push(pageKey);
       }
       return;
     }
 
     const pageKey = normalizePageKey(token);
-    if (pageKey && CUSTOMIZABLE_NON_ADMIN_PAGE_KEYS.includes(pageKey)) {
+    if (pageKey && !ADMIN_ONLY_PAGE_KEYS.includes(pageKey) && pageKey !== 'dashboard') {
       allowedPages.push(pageKey);
     }
   });
@@ -135,7 +139,7 @@ function getEffectiveAllowedPages(isAdmin, allowedPages) {
   }
 
   const parsed = parseAllowedPages(allowedPages);
-  return [...new Set(parsed.filter((key) => CUSTOMIZABLE_NON_ADMIN_PAGE_KEYS.includes(key)))];
+  return [...new Set(parsed)];
 }
 
 function getEffectiveEditablePages(isAdmin, allowedPages, isViewOnly = false) {
@@ -151,8 +155,7 @@ function getEffectiveEditablePages(isAdmin, allowedPages, isViewOnly = false) {
 }
 
 function serializeAllowedPages(allowedPages) {
-  const normalized = parseAllowedPages(allowedPages).filter((key) => CUSTOMIZABLE_NON_ADMIN_PAGE_KEYS.includes(key));
-  return JSON.stringify([...new Set(normalized)]);
+  return JSON.stringify(getEffectiveAllowedPages(false, allowedPages));
 }
 
 function serializePagePermissions(allowedPages, editablePages) {

@@ -39,9 +39,9 @@ function attachQueryNameCompletion(input, getNames, options = {}) {
       style.id = 'nameSuggestStyle';
       style.textContent = `
         .name-suggest-host { position: relative; }
-        .name-suggest-list { position: absolute; top: 100%; right: 0; left: 0; z-index: 50; max-height: 260px; overflow-y: auto; margin: 4px 0 0; padding: 4px 0; list-style: none; background: #fff; border: 1px solid #cbd5e1; border-radius: 8px; box-shadow: 0 8px 20px rgba(15, 23, 42, .15); }
+        .name-suggest-list { position: absolute; top: 100%; right: 0; left: 0; z-index: 50; max-height: 260px; overflow-y: auto; margin: 4px 0 0; padding: 4px 0; list-style: none; color: var(--ui-text, #0f172a); background: var(--ui-surface, #fff); border: 1px solid var(--ui-border, #cbd5e1); border-radius: 8px; box-shadow: 0 8px 20px rgba(15, 23, 42, .15); }
         .name-suggest-list li { padding: 8px 12px; cursor: pointer; text-align: right; }
-        .name-suggest-list li:hover, .name-suggest-list li.active { background: #e8f0fe; }
+        .name-suggest-list li:hover, .name-suggest-list li.active { background: var(--ui-surface-hover, #e8f0fe); }
       `;
       doc.head.appendChild(style);
     }

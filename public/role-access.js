@@ -55,18 +55,6 @@
     departmentMail: 'بطاقة بريد القسم'
   };
 
-  const writeFormIds = new Set([
-    'employeeForm',
-    'dailyForm',
-    'holidayForm',
-    'reductionForm',
-    'courseForm',
-    'transferForm',
-    'outgoingForm',
-    'incomingForm',
-    'departmentMailForm'
-  ]);
-
   function getControlValue(cell) {
     const control = cell.querySelector('input, select, textarea');
     if (!control) return String(cell.textContent || '').replace(/\s+/g, ' ').trim();
@@ -156,12 +144,6 @@
   function enableViewOnlyPresentation(currentPageKey, writeControlSelectors) {
     document.body.classList.add('view-only');
 
-    document.querySelectorAll('form').forEach((form) => {
-      if (!writeFormIds.has(form.id)) return;
-      const panel = form.closest('.panel');
-      if (panel) panel.classList.add('view-only-write-panel');
-    });
-
     const hideWriteControls = (root = document) => {
       root.querySelectorAll(writeControlSelectors.join(',')).forEach((control) => {
         control.hidden = true;
@@ -226,7 +208,8 @@
       '/force-list.html': 'forceList'
     };
     const normalizedPath = window.location.pathname.replace(/^\/mobile/, '');
-    const currentPageKey = pageKeyByPath[normalizedPath] || '';
+    const currentPageKey = pageKeyByPath[normalizedPath]
+      || String(document.body.dataset.pageKey || '').trim();
     const isMobilePage = window.location.pathname.startsWith('/mobile/')
       || sessionStorage.getItem('uiMode') === 'mobile';
     const homeRoute = isMobilePage ? '/mobile-dashboard.html' : '/dashboard.html';

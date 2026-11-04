@@ -44,10 +44,10 @@
     .folder-card p { margin: 0; color: var(--muted); font-size: .85rem; }
     .folder-card > span:last-child { color: var(--primary); font-size: 1.4rem; }
     .archive-card { position: relative; overflow: hidden; background: var(--card); border: 1px solid rgba(15,23,42,.08); border-radius: 8px; box-shadow: var(--shadow); }
-    .delete-force-list-btn { position: absolute; top: 10px; right: 10px; z-index: 2; width: 38px; height: 38px; display: grid; place-items: center; padding: 0; border: 1px solid #fecaca; border-radius: 50%; color: #dc2626; background: rgba(255,255,255,.96); cursor: pointer; box-shadow: 0 4px 12px rgba(127,29,29,.2); }
-    .delete-force-list-btn:hover { color: #fff; background: #dc2626; border-color: #dc2626; }
-    .delete-force-list-btn:disabled { opacity: .6; cursor: wait; }
-    .delete-force-list-btn svg { width: 20px; height: 20px; pointer-events: none; }
+    .delete-archive-record-btn { position: absolute; top: 10px; right: 10px; z-index: 2; width: 38px; height: 38px; display: grid; place-items: center; padding: 0; border: 1px solid #fecaca; border-radius: 50%; color: #dc2626; background: rgba(255,255,255,.96); cursor: pointer; box-shadow: 0 4px 12px rgba(127,29,29,.2); }
+    .delete-archive-record-btn:hover { color: #fff; background: #dc2626; border-color: #dc2626; }
+    .delete-archive-record-btn:disabled { opacity: .6; cursor: wait; }
+    .delete-archive-record-btn svg { width: 20px; height: 20px; pointer-events: none; }
     .thumb { height: 210px; display: grid; place-items: center; overflow: hidden; background: #eef2f7; border-bottom: 1px solid var(--border); }
     .thumb img, .thumb object, .thumb iframe { width: 100%; height: 100%; object-fit: contain; border: 0; pointer-events: none; background: #fff; }
     .file-placeholder { display: grid; place-items: center; gap: 8px; color: #475569; font-weight: 700; }
@@ -126,14 +126,15 @@
       }
     }
 
-    async function deleteForceList(item, button) {
-      const fileName = String(item.FileName || 'كشف القوة').trim();
+    async function deleteArchiveRecord(item, button) {
+      const fileName = String(item.FileName || (isForceListPage ? 'كشف القوة' : 'ملف الأرشيف')).trim();
       if (!window.confirm(`هل أنت متأكد من حذف ${fileName}؟`)) return;
 
       button.disabled = true;
       setError('');
       try {
-        const response = await fetch(`/api/archive/force-list/${encodeURIComponent(item.ID)}`, {
+        const category = String(item.Category || categoryKey);
+        const response = await fetch(`/api/archive/records/${encodeURIComponent(category)}/${encodeURIComponent(item.ID)}`, {
           method: 'DELETE',
           headers: { Authorization: `Bearer ${authToken}` }
         });
@@ -145,21 +146,21 @@
 
         const payload = await response.json().catch(() => ({}));
         if (!response.ok) {
-          throw new Error(payload.message || 'تعذر حذف كشف القوة.');
+          throw new Error(payload.message || 'تعذر حذف ملف الأرشيف.');
         }
 
         records = records.filter((record) => Number(record.ID) !== Number(item.ID));
         renderFiles();
-        setSuccess(payload.message || 'تم حذف كشف القوة بنجاح.');
+        setSuccess(payload.message || 'تم حذف الملف بنجاح.');
       } catch (error) {
         button.disabled = false;
-        setError(error.message || 'تعذر حذف كشف القوة.');
+        setError(error.message || 'تعذر حذف الملف.');
       }
     }
 
     const currentUser = parseJwtPayload(authToken);
     const currentRole = String(currentUser?.role || '').toLowerCase();
-    const canDeleteForceList = currentRole === 'admin';
+    const canDeleteArchiveFiles = currentRole === 'admin';
     const canViewConfidentialBooks = String(currentUser?.role || '').toLowerCase() === 'admin'
       || (Array.isArray(currentUser?.allowedPages) && currentUser.allowedPages.includes('confidentialBooks'));
     const isConfidentialAccessDenied = categoryKey === 'confidential-books' && !canViewConfidentialBooks;
@@ -240,8 +241,8 @@
         const printableExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'pdf', 'docx', 'xlsx', 'txt', 'csv'];
         const canPrint = printableExtensions.includes(String(item.Extension || '').toLowerCase());
         card.innerHTML = `
-          ${isForceListPage && canDeleteForceList ? `
-            <button class="delete-force-list-btn" type="button" data-write-action title="حذف كشف القوة" aria-label="حذف كشف القوة">
+          ${canDeleteArchiveFiles ? `
+            <button class="delete-archive-record-btn" type="button" data-write-action title="حذف الملف" aria-label="حذف ${escapeHtml(item.FileName || 'الملف')}">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <path d="M3 6h18"></path>
                 <path d="M8 6V4h8v2"></path>
@@ -262,8 +263,8 @@
           </div>`;
         card.querySelector('.download-link').addEventListener('click', () => downloadFile(item));
         card.querySelector('.print-file-btn').addEventListener('click', () => printFile(item));
-        card.querySelector('.delete-force-list-btn')?.addEventListener('click', (event) => {
-          deleteForceList(item, event.currentTarget);
+        card.querySelector('.delete-archive-record-btn')?.addEventListener('click', (event) => {
+          deleteArchiveRecord(item, event.currentTarget);
         });
         filesGrid.appendChild(card);
         if (card.querySelector('iframe[data-preview-url]') && previewObserver) {

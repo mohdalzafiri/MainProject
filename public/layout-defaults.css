@@ -30,6 +30,7 @@
   --ui-muted: #64748b;
   --ui-border: rgba(15, 23, 42, 0.12);
   --ui-surface: #ffffff;
+  --ui-surface-hover: #e8f0fe;
   --ui-primary: #1d4ed8;
   --ui-primary-dark: #1e40af;
   --ui-success: #16a34a;
@@ -102,6 +103,7 @@ html.dark-mode {
   --ui-muted: #a7b5c8;
   --ui-border: rgba(148, 163, 184, 0.22);
   --ui-surface: #142238;
+  --ui-surface-hover: #203650;
   --ui-primary: #3b82f6;
   --ui-primary-dark: #2563eb;
 }
@@ -152,9 +154,127 @@ body.app-shell.dark-mode :is(input, select, textarea) {
   border-color: #40536b;
 }
 
+body.app-shell :is(.name-suggest-list, .search-suggestions) {
+  color: var(--ui-text);
+  background-color: var(--ui-surface);
+  border-color: var(--ui-border);
+}
+
+body.app-shell :is(.name-suggest-list li, .search-suggestion-item) {
+  color: var(--ui-text);
+}
+
+body.app-shell :is(.name-suggest-list li:hover, .name-suggest-list li.active, .search-suggestion-item:hover) {
+  background-color: var(--ui-surface-hover);
+}
+
+body.app-shell .status-filter-bar {
+  color: var(--ui-text);
+  background-color: var(--ui-surface);
+  border-color: var(--ui-border);
+}
+
+body.app-shell .status-filter-item {
+  color: var(--ui-text);
+  border-color: var(--ui-border);
+}
+
+body.app-shell .status-filter-refresh {
+  color: var(--ui-text);
+  background-color: var(--ui-surface);
+  border-color: var(--ui-border);
+}
+
+body.app-shell .status-filter-refresh:hover {
+  background-color: var(--ui-surface-hover);
+}
+
+body.app-shell .status-filter-item input[type="checkbox"] {
+  accent-color: var(--ui-primary);
+}
+
+body.app-shell select option {
+  color: var(--ui-text);
+  background-color: var(--ui-surface);
+}
+
+html.dark-mode body.app-shell :is(.status-badge.present, .mobile-daily-status-badge.status-present, .statistics-status-badge.status-present),
+body.app-shell.dark-mode :is(.status-badge.present, .mobile-daily-status-badge.status-present, .statistics-status-badge.status-present) {
+  color: #bbf7d0;
+  background-color: #123124;
+  border-color: #166534;
+}
+
+html.dark-mode body.app-shell :is(.status-badge.absent, .mobile-daily-status-badge.status-absent, .statistics-status-badge.status-absent),
+body.app-shell.dark-mode :is(.status-badge.absent, .mobile-daily-status-badge.status-absent, .statistics-status-badge.status-absent) {
+  color: #fecaca;
+  background-color: #3b1d27;
+  border-color: #991b1b;
+}
+
+html.dark-mode body.app-shell :is(.status-badge.leave, .mobile-daily-status-badge.status-leave, .statistics-status-badge.status-leave),
+body.app-shell.dark-mode :is(.status-badge.leave, .mobile-daily-status-badge.status-leave, .statistics-status-badge.status-leave) {
+  color: #bfdbfe;
+  background-color: #172f4a;
+  border-color: #1d4ed8;
+}
+
+html.dark-mode body.app-shell :is(.status-badge.course, .mobile-daily-status-badge.status-course, .statistics-status-badge.status-course),
+body.app-shell.dark-mode :is(.status-badge.course, .mobile-daily-status-badge.status-course, .statistics-status-badge.status-course) {
+  color: #fde68a;
+  background-color: #3a2d16;
+  border-color: #a16207;
+}
+
+html.dark-mode body.app-shell :is(.status-badge.delay, .mobile-daily-status-badge.status-delay, .statistics-status-badge.status-delay),
+body.app-shell.dark-mode :is(.status-badge.delay, .mobile-daily-status-badge.status-delay, .statistics-status-badge.status-delay) {
+  color: #fde68a;
+  background-color: #3a2d16;
+  border-color: #a16207;
+}
+
+html.dark-mode body.app-shell .search-suggestion-item.hint,
+body.app-shell.dark-mode .search-suggestion-item.hint {
+  color: var(--ui-muted);
+}
+
+html.dark-mode body.app-shell .search-suggestion-meta.in-daily,
+body.app-shell.dark-mode .search-suggestion-meta.in-daily {
+  color: #fbbf24;
+}
+
+html.dark-mode body.app-shell .search-suggestion-meta.outside-daily,
+body.app-shell.dark-mode .search-suggestion-meta.outside-daily {
+  color: #86efac;
+}
+
+html.dark-mode body.app-shell .search-suggestion-meta.diff-section,
+body.app-shell.dark-mode .search-suggestion-meta.diff-section {
+  color: #fdba74;
+}
+
+html.dark-mode body.app-shell .search-suggestion-meta.diff-department,
+body.app-shell.dark-mode .search-suggestion-meta.diff-department {
+  color: #c4b5fd;
+}
+
 html.dark-mode body.app-shell :is(label, h1, h2, h3, h4, p, .muted, .hint, .description),
 body.app-shell.dark-mode :is(label, h1, h2, h3, h4, p, .muted, .hint, .description) {
   color: var(--ui-text);
+}
+
+html.dark-mode body.app-shell :is(.status-line.ok, .status-box.success, .status-message.success),
+body.app-shell.dark-mode :is(.status-line.ok, .status-box.success, .status-message.success) {
+  color: #bbf7d0;
+  background-color: #123124;
+  border-color: #166534;
+}
+
+html.dark-mode body.app-shell :is(.status-line.error, .status-box.error, .status-message.error),
+body.app-shell.dark-mode :is(.status-line.error, .status-box.error, .status-message.error) {
+  color: #fecaca;
+  background-color: #3b1d27;
+  border-color: #991b1b;
 }
 
 html.dark-mode body.auth-shell .card,
@@ -661,10 +781,6 @@ body.app-shell tbody tr:hover {
 
 body.app-shell tbody tr.selected {
   background: #dbeafe;
-}
-
-.view-only .view-only-write-panel {
-  display: none !important;
 }
 
 .view-only tbody tr,

@@ -30,6 +30,13 @@
       text-align: right;
     }
 
+    .daily-shortcuts {
+      display: flex;
+      width: 100%;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
     .daily-header .actions {
       display: flex;
       align-items: flex-start;
@@ -177,9 +184,9 @@
       right: 0;
       max-height: 240px;
       overflow-y: auto;
-      border: 1px solid #cbd5e1;
+      border: 1px solid var(--ui-border);
       border-radius: 10px;
-      background: #ffffff;
+      background: var(--ui-surface);
       box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
       z-index: 40;
     }
@@ -191,7 +198,8 @@
       align-items: center;
       gap: 8px;
       border: 0;
-      border-bottom: 1px solid #e2e8f0;
+      border-bottom: 1px solid var(--ui-border);
+      color: var(--ui-text);
       background: transparent;
       padding: 8px 10px;
       cursor: pointer;
@@ -205,12 +213,12 @@
     }
 
     .search-suggestion-item:hover {
-      background: #f8fafc;
+      background: var(--ui-surface-hover);
     }
 
     .search-suggestion-item.hint {
       cursor: default;
-      color: #64748b;
+      color: var(--ui-muted);
       justify-content: center;
       font-weight: 700;
     }
@@ -513,6 +521,41 @@
       color: inherit;
     }
 
+    .daily-allowance-trigger {
+      padding: 0;
+      border: 0;
+      color: inherit;
+      background: transparent;
+      font: inherit;
+      text-align: inherit;
+      text-decoration: underline dotted;
+      text-underline-offset: 3px;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .daily-allowance-trigger:focus-visible {
+      outline: 2px solid #2563eb;
+      outline-offset: 2px;
+    }
+
+    .daily-allowance-popover {
+      flex: 1 0 100%;
+      box-sizing: border-box;
+      max-width: min(320px, calc(100vw - 40px));
+      padding: 10px 12px;
+      border: 1px solid #bfdbfe;
+      border-radius: 10px;
+      color: #1e293b;
+      background: #eff6ff;
+      box-shadow: 0 6px 16px rgba(15, 23, 42, 0.12);
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 1.7;
+      white-space: pre-line;
+      overflow-wrap: anywhere;
+    }
+
     .row-flash-added {
       animation: rowFlashAdded 2s ease;
     }
@@ -639,6 +682,15 @@
         <p>إدارة بيانات اليوميات: إضافة، تعديل، حذف، طباعة وعرض السجلات.</p>
         <button type="button" class="btn dark home-nav-button" id="backBtn">العودة للرئيسية</button>
       </div>
+
+      <nav class="daily-shortcuts" aria-label="واجهات مرتبطة">
+        <button type="button" class="btn primary" data-page-key="employees" data-page-route="/mobile/employees.html">الموظفين</button>
+        <button type="button" class="btn primary" data-page-key="holidays" data-page-route="/mobile/holidays.html">الإجازات</button>
+        <button type="button" class="btn primary" data-page-key="courses" data-page-route="/courses.html">الدورات</button>
+        <button type="button" class="btn primary" data-page-key="transfers" data-page-route="/mobile/transfers.html">التنقلات</button>
+        <button type="button" class="btn primary" data-page-key="reduction" data-page-route="/mobile/reduction.html">تخفيف العمل</button>
+        <button type="button" class="btn primary" data-page-key="outsideEmployees" data-page-route="/mobile/outside-employees.html">خارج الإدارة</button>
+      </nav>
 
       <div class="mobile-view-toggle" aria-label="طريقة عرض بيانات اليوميات">
         <button type="button" id="tableViewBtn" class="active" aria-pressed="true">الجدول</button>
@@ -803,6 +855,19 @@
       window.location.href = '/';
     }
 
+    const currentRole = String(currentUser?.role || '').trim().toLowerCase();
+    const allowedPages = new Set(Array.isArray(currentUser?.allowedPages) ? currentUser.allowedPages : []);
+    const editablePages = Array.isArray(currentUser?.editablePages) ? currentUser.editablePages : currentUser?.allowedPages;
+    const canEditDaily = currentRole === 'admin'
+      || (currentRole !== 'view' && Array.isArray(editablePages) && editablePages.includes('daily'));
+    document.querySelectorAll('.daily-shortcuts [data-page-route]').forEach((button) => {
+      const pageKey = String(button.dataset.pageKey || '').trim();
+      button.hidden = currentRole !== 'admin' && (!canEditDaily || !allowedPages.has(pageKey));
+      button.addEventListener('click', () => {
+        window.location.href = button.dataset.pageRoute;
+      });
+    });
+
     const STATUS_OPTIONS = MainProjectStatusCatalog.statuses;
     const EDITABLE_TIME_STATUSES = MainProjectStatusCatalog.timedStatuses;
     const PERIOD_DEFAULTS = {
@@ -856,12 +921,10 @@
     let selectedRecord = null;
     let currentRows = [];
     let monthlyAlertMap = new Map();
-    const scannerRole = String(currentUser?.role || currentUser?.username || '').trim().toLowerCase();
-    const scannerEditablePages = Array.isArray(currentUser?.editablePages) ? currentUser.editablePages : currentUser?.allowedPages;
+    let dailyAllowanceTooltipId = 0;
     const dailyScanner = window.initDailyScanner({
       authToken,
-      canEdit: scannerRole === 'admin'
-        || (scannerRole !== 'view' && Array.isArray(scannerEditablePages) && scannerEditablePages.includes('daily'))
+      canEdit: canEditDaily
     });
     let visibleRows = [];
     let basePeriods = [];
@@ -927,12 +990,33 @@
       const container = document.createElement('span');
       container.className = 'daily-name-alerts';
 
-      const name = document.createElement('span');
+      const name = document.createElement('button');
+      name.type = 'button';
+      name.className = 'daily-allowance-trigger';
       name.textContent = String(item.Name || '');
-      name.tabIndex = 0;
       name.title = DailyAllowanceTooltip.buildTooltip(item, monthlyAlertMap);
-      name.setAttribute('aria-label', name.title);
+      name.setAttribute('aria-expanded', 'false');
+
+      const popover = document.createElement('span');
+      popover.className = 'daily-allowance-popover';
+      popover.id = `daily-allowance-tooltip-${++dailyAllowanceTooltipId}`;
+      popover.setAttribute('role', 'tooltip');
+      popover.textContent = name.title;
+      popover.hidden = true;
+      name.setAttribute('aria-describedby', popover.id);
+
+      name.addEventListener('click', (event) => {
+        event.stopPropagation();
+        const shouldOpen = name.getAttribute('aria-expanded') !== 'true';
+        closeAllowanceTooltips();
+        if (shouldOpen) {
+          popover.hidden = false;
+          name.setAttribute('aria-expanded', 'true');
+        }
+      });
+
       container.appendChild(name);
+      container.appendChild(popover);
 
       getMonthlyAlerts(item).forEach((message) => {
         const warning = document.createElement('span');
@@ -943,6 +1027,19 @@
 
       return container;
     }
+
+    function closeAllowanceTooltips() {
+      document.querySelectorAll('.daily-allowance-popover').forEach((popover) => {
+        popover.hidden = true;
+        popover.previousElementSibling?.setAttribute('aria-expanded', 'false');
+      });
+    }
+
+    document.addEventListener('click', (event) => {
+      if (!(event.target instanceof Element) || !event.target.closest('.daily-name-alerts')) {
+        closeAllowanceTooltips();
+      }
+    });
 
     function normalizeDepartment(value) {
       const text = String(value || '').trim();

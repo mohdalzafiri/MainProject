@@ -43,9 +43,18 @@ test('admin receives all customizable and admin-only pages', () => {
   assert.ok(allowedPages.includes('dashboard'));
 });
 
-test('non-admin permissions reject admin and unknown page keys', () => {
-  const allowedPages = getEffectiveAllowedPages(false, ['employees', 'settings', 'unknown']);
-  assert.deepEqual(allowedPages, ['employees']);
+test('non-admin permissions allow new page keys but reject admin-only and malformed keys', () => {
+  const allowedPages = getEffectiveAllowedPages(false, [
+    'employees',
+    'settings',
+    'newInterface',
+    'pageEditsConfigured',
+    'bad key'
+  ]);
+  assert.deepEqual(allowedPages, ['employees', 'newInterface']);
+  assert.equal(serializeAllowedPages(['new-interface']), '["newInterface"]');
+  const newPagePermissions = serializePagePermissions(['newInterface'], ['newInterface']);
+  assert.deepEqual(getEffectiveEditablePages(false, newPagePermissions), ['newInterface']);
 });
 
 test('archive, force list, and confidential books permissions remain independent', () => {
@@ -100,6 +109,6 @@ test('configured edit permissions remain independent from view permissions', () 
 });
 
 test('serialization removes duplicates and unsupported keys', () => {
-  const serialized = serializeAllowedPages(['courses', 'courses', 'settings', 'invalid']);
+  const serialized = serializeAllowedPages(['courses', 'courses', 'settings', 'bad key']);
   assert.equal(serialized, '["courses"]');
 });

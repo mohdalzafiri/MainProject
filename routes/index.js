@@ -102,6 +102,7 @@ function getArchivePageKey(req) {
 	).trim();
 	const normalizedPath = String(req.path || '').replace(/\/+$/, '');
 	const pathTargetsForceList = normalizedPath.startsWith('/archive/force-list/')
+		|| normalizedPath.startsWith('/archive/records/statements/')
 		|| normalizedPath.startsWith('/archive/preview/statements/')
 		|| normalizedPath.startsWith('/archive/download/statements/');
 

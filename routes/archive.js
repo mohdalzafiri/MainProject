@@ -434,15 +434,20 @@ router.get('/download/:category/:id', async (req, res) => {
   return res.download(actualPath, primaryFile);
 });
 
-router.delete('/force-list/:id', async (req, res) => {
+async function deleteArchiveRecord(req, res) {
   const role = String((req.user && req.user.role) || '').trim().toLowerCase();
   if (role !== 'admin') {
-    return res.status(403).json({ message: 'حذف كشف القوة متاح لمدير النظام فقط.' });
+    return res.status(403).json({ message: 'حذف ملفات الأرشيف متاح لمدير النظام فقط.' });
+  }
+
+  const category = normalizeCategory(req.params.category || 'statements');
+  if (!(await getArchiveCategory(db, category))) {
+    return res.status(404).json({ message: 'مجلد الأرشيف المطلوب غير موجود أو غير نشط.' });
   }
 
   const recordId = Number(req.params.id || 0);
   if (!recordId) {
-    return res.status(400).json({ message: 'معرّف كشف القوة غير صالح.' });
+    return res.status(400).json({ message: 'معرّف ملف الأرشيف غير صالح.' });
   }
 
   const row = await db.prepare(`
@@ -450,31 +455,34 @@ router.delete('/force-list/:id', async (req, res) => {
     FROM Archive
     WHERE ID = ? AND Category = ?
     LIMIT 1
-  `).get(recordId, 'statements');
+  `).get(recordId, category);
 
   if (!row) {
-    return res.status(404).json({ message: 'كشف القوة المطلوب غير موجود.' });
+    return res.status(404).json({ message: 'ملف الأرشيف المطلوب غير موجود.' });
   }
 
   try {
-    const recordDirectory = path.join(await getCategoryDirectory('statements'), String(recordId));
+    const recordDirectory = path.join(await getCategoryDirectory(category), String(recordId));
     removeSync(recordDirectory, { recursive: true, force: true });
-    await db.prepare('DELETE FROM Archive WHERE ID = ? AND Category = ?').run(recordId, 'statements');
+    await db.prepare('DELETE FROM Archive WHERE ID = ? AND Category = ?').run(recordId, category);
 
     await logSystem({
       userName: normalize((req.user && (req.user.username || req.user.name)) || 'system'),
       role: String((req.user && req.user.role) || '').trim().toLowerCase(),
       action: 'Delete',
       page: 'Archive',
-      details: `Deleted force list ID=${recordId}`
+      details: `Deleted archive file ID=${recordId} category=${category}`
     });
 
-    return res.json({ message: 'تم حذف كشف القوة بنجاح.' });
+    return res.json({ message: 'تم حذف الملف بنجاح.' });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: 'تعذر حذف كشف القوة.' });
+    return res.status(500).json({ message: 'تعذر حذف ملف الأرشيف.' });
   }
-});
+}
+
+router.delete('/records/:category/:id', deleteArchiveRecord);
+router.delete('/force-list/:id', deleteArchiveRecord);
 
 module.exports = router;
 module.exports.archiveRoot = archiveRoot;

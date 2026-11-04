@@ -991,9 +991,12 @@
 
     const currentRole = String(currentUser?.role || '').trim().toLowerCase();
     const allowedPages = new Set(Array.isArray(currentUser?.allowedPages) ? currentUser.allowedPages : []);
+    const editablePages = Array.isArray(currentUser?.editablePages) ? currentUser.editablePages : currentUser?.allowedPages;
+    const canEditDaily = currentRole === 'admin'
+      || (currentRole !== 'view' && Array.isArray(editablePages) && editablePages.includes('daily'));
     dailyPageShortcutButtons.forEach((button) => {
       const pageKey = String(button.dataset.pageKey || '').trim();
-      button.hidden = currentRole !== 'admin' && !allowedPages.has(pageKey);
+      button.hidden = currentRole !== 'admin' && (!canEditDaily || !allowedPages.has(pageKey));
     });
 
     const dateOpenButtons = document.querySelectorAll('.date-picker-trigger');
@@ -1001,11 +1004,9 @@
     let selectedRecord = null;
     let currentRows = [];
     let monthlyAlertMap = new Map();
-    const editablePages = Array.isArray(currentUser?.editablePages) ? currentUser.editablePages : currentUser?.allowedPages;
     const dailyScanner = window.initDailyScanner({
       authToken,
-      canEdit: currentRole === 'admin'
-        || (currentRole !== 'view' && Array.isArray(editablePages) && editablePages.includes('daily'))
+      canEdit: canEditDaily
     });
     let visibleRows = [];
     let basePeriods = [];

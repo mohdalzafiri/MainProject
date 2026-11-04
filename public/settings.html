@@ -884,26 +884,48 @@
       ? window.JOB_TITLE_OPTIONS
       : [];
 
-    const pagePermissionOptions = [
-      { key: 'employees', label: 'الموظفين' },
-      { key: 'daily', label: 'اليوميات' },
-      { key: 'query', label: 'الاستعلام' },
-      { key: 'statistics', label: 'الاحصائيات' },
-      { key: 'evaluations', label: 'تقييم الأداء' },
-      { key: 'holidays', label: 'الاجازات' },
-      { key: 'reduction', label: 'تخفيف العمل' },
-      { key: 'courses', label: 'الدورات' },
-      { key: 'transfers', label: 'التنقلات' },
-      { key: 'outsideEmployees', label: 'خارج الإدارة' },
-      { key: 'outgoing', label: 'الصادر' },
-      { key: 'incoming', label: 'الوارد' },
-      { key: 'departmentMail', label: 'بريد الأقسام' },
-      { key: 'archive', label: 'الأرشيف' },
-      { key: 'forceList', label: 'كشف القوة' }
-    ];
+    let pagePermissionOptions = [];
 
     function uniqueValues(items) {
       return [...new Set(items.map((item) => String(item || '').trim()).filter(Boolean))];
+    }
+
+    async function loadPagePermissionOptions() {
+      const responses = await Promise.all([
+        fetch('/dashboard.html', { cache: 'no-store' }),
+        fetch('/mobile-dashboard.html', { cache: 'no-store' })
+      ]);
+      if (responses.some((response) => !response.ok)) {
+        throw new Error('تعذر تحميل واجهات النظام لصلاحيات الوصول.');
+      }
+
+      const dashboardDocuments = await Promise.all(responses.map(async (response) => (
+        new DOMParser().parseFromString(await response.text(), 'text/html')
+      )));
+      const excludedPageKeys = new Set([
+        'administrative',
+        'dashboard',
+        'pageEditsConfigured',
+        'settings',
+        'systemLog',
+        'confidentialBooks'
+      ]);
+      pagePermissionOptions = dashboardDocuments
+        .flatMap((dashboardDocument) => [...dashboardDocument.querySelectorAll('[data-page-key]')])
+        .map((item) => ({
+          key: String(item.dataset.pageKey || '').trim(),
+          label: String(item.querySelector('strong, span')?.textContent || item.textContent || '').trim()
+        }))
+        .filter((item) => /^[a-z][A-Za-z0-9]*$/.test(item.key)
+          && item.label
+          && !excludedPageKeys.has(item.key))
+        .filter((item, index, options) => options.findIndex((option) => option.key === item.key) === index);
+
+      if (!pagePermissionOptions.length) {
+        throw new Error('لم يتم العثور على واجهات مسجلة لصلاحيات الوصول.');
+      }
+
+      renderScopeColumns();
     }
 
     function pad2(value) {
@@ -1128,20 +1150,34 @@
       pagePermissionOptions.forEach((item) => {
         const row = document.createElement('div');
         row.className = 'permission-chip page-permission-chip';
-        row.innerHTML = `
-          <span class="permission-label">${item.label}</span>
-          <label class="page-permission-action" title="صلاحية العرض">
-            <input type="checkbox" value="${item.key}" data-group="pages" aria-label="عرض ${item.label}" />
-            <svg aria-hidden="true"><use href="/ui-icons.svg#eye"></use></svg>
-          </label>
-          <label class="page-permission-action" title="صلاحية الإضافة والتعديل والحذف">
-            <input type="checkbox" value="${item.key}" data-group="pageEdits" aria-label="تحرير ${item.label}" />
-            <svg aria-hidden="true"><use href="/ui-icons.svg#edit"></use></svg>
-          </label>
-        `;
+        const label = document.createElement('span');
+        label.className = 'permission-label';
+        label.textContent = item.label;
 
-        const viewCheckbox = row.querySelector('input[data-group="pages"]');
-        const editCheckbox = row.querySelector('input[data-group="pageEdits"]');
+        const createPermissionAction = (groupKey, actionTitle, actionLabel, iconName) => {
+          const action = document.createElement('label');
+          action.className = 'page-permission-action';
+          action.title = actionTitle;
+
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.value = item.key;
+          checkbox.dataset.group = groupKey;
+          checkbox.setAttribute('aria-label', `${actionLabel} ${item.label}`);
+
+          const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+          icon.setAttribute('aria-hidden', 'true');
+          const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+          use.setAttribute('href', `/ui-icons.svg#${iconName}`);
+          icon.appendChild(use);
+          action.append(checkbox, icon);
+          return { action, checkbox };
+        };
+
+        const viewAction = createPermissionAction('pages', 'صلاحية العرض', 'عرض', 'eye');
+        const editAction = createPermissionAction('pageEdits', 'صلاحية الإضافة والتعديل والحذف', 'تحرير', 'edit');
+        const viewCheckbox = viewAction.checkbox;
+        const editCheckbox = editAction.checkbox;
         viewCheckbox.addEventListener('change', () => {
           if (!viewCheckbox.checked) {
             editCheckbox.checked = false;
@@ -1155,6 +1191,7 @@
           syncPageEditCheckboxStates();
         });
 
+        row.append(label, viewAction.action, editAction.action);
         pagePermissionsContainer.appendChild(row);
       });
     }
@@ -2173,6 +2210,7 @@
         await Promise.all([
           loadEmployees(),
           loadUsers(),
+          loadPagePermissionOptions(),
           loadDepartmentSections(),
           loadJobTitles(),
           loadTemplateFiles(),
