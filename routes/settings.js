@@ -36,6 +36,12 @@ function denyIfNotAdmin(req, res) {
 function normalize(value) {
   return String(value || "").trim();
 }
+function normalizeDepartment(value) {
+  const department = normalize(value).replace(/\s+/g, " ");
+  return ["إدارة البلاغات", "أدارة البلاغات", "آدارة البلاغات"].includes(department)
+    ? "ادارة البلاغات"
+    : department;
+}
 function normalizeJobTitle(value) {
   return normalize(value).replace(/\s+/g, " ");
 }
@@ -315,7 +321,7 @@ router.get("/department-sections", async (req, res) => {
 router.post("/department-sections", async (req, res) => {
   var _a, _b;
   if (denyIfNotAdmin(req, res)) return;
-  const department = normalize(req.body.Department);
+  const department = normalizeDepartment(req.body.Department);
   const section = normalize(req.body.Section);
   const subSection = normalize(req.body.SubSection);
   const isActive = Number(req.body.IsActive) === 0 ? 0 : 1;
@@ -360,7 +366,7 @@ router.put("/department-sections/:id", async (req, res) => {
   if (!id) {
     return res.status(400).json({ message: "\u0645\u0639\u0631\u0651\u0641 \u0627\u0644\u0633\u062C\u0644 \u063A\u064A\u0631 \u0635\u0627\u0644\u062D." });
   }
-  const department = normalize(req.body.Department);
+  const department = normalizeDepartment(req.body.Department);
   const section = normalize(req.body.Section);
   const subSection = normalize(req.body.SubSection);
   const isActive = Number(req.body.IsActive) === 0 ? 0 : 1;

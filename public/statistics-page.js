@@ -34,9 +34,6 @@
     defaultDepartmentOrder.map((department, index) => [department, index])
   );
   const excludedDepartments = new Set([
-    'إدارة البلاغات',
-    'ادارة البلاغات',
-    'ادارة البلاغت',
     'مسئول اداري',
     'مسئول إداري',
     'مسؤول اداري',
@@ -59,6 +56,26 @@
   const refreshBtn = document.getElementById('refreshBtn');
   const printBtn = document.getElementById('printBtn');
   const backBtn = document.getElementById('backBtn');
+  const statisticsPageDialog = document.getElementById('statisticsPageDialog');
+  const statisticsPageDialogTitle = document.getElementById('statisticsPageDialogTitle');
+  const statisticsPageFrame = document.getElementById('statisticsPageFrame');
+  const statisticsPageDialogCloseBtn = document.getElementById('statisticsPageDialogCloseBtn');
+  const isMobilePage = window.location.pathname.startsWith('/mobile/')
+    || sessionStorage.getItem('uiMode') === 'mobile';
+  const currentUser = (() => {
+    try {
+      const payload = authToken.split('.')[1];
+      if (!payload) return null;
+      const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+      const decoded = atob(normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '='));
+      return JSON.parse(decoded);
+    } catch {
+      return null;
+    }
+  })();
+  const currentRole = String(currentUser?.role || '').trim().toLowerCase();
+  const allowedPages = new Set(Array.isArray(currentUser?.allowedPages) ? currentUser.allowedPages : []);
+  const statisticsShortcutButtons = document.querySelectorAll('.statistics-shortcuts [data-page-route]');
   let employees = [];
   let selectedPath = { rank: '', work: '', department: '', section: '' };
   let tableScope = null;
@@ -104,8 +121,10 @@
   }
 
   function normalizeDepartment(value) {
-    const normalized = String(value || '').trim();
-    return normalized === 'الإحصاء' ? 'الاحصاء' : normalized;
+    return String(value || '')
+      .trim()
+      .replace(/\s+/g, ' ')
+      .replace(/[أإآ]/g, 'ا');
   }
 
   function getActiveEmployees() {
@@ -139,7 +158,9 @@
     if (level === 'rank') return rankCategories.map(({ label }) => label);
     const field = level === 'work' ? 'Work' : level === 'department' ? 'Department' : 'Section';
     const values = source.map((employee) => String(employee[field] || '').trim()).filter(Boolean);
-    const uniqueValues = Array.from(new Set(values));
+    const uniqueValues = Array.from(new Set(
+      level === 'department' ? values.map(normalizeDepartment) : values
+    ));
     if (level === 'section') {
       return uniqueValues
         .filter((section) => !['الضباط', 'العسكريين'].includes(section))
@@ -436,10 +457,30 @@
     }
     window.print();
   });
+  statisticsShortcutButtons.forEach((button) => {
+    const pageKey = String(button.dataset.pageKey || '').trim();
+    button.hidden = currentRole !== 'admin' && !allowedPages.has(pageKey);
+    button.addEventListener('click', () => {
+      if (isMobilePage) {
+        window.location.href = button.dataset.mobileRoute || button.dataset.pageRoute;
+        return;
+      }
+
+      const title = button.dataset.pageTitle || 'الواجهة';
+      statisticsPageDialogTitle.textContent = title;
+      statisticsPageFrame.title = title;
+      statisticsPageFrame.src = button.dataset.pageRoute || '';
+      statisticsPageDialog.showModal();
+    });
+  });
+  statisticsPageDialogCloseBtn.addEventListener('click', () => {
+    statisticsPageDialog.close();
+  });
+  statisticsPageDialog.addEventListener('close', () => {
+    statisticsPageFrame.src = 'about:blank';
+  });
   backBtn.addEventListener('click', () => {
-    const isMobile = window.location.pathname.startsWith('/mobile/')
-      || sessionStorage.getItem('uiMode') === 'mobile';
-    window.location.href = isMobile ? '/mobile-dashboard.html' : '/dashboard.html';
+    window.location.href = isMobilePage ? '/mobile-dashboard.html' : '/dashboard.html';
   });
 
   renderRows();

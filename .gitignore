@@ -11,3 +11,16 @@ Thumbs.db
 coverage/
 *.sqlite
 *.db
+
+# Local builds, runtime data and deployment backups
+.deployment/
+.deployment-backup/
+deployment-backups/
+.npm-cache/
+.release/
+public/generated/
+run-link-package/node/
+*.db-*
+*.sqlite-*
+*.bak-*
+*.backup-*

@@ -720,16 +720,102 @@ function normalizeDepartmentNames() {
     .all()
     .map((row) => row.name);
 
+  const departmentAliases = ['إدارة البلاغات', 'أدارة البلاغات', 'آدارة البلاغات'];
+
   for (const tableName of tables) {
     const columns = db.prepare(`PRAGMA table_info(${quoteIdentifier(tableName)})`).all();
-    const hasDepartment = columns.some((column) => String(column.name || '').toLowerCase() === 'department');
-    if (!hasDepartment) continue;
+    if (tableName === 'DepartmentSectionLookup') continue;
 
-    db.prepare(`
-      UPDATE ${quoteIdentifier(tableName)}
-      SET Department = 'الاحصاء'
-      WHERE TRIM(Department) = 'الإحصاء'
-    `).run();
+    columns
+      .map((column) => String(column.name || ''))
+      .filter((columnName) => /^department\d*$/i.test(columnName))
+      .forEach((columnName) => {
+        const quotedColumn = quoteIdentifier(columnName);
+        db.prepare(`
+          UPDATE ${quoteIdentifier(tableName)}
+          SET ${quotedColumn} = 'ادارة البلاغات'
+          WHERE TRIM(${quotedColumn}) IN (${departmentAliases.map(() => '?').join(', ')})
+        `).run(...departmentAliases);
+        db.prepare(`
+          UPDATE ${quoteIdentifier(tableName)}
+          SET ${quotedColumn} = 'الاحصاء'
+          WHERE TRIM(${quotedColumn}) = 'الإحصاء'
+        `).run();
+      });
+  }
+
+  const lookupRows = db.prepare(`
+    SELECT ID, Department, Section, IFNULL(SubSection, '') AS SubSection, SortOrder, IsActive
+    FROM DepartmentSectionLookup
+    WHERE TRIM(Department) IN (${departmentAliases.map(() => '?').join(', ')})
+       OR TRIM(Department) = 'ادارة البلاغات'
+    ORDER BY CASE WHEN TRIM(Department) = 'ادارة البلاغات' THEN 0 ELSE 1 END, ID ASC
+  `).all(...departmentAliases);
+  const canonicalizeLookup = db.transaction(() => {
+    const findExisting = db.prepare(`
+      SELECT ID, SortOrder, IsActive
+      FROM DepartmentSectionLookup
+      WHERE Department = 'ادارة البلاغات'
+        AND Section = ?
+        AND IFNULL(SubSection, '') = ?
+        AND ID != ?
+      LIMIT 1
+    `);
+    const updateExisting = db.prepare(`
+      UPDATE DepartmentSectionLookup
+      SET SortOrder = MIN(SortOrder, ?),
+          IsActive = CASE WHEN IsActive = 1 OR ? = 1 THEN 1 ELSE 0 END
+      WHERE ID = ?
+    `);
+    const updateDepartment = db.prepare(`
+      UPDATE DepartmentSectionLookup
+      SET Department = 'ادارة البلاغات'
+      WHERE ID = ?
+    `);
+    const deleteDuplicate = db.prepare('DELETE FROM DepartmentSectionLookup WHERE ID = ?');
+
+    lookupRows.forEach((row) => {
+      const currentDepartment = String(row.Department || '').trim();
+      if (currentDepartment === 'ادارة البلاغات') {
+        if (row.Department !== currentDepartment) updateDepartment.run(row.ID);
+        return;
+      }
+
+      const existing = findExisting.get(row.Section, row.SubSection, row.ID);
+      if (existing) {
+        updateExisting.run(row.SortOrder, row.IsActive, existing.ID);
+        deleteDuplicate.run(row.ID);
+      } else {
+        updateDepartment.run(row.ID);
+      }
+    });
+  });
+  canonicalizeLookup();
+
+  const loginColumns = db.prepare(`PRAGMA table_info(${quoteIdentifier('Login')})`).all();
+  if (loginColumns.some((column) => String(column.name || '').toLowerCase() === 'alloweddepartments')) {
+    const users = db.prepare(`
+      SELECT ID, AllowedDepartments
+      FROM Login
+      WHERE ${departmentAliases.map(() => 'AllowedDepartments LIKE ?').join(' OR ')}
+    `).all(...departmentAliases.map((department) => `%${department}%`));
+    const updateAllowedDepartments = db.prepare('UPDATE Login SET AllowedDepartments = ? WHERE ID = ?');
+    users.forEach((user) => {
+      try {
+        const values = JSON.parse(String(user.AllowedDepartments || '[]'));
+        if (!Array.isArray(values)) return;
+        const normalized = values.map((value) => (
+          departmentAliases.includes(String(value || '').trim())
+            ? 'ادارة البلاغات'
+            : value
+        ));
+        if (JSON.stringify(values) !== JSON.stringify(normalized)) {
+          updateAllowedDepartments.run(JSON.stringify(normalized), user.ID);
+        }
+      } catch (error) {
+        console.error(`Unable to normalize allowed departments for user ID ${user.ID}: ${error.message}`);
+      }
+    });
   }
 }
 

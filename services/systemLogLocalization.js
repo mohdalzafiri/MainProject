@@ -1,5 +1,19 @@
+function repairMojibake(value) {
+  // Latin-1 byte runs intentionally include control bytes when repairing encoding.
+  // eslint-disable-next-line no-control-regex
+  return String(value || '').replace(/[\u0000-\u00ff]+/g, (segment) => {
+    if (!/[ÃØÙÂ]/.test(segment)) return segment;
+
+    const bytes = Buffer.from(segment, 'latin1');
+    const decoded = bytes.toString('utf8');
+    if (decoded.includes('\uFFFD') || !/[\u0600-\u06ff]/.test(decoded)) return segment;
+    if (!Buffer.from(decoded, 'utf8').equals(bytes)) return segment;
+    return decoded;
+  });
+}
+
 function translateAction(action) {
-  const value = String(action || '').trim();
+  const value = repairMojibake(action).trim();
   const key = value.toLowerCase();
   const map = {
     add: 'إضافة',
@@ -24,7 +38,7 @@ function translateAction(action) {
 }
 
 function translateTarget(target) {
-  const value = String(target || '').trim();
+  const value = repairMojibake(target).trim();
   const key = value.toLowerCase().replace(/\s+/g, '');
   const map = {
     main: 'الموظفين',
@@ -100,7 +114,7 @@ function translateMobileRequest(text) {
 }
 
 function translateDetails(details) {
-  const value = String(details || '').trim();
+  const value = repairMojibake(details).trim();
   if (!value) return value;
 
   const mobileRequest = translateMobileRequest(value);
@@ -249,6 +263,7 @@ function localizeRecord(record) {
     ...record,
     Action: translateAction(record.Action),
     Target: translateTarget(record.Target),
+    UserName: repairMojibake(record.UserName),
     Details: translateDetails(record.Details)
   };
 }

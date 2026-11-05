@@ -1,6 +1,6 @@
 {
   "name": "MAINPROJECT-API",
-  "version": "3.3.3",
+  "version": "3.3.4",
   "description": "MAINPROJECT WebApp - Backend API",
   "main": "server.js",
   "scripts": {

@@ -112,7 +112,7 @@ When creating new frontend pages (especially inside `public/`), apply these defa
 - Suggested names must respect the user's data scope (department/section/subsection); admin is exempt.
 
 ## System Version
-- Current system version: 3.3.3 (shown on public/login.html for regular and mobile, and in package.json).
+- Current system version: 3.3.4 (shown on public/login.html for regular and mobile, and in package.json).
 - Bump only the last number (patch) when the user explicitly orders a version update at the end of a change; keep both places in sync.
 
 ## Release Finalization

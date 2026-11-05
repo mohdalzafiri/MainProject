@@ -1,5 +1,7 @@
 (function () {
-  if (window.AppNotifications || !sessionStorage.getItem('authToken')) return;
+  var isHomePage = window.location.pathname === '/dashboard.html'
+    || window.location.pathname === '/mobile-dashboard.html';
+  if (!isHomePage || window.AppNotifications || !sessionStorage.getItem('authToken')) return;
 
   var authToken = sessionStorage.getItem('authToken');
   var userName = 'user';
@@ -15,10 +17,13 @@
 
   var cursorKey = 'appNotificationCursor:' + userName;
   var unreadKey = 'appNotificationUnread:' + userName;
+  var readThroughKey = 'appNotificationReadThrough:' + userName;
   var cursorValue = localStorage.getItem(cursorKey);
   var cursor = /^\d+$/.test(String(cursorValue || '')) ? Number(cursorValue) : null;
   var savedUnreadCount = Number(localStorage.getItem(unreadKey) || 0);
   var unreadCount = Number.isSafeInteger(savedUnreadCount) && savedUnreadCount > 0 ? savedUnreadCount : 0;
+  var savedReadThrough = Number(localStorage.getItem(readThroughKey) || 0);
+  var readThroughId = Number.isSafeInteger(savedReadThrough) && savedReadThrough > 0 ? savedReadThrough : 0;
   var requestInProgress = false;
   var historyLoaded = false;
   var pollTimer;
@@ -169,10 +174,15 @@
     }
 
     function appendNotification(notification, showToast) {
+      var notificationId = Number(notification.id);
+      if (Number.isSafeInteger(notificationId) && notificationId <= readThroughId) return;
       var emptyMessage = list.querySelector('.app-notification-empty');
       if (emptyMessage) emptyMessage.remove();
       var item = document.createElement('article');
       item.className = 'app-notification-item';
+      if (Number.isSafeInteger(notificationId) && notificationId > 0) {
+        item.dataset.notificationId = String(notificationId);
+      }
       var title = document.createElement('strong');
       title.textContent = notification.title;
       var message = document.createElement('span');
@@ -200,26 +210,57 @@
       }
     }
 
-    button.addEventListener('click', function () {
-      panel.hidden = !panel.hidden;
-      button.setAttribute('aria-expanded', String(!panel.hidden));
-      toast.hidden = true;
-      if (!panel.hidden) {
-        unreadCount = 0;
-        renderBadge();
+    function markVisibleAsRead() {
+      list.querySelectorAll('.app-notification-item[data-notification-id]').forEach(function (item) {
+        item.dataset.read = 'true';
+      });
+    }
+
+    function removeReadNotifications() {
+      var highestReadId = readThroughId;
+      list.querySelectorAll('.app-notification-item[data-read="true"]').forEach(function (item) {
+        var notificationId = Number(item.dataset.notificationId);
+        if (Number.isSafeInteger(notificationId)) highestReadId = Math.max(highestReadId, notificationId);
+        item.remove();
+      });
+      if (highestReadId > readThroughId) {
+        readThroughId = highestReadId;
+        localStorage.setItem(readThroughKey, String(readThroughId));
       }
-    });
-    toast.addEventListener('click', function () {
+      if (!list.querySelector('.app-notification-item')) {
+        list.innerHTML = '<p class="app-notification-empty">لا توجد إشعارات حالياً.</p>';
+      }
+    }
+
+    function openPanel() {
       panel.hidden = false;
       button.setAttribute('aria-expanded', 'true');
+      markVisibleAsRead();
       unreadCount = 0;
-      toast.hidden = true;
       renderBadge();
+      toast.hidden = true;
+    }
+
+    function closePanel() {
+      if (panel.hidden) return;
+      panel.hidden = true;
+      button.setAttribute('aria-expanded', 'false');
+      removeReadNotifications();
+    }
+
+    button.addEventListener('click', function () {
+      if (panel.hidden) openPanel();
+      else closePanel();
+    });
+    toast.addEventListener('click', function () {
+      openPanel();
     });
     document.addEventListener('click', function (event) {
       if (panel.hidden || panel.contains(event.target) || button.contains(event.target)) return;
-      panel.hidden = true;
-      button.setAttribute('aria-expanded', 'false');
+      closePanel();
+    });
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape') closePanel();
     });
     window.addEventListener('storage', function (event) {
       if (event.key !== unreadKey) return;

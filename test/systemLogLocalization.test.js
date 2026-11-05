@@ -9,11 +9,20 @@ const {
 test('translates system-log actions and pages to Arabic', () => {
   assert.equal(translateAction('Backup'), 'نسخ احتياطي');
   assert.equal(translateAction('Upload'), 'رفع ملف');
+  assert.equal(translateAction(Buffer.from('تعديل', 'utf8').toString('latin1')), 'تعديل');
   assert.equal(translateAction('UnknownAction'), 'عملية نظام');
   assert.equal(translateTarget('categories'), 'مجلدات الأرشيف');
   assert.equal(translateTarget('Database'), 'قاعدة البيانات');
   assert.equal(translateTarget('DepartmentMail'), 'بريد الأقسام');
   assert.equal(translateTarget('UnknownPage'), 'النظام');
+});
+
+test('repairs mojibake in system-log target and details', () => {
+  assert.equal(translateTarget(Buffer.from('اليوميات', 'utf8').toString('latin1')), 'اليوميات');
+  assert.equal(
+    translateDetails(Buffer.from('تم تسجيل دخول المستخدم', 'utf8').toString('latin1')),
+    'تم تسجيل دخول المستخدم'
+  );
 });
 
 test('translates current mobile and login details to Arabic', () => {

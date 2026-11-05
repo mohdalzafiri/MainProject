@@ -29,19 +29,8 @@
       text-align: right;
     }
 
-    .daily-header .actions {
-      display: flex;
-      align-items: flex-start;
-      justify-content: flex-start;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    .daily-shortcuts {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      align-items: center;
+    .daily-header .title-block .home-nav-button {
+      margin-top: 12px;
     }
 
     .daily-layout {
@@ -164,46 +153,6 @@
     .bulk-edit-dialog p { margin: 0 0 14px; color: var(--ui-muted); font-size: 13px; }
     .bulk-edit-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
     .bulk-edit-actions { display: flex; gap: 8px; justify-content: flex-start; margin-top: 16px; }
-
-    .daily-page-dialog {
-      width: min(1500px, calc(100vw - 24px));
-      height: min(900px, calc(100vh - 24px));
-      max-width: none;
-      max-height: none;
-      padding: 0;
-      border: 1px solid var(--ui-border);
-      border-radius: 10px;
-      background: var(--ui-surface);
-      box-shadow: 0 24px 60px rgba(15, 23, 42, 0.3);
-      overflow: hidden;
-    }
-
-    .daily-page-dialog::backdrop { background: rgba(15, 23, 42, 0.55); }
-
-    .daily-page-dialog-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      min-height: 52px;
-      padding: 8px 12px;
-      border-bottom: 1px solid var(--ui-border);
-      background: #f8fafc;
-    }
-
-    .daily-page-dialog-title {
-      margin: 0;
-      font-size: 16px;
-      color: var(--ui-text);
-    }
-
-    .daily-page-frame {
-      display: block;
-      width: 100%;
-      height: calc(100% - 53px);
-      border: 0;
-      background: #fff;
-    }
 
     .absence-type-options {
       display: grid;
@@ -708,6 +657,15 @@
         width: 100% !important;
       }
     }
+
+    /* Monthly limits are warnings; entries remain editable. */
+    .monthly-limit-exceeded,
+    .status-badge.monthly-limit-exceeded,
+    .mobile-daily-status-badge.monthly-limit-exceeded {
+      background: #fee2e2 !important;
+      color: #991b1b !important;
+      border: 1px solid #ef4444 !important;
+    }
   </style>
   <script src="/role-access.js" defer></script>
 </head>
@@ -718,16 +676,6 @@
         <h1>واجهة اليوميات</h1>
         <p>إدارة بيانات اليوميات: إضافة، تعديل، حذف، طباعة وعرض السجلات.</p>
         <button type="button" class="btn dark home-nav-button" id="backBtn">العودة للرئيسية</button>
-      </div>
-      <div class="actions">
-        <div class="daily-shortcuts" aria-label="واجهات مرتبطة">
-          <button type="button" class="btn primary" data-page-key="employees" data-page-route="/employees.html" data-page-title="الموظفين">الموظفين</button>
-          <button type="button" class="btn primary" data-page-key="holidays" data-page-route="/holidays.html" data-page-title="الإجازات">الإجازات</button>
-          <button type="button" class="btn primary" data-page-key="courses" data-page-route="/courses.html" data-page-title="الدورات">الدورات</button>
-          <button type="button" class="btn primary" data-page-key="transfers" data-page-route="/transfers.html" data-page-title="التنقلات">التنقلات</button>
-          <button type="button" class="btn primary" data-page-key="reduction" data-page-route="/reduction.html" data-page-title="تخفيف العمل">تخفيف العمل</button>
-          <button type="button" class="btn primary" data-page-key="outsideEmployees" data-page-route="/outside-employees.html" data-page-title="خارج الإدارة">خارج الإدارة</button>
-        </div>
       </div>
     </header>
 
@@ -898,13 +846,6 @@
       </div>
     </form>
   </dialog>
-  <dialog id="dailyPageDialog" class="daily-page-dialog" aria-labelledby="dailyPageDialogTitle">
-    <div class="daily-page-dialog-header">
-      <h2 id="dailyPageDialogTitle" class="daily-page-dialog-title">الواجهة</h2>
-      <button type="button" class="btn dark" id="dailyPageDialogCloseBtn">إغلاق</button>
-    </div>
-    <iframe id="dailyPageFrame" class="daily-page-frame" title="واجهة مرتبطة"></iframe>
-  </dialog>
   <script src="/daily-scanner.js"></script>
   <script src="/status-catalog.js"></script>
   <script src="/daily-allowance-tooltip.js"></script>
@@ -936,11 +877,6 @@
     const bulkPeriodEditBtn = document.getElementById('bulkPeriodEditBtn');
     const bulkDateEditDialog = document.getElementById('bulkDateEditDialog');
     const bulkPeriodEditDialog = document.getElementById('bulkPeriodEditDialog');
-    const dailyPageDialog = document.getElementById('dailyPageDialog');
-    const dailyPageDialogTitle = document.getElementById('dailyPageDialogTitle');
-    const dailyPageFrame = document.getElementById('dailyPageFrame');
-    const dailyPageDialogCloseBtn = document.getElementById('dailyPageDialogCloseBtn');
-    const dailyPageShortcutButtons = document.querySelectorAll('[data-page-route]');
     const bulkDateEditForm = document.getElementById('bulkDateEditForm');
     const bulkPeriodEditForm = document.getElementById('bulkPeriodEditForm');
     const bulkDateEditCancelBtn = document.getElementById('bulkDateEditCancelBtn');
@@ -990,15 +926,9 @@
     }
 
     const currentRole = String(currentUser?.role || '').trim().toLowerCase();
-    const allowedPages = new Set(Array.isArray(currentUser?.allowedPages) ? currentUser.allowedPages : []);
     const editablePages = Array.isArray(currentUser?.editablePages) ? currentUser.editablePages : currentUser?.allowedPages;
     const canEditDaily = currentRole === 'admin'
       || (currentRole !== 'view' && Array.isArray(editablePages) && editablePages.includes('daily'));
-    dailyPageShortcutButtons.forEach((button) => {
-      const pageKey = String(button.dataset.pageKey || '').trim();
-      button.hidden = currentRole !== 'admin' && (!canEditDaily || !allowedPages.has(pageKey));
-    });
-
     const dateOpenButtons = document.querySelectorAll('.date-picker-trigger');
     let departmentSectionRows = [];
     let selectedRecord = null;
@@ -1083,23 +1013,29 @@
       return String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
     }
 
-    function getMonthlyAlerts(item) {
+    function getMonthlyUsage(item) {
       const empId = String(item.EmpID || '').trim();
-      const name = normalizeText(item.Name);
-      const usage = (empId && monthlyAlertMap.get(`emp:${empId}`))
-        || monthlyAlertMap.get(`name:${name}`);
-      if (!usage) return [];
+      return (empId && monthlyAlertMap.get(`emp:${empId}`))
+        || monthlyAlertMap.get(`name:${normalizeText(item.Name)}`);
+    }
 
+    function hasMonthlyStatusExceeded(item) {
+      const usage = getMonthlyUsage(item);
+      if (!usage) return false;
       const status = MainProjectStatusCatalog.normalizeStatus(item.Status);
+      return (status === 'أذن' && (usage.permissionCountExceeded || usage.permissionTimeExceeded))
+        || (status === 'حضور بعد غياب' && usage.lateExceeded);
+    }
+
+    function getMonthlyAlerts(item) {
+      const usage = getMonthlyUsage(item);
+      if (!usage) return [];
       const alerts = [];
-      if (status === 'حضور بعد غياب' && usage.lateExceeded) {
-        alerts.push('تجاوز 105 دقيقة مدة التأخير المسموحة');
+      if (usage.lateExceeded) {
+        alerts.push(`تجاوز حد التأخير الشهري (105 دقيقة): ${formatPermissionDuration(usage.lateMinutes)} ساعة`);
       }
-      if (status === 'أذن' && usage.permissionTimeExceeded) {
-        alerts.push('تجاوز 12 ساعة مدة الأذن المسموحة');
-      }
-      if (status === 'أذن' && usage.permissionCountExceeded) {
-        alerts.push('تجاوز عدد الطلبات أكثر من 4 مرات');
+      if (usage.permissionTimeExceeded || usage.permissionCountExceeded) {
+        alerts.push(`تجاوز حد الأذونات الشهري (4 مرات أو 12 ساعة): ${usage.permissionCount} مرات و${formatPermissionDuration(usage.permissionMinutes)} ساعة`);
       }
       return alerts;
     }
@@ -1126,9 +1062,10 @@
     }
 
     function normalizeDepartment(value) {
-      const text = String(value || '').trim();
-      if (text === 'الإحصاء') return 'الاحصاء';
-      return text;
+      return String(value || '')
+        .trim()
+        .replace(/\s+/g, ' ')
+        .replace(/[أإآ]/g, 'ا');
     }
 
     function parseFlexibleDate(value) {
@@ -1287,7 +1224,7 @@
         departmentSectionRows = Array.isArray(data.departmentSections) ? data.departmentSections : [];
         basePeriods = Array.isArray(data.periods) ? data.periods : [];
         const departments = Array.isArray(data.departments)
-          ? data.departments.filter((value) => String(value || '').trim() !== 'إدارة البلاغات')
+          ? [...new Set(data.departments.map(normalizeDepartment))]
           : [];
         populateSelect(departmentInput, departments);
         populateSectionOptions(sectionInput.value);
@@ -1653,6 +1590,7 @@
     }
 
     function getMobileStatusClass(item) {
+      if (hasMonthlyStatusExceeded(item)) return 'status-absent monthly-limit-exceeded';
       const status = String(item.Status || '').trim();
       if (status === 'حضور' || status === 'حضور بعد غياب') return 'status-present';
       if (['غياب', 'انقطاع عن العمل'].includes(status)) return 'status-absent';
@@ -1822,19 +1760,19 @@
         today: item.Today || todayInput.value,
         empId: item.EmpID || '',
         name: item.Name || '',
-        table: table || '',
-        id: item.ID || ''
+        table: '',
+        id: ''
       });
       const summary = await requestJson(`/api/daily-logs/permission-summary?${params.toString()}`, {
         headers: getHeaders()
       });
       const remainingCount = Math.max(0, Number(summary.remainingCount));
       const remainingMinutes = Math.max(0, Number(summary.remainingMinutes));
-      const exceedsLimit = Boolean(summary.exceeded) || Number(summary.remainingCount) <= 0;
+      const exceedsLimit = Boolean(summary.exceeded);
 
       if (exceedsLimit) {
-        showStatus(`تنبيه: تجاوز ${item.Name || 'الموظف'} الحد الشهري للأذن (4 مرات أو 12:00 ساعة).`, true);
-        return false;
+        showStatus(`تنبيه: تجاوز ${item.Name || 'الموظف'} الحد الشهري للأذن. الإجمالي ${summary.usedCount} مرات و${formatPermissionDuration(summary.usedMinutes)} ساعة. الإضافة متاحة.`, true);
+        return true;
       }
 
       showStatus(`الرصيد الشهري المتبقي قبل احتساب مدة هذا الإذن: ${remainingCount} مرات و${formatPermissionDuration(remainingMinutes)} ساعة.`);
@@ -1886,7 +1824,7 @@
 
     function createStatusSelect(item) {
       const select = document.createElement('select');
-      select.className = 'status-select';
+      select.className = 'status-select' + (hasMonthlyStatusExceeded(item) ? ' monthly-limit-exceeded' : '');
       STATUS_OPTIONS.forEach((status) => {
         const option = document.createElement('option');
         option.value = status;
@@ -1898,13 +1836,6 @@
       select.addEventListener('click', (event) => event.stopPropagation());
       select.addEventListener('change', async (event) => {
         const nextStatus = event.target.value;
-        if (MainProjectStatusCatalog.isPermissionStatus(nextStatus)) {
-          const permissionAllowed = await showPermissionSummary(item);
-          if (!permissionAllowed) {
-            select.value = MainProjectStatusCatalog.normalizeStatus(item.Status) || 'حضور';
-            return;
-          }
-        }
 
         const payload = { Status: nextStatus };
         if (MainProjectStatusCatalog.isAdjustedStatus(nextStatus)) {
@@ -2512,23 +2443,6 @@
 
     bulkDateEditCancelBtn.addEventListener('click', () => bulkDateEditDialog.close());
     bulkPeriodEditCancelBtn.addEventListener('click', () => bulkPeriodEditDialog.close());
-
-    dailyPageShortcutButtons.forEach((button) => {
-      button.addEventListener('click', () => {
-        dailyPageDialogTitle.textContent = button.dataset.pageTitle || 'الواجهة';
-        dailyPageFrame.title = button.dataset.pageTitle || 'واجهة مرتبطة';
-        dailyPageFrame.src = button.dataset.pageRoute || '';
-        dailyPageDialog.showModal();
-      });
-    });
-
-    dailyPageDialogCloseBtn.addEventListener('click', () => {
-      dailyPageDialog.close();
-    });
-
-    dailyPageDialog.addEventListener('close', () => {
-      dailyPageFrame.src = 'about:blank';
-    });
 
     bulkDateEditForm.addEventListener('submit', (event) => {
       event.preventDefault();

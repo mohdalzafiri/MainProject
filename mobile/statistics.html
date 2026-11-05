@@ -21,6 +21,15 @@
       </div>
     </section>
 
+    <nav class="statistics-shortcuts" aria-label="واجهات مرتبطة">
+      <button type="button" class="btn primary" data-page-key="employees" data-page-route="/employees.html" data-mobile-route="/mobile/employees.html" data-page-title="الموظفين">الموظفين</button>
+      <button type="button" class="btn primary" data-page-key="holidays" data-page-route="/holidays.html" data-mobile-route="/mobile/holidays.html" data-page-title="الإجازات">الإجازات</button>
+      <button type="button" class="btn primary" data-page-key="courses" data-page-route="/courses.html" data-mobile-route="/courses.html" data-page-title="الدورات">الدورات</button>
+      <button type="button" class="btn primary" data-page-key="transfers" data-page-route="/transfers.html" data-mobile-route="/mobile/transfers.html" data-page-title="التنقلات">التنقلات</button>
+      <button type="button" class="btn primary" data-page-key="reduction" data-page-route="/reduction.html" data-mobile-route="/mobile/reduction.html" data-page-title="تخفيف العمل">تخفيف العمل</button>
+      <button type="button" class="btn primary" data-page-key="outsideEmployees" data-page-route="/outside-employees.html" data-mobile-route="/mobile/outside-employees.html" data-page-title="خارج الإدارة">خارج الإدارة</button>
+    </nav>
+
     <section class="panel">
       <div class="statistics-selector">
         <div class="field">
@@ -73,6 +82,14 @@
       </div>
     </section>
   </div>
+
+  <dialog id="statisticsPageDialog" class="statistics-page-dialog" aria-labelledby="statisticsPageDialogTitle">
+    <div class="statistics-page-dialog-header">
+      <h2 id="statisticsPageDialogTitle" class="statistics-page-dialog-title">الواجهة</h2>
+      <button type="button" class="btn dark" id="statisticsPageDialogCloseBtn">إغلاق</button>
+    </div>
+    <iframe id="statisticsPageFrame" class="statistics-page-frame" title="واجهة مرتبطة"></iframe>
+  </dialog>
 
   <script src="/statistics-page.js"></script>
 </body>

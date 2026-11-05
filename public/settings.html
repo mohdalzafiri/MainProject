@@ -1236,9 +1236,17 @@
     }
 
     function setSelectedGroupValues(groupKey, values) {
-      const selected = new Set(Array.isArray(values) ? values : []);
+      const normalizeScopeValue = (value) => String(value || '')
+        .trim()
+        .replace(/\s+/g, ' ')
+        .replace(/[أإآ]/g, 'ا');
+      const isScopeGroup = groupKey === 'departments' || groupKey === 'sections';
+      const selected = new Set((Array.isArray(values) ? values : []).map((value) => (
+        isScopeGroup ? normalizeScopeValue(value) : String(value || '').trim()
+      )));
       getGroupCheckboxes(groupKey).forEach((checkbox) => {
-        checkbox.checked = selected.has(String(checkbox.value || '').trim());
+        const value = String(checkbox.value || '').trim();
+        checkbox.checked = selected.has(isScopeGroup ? normalizeScopeValue(value) : value);
       });
     }
 

@@ -30,17 +30,8 @@
       text-align: right;
     }
 
-    .daily-shortcuts {
-      display: flex;
-      width: 100%;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    .daily-header .actions {
-      display: flex;
-      align-items: flex-start;
-      justify-content: flex-start;
+    .daily-header .title-block .home-nav-button {
+      margin-top: 12px;
     }
 
     .mobile-view-toggle {
@@ -415,6 +406,11 @@
       margin-top: 4px;
     }
 
+    html.dark-mode body.app-shell #recordedSectionsLabel,
+    body.app-shell.dark-mode #recordedSectionsLabel {
+      color: #fff;
+    }
+
     .status-select,
     .time-input,
     .note-input {
@@ -456,6 +452,53 @@
 
     .row-absent {
       background: #fee2e2;
+    }
+
+    html.dark-mode body.app-shell .table-wrap tbody tr.row-leave,
+    body.app-shell.dark-mode .table-wrap tbody tr.row-leave {
+      --daily-row-accent: #60a5fa;
+      background: transparent !important;
+    }
+
+    html.dark-mode body.app-shell .table-wrap tbody tr.row-leave-end,
+    body.app-shell.dark-mode .table-wrap tbody tr.row-leave-end {
+      --daily-row-accent: #93c5fd;
+      background: transparent !important;
+    }
+
+    html.dark-mode body.app-shell .table-wrap tbody tr.row-course,
+    body.app-shell.dark-mode .table-wrap tbody tr.row-course {
+      --daily-row-accent: #fbbf24;
+      background: transparent !important;
+    }
+
+    html.dark-mode body.app-shell .table-wrap tbody tr.row-delay,
+    body.app-shell.dark-mode .table-wrap tbody tr.row-delay {
+      --daily-row-accent: #4ade80;
+      background: transparent !important;
+    }
+
+    html.dark-mode body.app-shell .table-wrap tbody tr.row-absent,
+    body.app-shell.dark-mode .table-wrap tbody tr.row-absent {
+      --daily-row-accent: #fb7185;
+      background: transparent !important;
+    }
+
+    html.dark-mode body.app-shell .table-wrap tbody tr:is(.row-leave, .row-leave-end, .row-course, .row-delay, .row-absent) > td,
+    body.app-shell.dark-mode .table-wrap tbody tr:is(.row-leave, .row-leave-end, .row-course, .row-delay, .row-absent) > td {
+      background-color: transparent !important;
+      border-top: 2px solid var(--daily-row-accent);
+      border-bottom: 2px solid var(--daily-row-accent);
+    }
+
+    html.dark-mode body.app-shell .table-wrap tbody tr:is(.row-leave, .row-leave-end, .row-course, .row-delay, .row-absent) > td:first-child,
+    body.app-shell.dark-mode .table-wrap tbody tr:is(.row-leave, .row-leave-end, .row-course, .row-delay, .row-absent) > td:first-child {
+      border-right: 2px solid var(--daily-row-accent);
+    }
+
+    html.dark-mode body.app-shell .table-wrap tbody tr:is(.row-leave, .row-leave-end, .row-course, .row-delay, .row-absent) > td:last-child,
+    body.app-shell.dark-mode .table-wrap tbody tr:is(.row-leave, .row-leave-end, .row-course, .row-delay, .row-absent) > td:last-child {
+      border-left: 2px solid var(--daily-row-accent);
     }
 
     .status-badge {
@@ -671,6 +714,15 @@
       body.app-shell .table-wrap th:nth-child(9),
       body.app-shell .table-wrap td:nth-child(9) { width: 11%; }
     }
+
+    /* Monthly limits are warnings; entries remain editable. */
+    .monthly-limit-exceeded,
+    .status-badge.monthly-limit-exceeded,
+    .mobile-daily-status-badge.monthly-limit-exceeded {
+      background: #fee2e2 !important;
+      color: #991b1b !important;
+      border: 1px solid #ef4444 !important;
+    }
   </style>
   <script src="/role-access.js" defer></script>
 </head>
@@ -682,15 +734,6 @@
         <p>إدارة بيانات اليوميات: إضافة، تعديل، حذف، طباعة وعرض السجلات.</p>
         <button type="button" class="btn dark home-nav-button" id="backBtn">العودة للرئيسية</button>
       </div>
-
-      <nav class="daily-shortcuts" aria-label="واجهات مرتبطة">
-        <button type="button" class="btn primary" data-page-key="employees" data-page-route="/mobile/employees.html">الموظفين</button>
-        <button type="button" class="btn primary" data-page-key="holidays" data-page-route="/mobile/holidays.html">الإجازات</button>
-        <button type="button" class="btn primary" data-page-key="courses" data-page-route="/courses.html">الدورات</button>
-        <button type="button" class="btn primary" data-page-key="transfers" data-page-route="/mobile/transfers.html">التنقلات</button>
-        <button type="button" class="btn primary" data-page-key="reduction" data-page-route="/mobile/reduction.html">تخفيف العمل</button>
-        <button type="button" class="btn primary" data-page-key="outsideEmployees" data-page-route="/mobile/outside-employees.html">خارج الإدارة</button>
-      </nav>
 
       <div class="mobile-view-toggle" aria-label="طريقة عرض بيانات اليوميات">
         <button type="button" id="tableViewBtn" class="active" aria-pressed="true">الجدول</button>
@@ -856,17 +899,9 @@
     }
 
     const currentRole = String(currentUser?.role || '').trim().toLowerCase();
-    const allowedPages = new Set(Array.isArray(currentUser?.allowedPages) ? currentUser.allowedPages : []);
     const editablePages = Array.isArray(currentUser?.editablePages) ? currentUser.editablePages : currentUser?.allowedPages;
     const canEditDaily = currentRole === 'admin'
       || (currentRole !== 'view' && Array.isArray(editablePages) && editablePages.includes('daily'));
-    document.querySelectorAll('.daily-shortcuts [data-page-route]').forEach((button) => {
-      const pageKey = String(button.dataset.pageKey || '').trim();
-      button.hidden = currentRole !== 'admin' && (!canEditDaily || !allowedPages.has(pageKey));
-      button.addEventListener('click', () => {
-        window.location.href = button.dataset.pageRoute;
-      });
-    });
 
     const STATUS_OPTIONS = MainProjectStatusCatalog.statuses;
     const EDITABLE_TIME_STATUSES = MainProjectStatusCatalog.timedStatuses;
@@ -965,23 +1000,29 @@
       return String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
     }
 
-    function getMonthlyAlerts(item) {
+    function getMonthlyUsage(item) {
       const empId = String(item.EmpID || '').trim();
-      const name = normalizeText(item.Name);
-      const usage = (empId && monthlyAlertMap.get(`emp:${empId}`))
-        || monthlyAlertMap.get(`name:${name}`);
-      if (!usage) return [];
+      return (empId && monthlyAlertMap.get(`emp:${empId}`))
+        || monthlyAlertMap.get(`name:${normalizeText(item.Name)}`);
+    }
 
+    function hasMonthlyStatusExceeded(item) {
+      const usage = getMonthlyUsage(item);
+      if (!usage) return false;
       const status = MainProjectStatusCatalog.normalizeStatus(item.Status);
+      return (status === 'أذن' && (usage.permissionCountExceeded || usage.permissionTimeExceeded))
+        || (status === 'حضور بعد غياب' && usage.lateExceeded);
+    }
+
+    function getMonthlyAlerts(item) {
+      const usage = getMonthlyUsage(item);
+      if (!usage) return [];
       const alerts = [];
-      if (status === 'حضور بعد غياب' && usage.lateExceeded) {
-        alerts.push('تجاوز 105 دقيقة مدة التأخير المسموحة');
+      if (usage.lateExceeded) {
+        alerts.push(`تجاوز حد التأخير الشهري (105 دقيقة): ${formatPermissionDuration(usage.lateMinutes)} ساعة`);
       }
-      if (status === 'أذن' && usage.permissionTimeExceeded) {
-        alerts.push('تجاوز 12 ساعة مدة الأذن المسموحة');
-      }
-      if (status === 'أذن' && usage.permissionCountExceeded) {
-        alerts.push('تجاوز عدد الطلبات أكثر من 4 مرات');
+      if (usage.permissionTimeExceeded || usage.permissionCountExceeded) {
+        alerts.push(`تجاوز حد الأذونات الشهري (4 مرات أو 12 ساعة): ${usage.permissionCount} مرات و${formatPermissionDuration(usage.permissionMinutes)} ساعة`);
       }
       return alerts;
     }
@@ -1042,9 +1083,10 @@
     });
 
     function normalizeDepartment(value) {
-      const text = String(value || '').trim();
-      if (text === 'الإحصاء') return 'الاحصاء';
-      return text;
+      return String(value || '')
+        .trim()
+        .replace(/\s+/g, ' ')
+        .replace(/[أإآ]/g, 'ا');
     }
 
     function parseFlexibleDate(value) {
@@ -1198,7 +1240,7 @@
         departmentSectionRows = Array.isArray(data.departmentSections) ? data.departmentSections : [];
         basePeriods = Array.isArray(data.periods) ? data.periods : [];
         const departments = Array.isArray(data.departments)
-          ? data.departments.filter((value) => String(value || '').trim() !== 'إدارة البلاغات')
+          ? [...new Set(data.departments.map(normalizeDepartment))]
           : [];
         populateSelect(departmentInput, departments);
         populateSectionOptions(sectionInput.value);
@@ -1627,19 +1669,19 @@
         today: item.Today || todayInput.value,
         empId: item.EmpID || '',
         name: item.Name || '',
-        table: table || '',
-        id: item.ID || ''
+        table: '',
+        id: ''
       });
       const summary = await requestJson(`/api/daily-logs/permission-summary?${params.toString()}`, {
         headers: getHeaders()
       });
       const remainingCount = Math.max(0, Number(summary.remainingCount));
       const remainingMinutes = Math.max(0, Number(summary.remainingMinutes));
-      const exceedsLimit = Boolean(summary.exceeded) || Number(summary.remainingCount) <= 0;
+      const exceedsLimit = Boolean(summary.exceeded);
 
       if (exceedsLimit) {
-        showStatus(`تنبيه: تجاوز ${item.Name || 'الموظف'} الحد الشهري للأذن (4 مرات أو 12:00 ساعة).`, true);
-        return false;
+        showStatus(`تنبيه: تجاوز ${item.Name || 'الموظف'} الحد الشهري للأذن. الإجمالي ${summary.usedCount} مرات و${formatPermissionDuration(summary.usedMinutes)} ساعة. الإضافة متاحة.`, true);
+        return true;
       }
 
       showStatus(`الرصيد الشهري المتبقي قبل احتساب مدة هذا الإذن: ${remainingCount} مرات و${formatPermissionDuration(remainingMinutes)} ساعة.`);
@@ -1652,7 +1694,7 @@
       wrapper.className = 'status-cell';
 
       const badge = document.createElement('div');
-      badge.className = 'status-badge';
+      badge.className = 'status-badge' + (hasMonthlyStatusExceeded(item) ? ' monthly-limit-exceeded' : '');
       const badgeText = status || '—';
       badge.textContent = badgeText;
 
@@ -1669,7 +1711,7 @@
       }
 
       const select = document.createElement('select');
-      select.className = 'status-select';
+      select.className = 'status-select' + (hasMonthlyStatusExceeded(item) ? ' monthly-limit-exceeded' : '');
       STATUS_OPTIONS.forEach((optionStatus) => {
         const option = document.createElement('option');
         option.value = optionStatus;
@@ -1681,13 +1723,6 @@
       select.addEventListener('click', (event) => event.stopPropagation());
       select.addEventListener('change', async (event) => {
         const nextStatus = event.target.value;
-        if (MainProjectStatusCatalog.isPermissionStatus(nextStatus)) {
-          const permissionAllowed = await showPermissionSummary(item);
-          if (!permissionAllowed) {
-            select.value = MainProjectStatusCatalog.normalizeStatus(item.Status) || 'حضور';
-            return;
-          }
-        }
 
         const payload = { Status: nextStatus };
         if (MainProjectStatusCatalog.isAdjustedStatus(nextStatus)) {
@@ -1727,6 +1762,7 @@
       input.addEventListener('change', async (event) => {
         const value = String(event.target.value || '').trim();
         await saveRowChanges(item, { [key]: value }, 'تم حفظ تعديل الوقت تلقائياً.');
+        applyNameFilterAndRender();
       });
 
       return input;
@@ -1838,7 +1874,7 @@
         card.innerHTML = `
           <div class="mobile-daily-card-head">
             <strong>${index + 1}.</strong>
-            <span class="status-badge ${getStatusBadgeClass(status)}">${status || '—'}</span>
+            <span class="status-badge ${hasMonthlyStatusExceeded(item) ? 'monthly-limit-exceeded' : getStatusBadgeClass(status)}">${status || '—'}</span>
           </div>
           <div class="mobile-daily-card-grid">
             <div class="mobile-daily-card-item"><span>الفترة</span><span>${item.Period ?? ''}</span></div>

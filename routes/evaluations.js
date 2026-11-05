@@ -63,8 +63,10 @@ function normalizeText(value) {
 }
 
 function normalizeDepartment(value) {
-  const text = String(value || '').trim();
-  return text === 'الإحصاء' ? 'الاحصاء' : text;
+  return String(value || '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .replace(/[أإآ]/g, 'ا');
 }
 
 function isMedicalEntry(text) {

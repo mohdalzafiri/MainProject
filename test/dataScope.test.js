@@ -90,3 +90,23 @@ test('scope aliases fall back only for null or undefined values', () => {
   }, access), false);
   assert.equal(isWithinDataScope(null, access), false);
 });
+
+test('department scope matching ignores hamza variations in alif', () => {
+  const access = {
+    isAdmin: false,
+    allowedDepartments: ['إدارة البلاغات'],
+    allowedSections: ['أ - البلاغات']
+  };
+
+  assert.equal(isWithinDataScope({
+    Department: 'ادارة البلاغات',
+    Section: 'ا - البلاغات'
+  }, access), true);
+  assert.equal(isWithinDataScope({
+    Department: 'إدارة البلاغات',
+    Section: 'أ - البلاغات'
+  }, {
+    ...access,
+    allowedDepartments: ['ادارة البلاغات']
+  }), true);
+});

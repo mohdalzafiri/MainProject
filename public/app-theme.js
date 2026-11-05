@@ -147,7 +147,9 @@
     observeAccessibilityChanges();
     installTableSearchDebounce();
   }, { once: true });
-  if (sessionStorage.getItem('authToken') && !document.querySelector('script[data-app-notifications]')) {
+  const isHomePage = window.location.pathname === '/dashboard.html'
+    || window.location.pathname === '/mobile-dashboard.html';
+  if (isHomePage && sessionStorage.getItem('authToken') && !document.querySelector('script[data-app-notifications]')) {
     const notificationsScript = document.createElement('script');
     notificationsScript.src = '/app-notifications.js';
     notificationsScript.dataset.appNotifications = 'true';

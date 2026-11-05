@@ -4,6 +4,13 @@ const { localizeRecord } = require('../services/systemLogLocalization');
 const { filterByDataScope, isWithinDataScope } = require('../auth/dataScope');
 const router = express.Router();
 
+function normalizeDepartmentName(value) {
+  const department = String(value || '').trim().replace(/\s+/g, ' ');
+  return ['إدارة البلاغات', 'أدارة البلاغات', 'آدارة البلاغات'].includes(department)
+    ? 'ادارة البلاغات'
+    : department;
+}
+
 async function replaceEmployeeIdWithName(record) {
   if (!record || !record.Details) {
     return record;
@@ -153,7 +160,9 @@ router.get('/summary', async (req, res) => {
     const summarizeScopedValues = (field) => {
       const counts = new Map();
       activeScopedEmployees.forEach((row) => {
-        const label = String(row[field] || '').trim();
+        const label = field === 'Department'
+          ? normalizeDepartmentName(row[field])
+          : String(row[field] || '').trim();
         if (label) counts.set(label, (counts.get(label) || 0) + 1);
       });
       return [...counts.entries()]

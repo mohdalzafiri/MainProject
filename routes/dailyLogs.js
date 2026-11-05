@@ -6,8 +6,6 @@ const statusCatalog = require('../public/status-catalog');
 const { buildInsertStatement, buildUpdateStatement } = require('../utils/sqlStatementBuilders');
 const {
   periodTimes,
-  MONTHLY_PERMISSION_COUNT_LIMIT,
-  MONTHLY_PERMISSION_MINUTES_LIMIT,
   getDelayMinutes,
   getPermissionDurationMinutes,
   getMonthlyAllowanceBalance
@@ -40,9 +38,10 @@ const tableSections = {
 const columns = ['EmpID', 'Day', 'Today', 'Name', 'Department', 'Section', 'Status', 'Period', 'InTime', 'OutTime', 'Startdate', 'Enddate', 'Type', 'Note'];
 
 function normalizeDepartment(value) {
-  const text = String(value || '').trim();
-  if (text === 'الإحصاء') return 'الاحصاء';
-  return text;
+  return String(value || '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .replace(/[أإآ]/g, 'ا');
 }
 
 function normalizeDateInput(value) {
@@ -137,25 +136,6 @@ async function getMonthlyPermissionUsage(record, excludedTable = '', excludedId 
   };
 }
 
-async function validateMonthlyPermissionLimit(record, excludedTable = '', excludedId = 0) {
-  if (!statusCatalog.isPermissionStatus(record.Status)) return '';
-
-  const usage = (await getMonthlyPermissionUsage(record, excludedTable, excludedId));
-  const totalCount = usage.count + 1;
-  const totalMinutes = usage.minutes + getPermissionDurationMinutes(record);
-
-  if (totalCount > MONTHLY_PERMISSION_COUNT_LIMIT) {
-    return `لا يمكن تسجيل الأذن: الحد الشهري هو 4 أذونات، والمستخدم حاليًا ${totalCount} أذونات.`;
-  }
-
-  if (totalMinutes > MONTHLY_PERMISSION_MINUTES_LIMIT) {
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = totalMinutes % 60;
-    return `لا يمكن تسجيل الأذن: إجمالي ساعات الأذن للشهر أصبح ${hours}:${String(minutes).padStart(2, '0')} ويتجاوز الحد المسموح 12:00 ساعة.`;
-  }
-
-  return '';
-}
 
 function getArabicDay(value) {
   const normalized = normalizeDateInput(value);
@@ -324,7 +304,7 @@ router.get('/permission-summary', async (req, res) => {
       usedMinutes: usage.minutes,
       remainingCount: balance.remainingPermissionCount,
       remainingMinutes: balance.remainingPermissionMinutes,
-      exceeded: balance.remainingPermissionCount === 0 || balance.remainingPermissionMinutes === 0
+      exceeded: balance.permissionCountExceeded || balance.permissionTimeExceeded
     });
   } catch (error) {
     console.error(error);
@@ -756,11 +736,6 @@ router.post('/table/:table', async (req, res) => {
   payload.Day = day;
   payload.Today = todayValue;
 
-  const permissionLimitError = (await validateMonthlyPermissionLimit(payload));
-  if (permissionLimitError) {
-    return res.status(400).json({ message: permissionLimitError });
-  }
-
   const statement = buildInsertStatement(table, columns, payload);
   if (!statement) {
     return res.status(400).json({ message: 'البيانات المرسلة غير كاملة' });
@@ -826,11 +801,6 @@ router.put('/bulk', async (req, res) => {
       if (duplicate) {
         return res.status(409).json({ message: `لا يمكن تعديل اليومية لأن الموظف ${row.Name || ''} موجود مسبقًا في التاريخ والفترة الجديدة.` });
       }
-
-      const permissionLimitError = (await validateMonthlyPermissionLimit({ ...row, Today: targetToday, Day: targetDay, Period: nextPeriod }, table, row.ID));
-      if (permissionLimitError) {
-        return res.status(400).json({ message: `${permissionLimitError} الموظف: ${row.Name || ''}.` });
-      }
     }
 
     const update = db.prepare(`UPDATE ${table} SET Today = ?, Day = ?, Period = ? WHERE ID = ?`);
@@ -875,11 +845,6 @@ router.put('/table/:table/:id', async (req, res) => {
   const currentStatus = statusCatalog.normalizeStatus(current.Status);
   if (!statusCatalog.statuses.includes(payload.Status) && payload.Status !== currentStatus) {
     return res.status(400).json({ message: 'الحالة المختارة غير معتمدة في اليومية.' });
-  }
-
-  const permissionLimitError = (await validateMonthlyPermissionLimit({ ...current, ...payload }, table, id));
-  if (permissionLimitError) {
-    return res.status(400).json({ message: permissionLimitError });
   }
 
   const statement = buildUpdateStatement(table, columns, payload, id);

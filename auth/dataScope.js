@@ -1,6 +1,8 @@
 function normalizeValue(value) {
-  const normalized = String(value || '').trim();
-  return normalized === 'الإحصاء' ? 'الاحصاء' : normalized;
+  return String(value || '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .replace(/[أإآ]/g, 'ا');
 }
 
 function normalizeValues(value) {
